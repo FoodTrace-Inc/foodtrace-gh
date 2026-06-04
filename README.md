@@ -2,18 +2,19 @@
 
 ## Scan It. Trace It. Trust It.
 
-FoodTrace GH is a Ghana-focused food and medicine traceability platform for consumers, farmers, manufacturers, pharmacists, and FDA regulators. It helps people verify product safety from a QR code, gives farmers and manufacturers a practical way to log traceability data, and gives regulators a faster view of recalls, consumer reports, and high-risk products across districts.
+FoodTrace GH is a Ghana-focused food traceability platform for consumers, farmers, manufacturers, and FDA regulators. It helps people verify product safety from a QR code, gives farmers and manufacturers a practical way to log traceability data, and gives regulators a faster view of recalls, consumer reports, and high-risk products across districts.
 
 ## Key Features
 
 - Food traceability from farm input to packaged product.
-- Drug traceability for pharmacy batches, FDA status, recalls, and prescription flags.
 - QR scanning on mobile and web, with typed fallback for damaged labels.
-- Recall workflows for manufacturers, pharmacists, and regulators.
+- Recall workflows for manufacturers and regulators.
 - Farmer portal for farms, crop cycles, pesticide logs, and safe harvest timing.
 - FDA dashboard with compliance metrics, alerts, reports, and emergency recall actions.
 - USSD and SMS fallback for feature-phone users.
 - Multilingual audio summaries for scan results.
+
+The medicine/pharmacy module remains available behind `VITE_ENABLE_DRUG_MODULE=true`, but it is not part of the first food-traceability production pilot.
 
 ## Tech Stack
 
@@ -131,6 +132,7 @@ Useful demo QR codes:
 ## Documentation
 
 - [Demo Script](./docs/DEMO_SCRIPT.md)
+- [Production MVP Scope](./docs/PRODUCTION_MVP_SCOPE.md)
 - [Architecture](./ARCHITECTURE.md)
 - [Data Model](./DATA_MODEL.md)
 - [API Contract](./API_CONTRACT.md)
