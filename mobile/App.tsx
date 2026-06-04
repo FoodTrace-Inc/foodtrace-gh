@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import Constants from "expo-constants";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
@@ -33,10 +34,37 @@ import {
   type SpeechSummaryResponse,
 } from "@foodtrace/shared";
 
-const defaultApiBase =
-  Platform.OS === "android"
+function resolveDefaultApiBase() {
+  const constants = Constants as typeof Constants & {
+    expoConfig?: { hostUri?: string; extra?: { apiBaseUrl?: string } };
+    manifest2?: { extra?: { expoClient?: { hostUri?: string } } };
+    manifest?: { debuggerHost?: string };
+  };
+
+  const configuredApiBase = constants.expoConfig?.extra?.apiBaseUrl?.trim();
+  if (configuredApiBase) {
+    return configuredApiBase;
+  }
+
+  const hostUri =
+    constants.expoConfig?.hostUri ??
+    constants.manifest2?.extra?.expoClient?.hostUri ??
+    constants.manifest?.debuggerHost ??
+    null;
+
+  if (hostUri) {
+    const rawHost = hostUri.includes("://") ? new URL(hostUri).hostname : hostUri.split(":")[0];
+    if (rawHost) {
+      return `http://${rawHost}:3000/api`;
+    }
+  }
+
+  return Platform.OS === "android"
     ? "http://10.0.2.2:3000/api" // Android emulator -> host machine loopback
     : "http://localhost:3000/api";
+}
+
+const defaultApiBase = resolveDefaultApiBase();
 const sampleCodes = ["FT-QR-1001", "FT-QR-2002", "FT-QR-4004"];
 const consumerHistoryKey = "foodtrace.consumer.history.v1";
 const apiBaseKey = "foodtrace.apiBase.v1";
@@ -211,6 +239,17 @@ export default function App() {
       void requestCameraPermission();
     }
   }, [cameraPermission, consumerScreen, requestCameraPermission]);
+
+  useEffect(() => {
+    const detected = resolveDefaultApiBase();
+    setApiBase((current) => {
+      if (!current || current === "http://localhost:3000/api" || current === "http://10.0.2.2:3000/api") {
+        setApiBaseDraft(detected);
+        return detected;
+      }
+      return current;
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -953,7 +992,8 @@ export default function App() {
       <View style={styles.card}>
         <Text style={styles.meta}>API base URL</Text>
         <Text style={styles.metaSmall}>
-          Android emulator: use {`http://10.0.2.2:3000/api`}. Real phone: use your PC IP like {`http://192.168.x.x:3000/api`}.
+          The app will try to auto-detect your computer IP when launched from Expo. If needed, use your PC IP like{" "}
+          {`http://192.168.x.x:3000/api`}.
         </Text>
         <TextInput
           style={styles.input}
@@ -963,9 +1003,15 @@ export default function App() {
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Pressable style={styles.primaryButton} onPress={saveApiBase}>
-          <Text style={styles.primaryButtonText}>Save API URL</Text>
-        </Pressable>
+        <View style={styles.rowWrap}>
+          <Pressable style={styles.primaryButton} onPress={saveApiBase}>
+            <Text style={styles.primaryButtonText}>Save API URL</Text>
+          </Pressable>
+          <Pressable style={styles.sampleButton} onPress={() => setApiBaseDraft(resolveDefaultApiBase())}>
+            <Text style={styles.sampleButtonText}>Auto-detect</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.metaSmall}>Current API: {apiBase}</Text>
 
         <Text style={styles.scanKicker}>Consumer app</Text>
         <Text style={styles.scanTitle}>Home, scanner, report, and history.</Text>

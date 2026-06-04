@@ -4,12 +4,30 @@
     "slug": "foodtrace-gh",
     "version": "0.1.0",
     "orientation": "portrait",
+    "scheme": "foodtracegh",
     "platforms": [
       "ios",
       "android"
     ],
+    "ios": {
+      "bundleIdentifier": "gh.foodtrace.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FoodTrace GH needs camera access to scan product QR codes.",
+        "NSMicrophoneUsageDescription": "FoodTrace GH may use audio features for safety summaries."
+      }
+    },
+    "android": {
+      "package": "gh.foodtrace.app",
+      "permissions": [
+        "CAMERA",
+        "INTERNET"
+      ]
+    },
     "updates": {
       "fallbackToCacheTimeout": 0
+    },
+    "extra": {
+      "apiBaseUrl": ""
     },
     "plugins": [
       [
@@ -18,7 +36,8 @@
           "cameraPermission": "Allow FoodTrace GH to use your camera to scan product QR codes."
         }
       ],
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      "expo-sqlite"
     ]
   }
 }

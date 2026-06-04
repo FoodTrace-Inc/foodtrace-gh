@@ -27,8 +27,40 @@ import {
   type UserRole,
 } from "@foodtrace/shared";
 
-const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:3000/api";
+function resolveApiBase() {
+  const configured = (import.meta as any).env?.VITE_API_BASE_URL?.trim();
+  if (configured) return configured;
+
+  if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost") {
+    return `http://${window.location.hostname}:3000/api`;
+  }
+
+  return "http://localhost:3000/api";
+}
+
+const apiBase = resolveApiBase();
+const showDemoMode = (import.meta as any).env?.VITE_SHOW_DEMO_MODE === "true";
+const enableDrugModule = (import.meta as any).env?.VITE_ENABLE_DRUG_MODULE === "true";
+const apiRoot = apiBase.replace(/\/api\/?$/, "");
 const sampleCodes = ["FT-QR-1001", "FT-QR-2002", "FT-QR-4004"];
+const demoPassword = "Password123!";
+const demoAccounts: Array<{ role: UserRole; name: string; email: string; purpose: string }> = [
+  { role: "consumer", name: "Demo Consumer", email: "consumer@foodtrace.gh", purpose: "Scan food, scan medicine, submit reports" },
+  { role: "farmer", name: "Kwame Asante", email: "kwame.asante@foodtrace.gh", purpose: "Show farm, crops, pesticide input, safe harvest date" },
+  { role: "manufacturer", name: "Accra Foods Admin", email: "accra.foods@foodtrace.gh", purpose: "Show batches, QR codes, manufacturer recall" },
+  { role: "pharmacist", name: "Kumasi Central Pharmacist", email: "kumasi.pharmacy@foodtrace.gh", purpose: "Show drug batches, pharmacy dashboard, drug QR flow" },
+  { role: "regulator", name: "FDA Regulator", email: "regulator@foodtrace.gh", purpose: "Show compliance overview, alerts, reports, recalls" },
+];
+const demoFoodCodes = [
+  { code: "FT-QR-1001", label: "Safe food", detail: "Accra Foods Tomato Paste 400g" },
+  { code: "FT-QR-2002", label: "Safe drink", detail: "GoldCoast Sobolo Drink 500ml" },
+  { code: "FT-QR-4004", label: "Recalled food", detail: "GoldCoast Sobolo Drink 500ml - RECALLED" },
+];
+const demoDrugCodes = [
+  { code: "DR-QR-1001", label: "OTC drug", detail: "Paracetamol 500mg" },
+  { code: "DR-QR-2002", label: "Prescription drug", detail: "Artesunate 50mg" },
+  { code: "DR-QR-4004", label: "Banned/recalled drug", detail: "Fake Chloroquine" },
+];
 
 type Mode = "login" | "register";
 
@@ -47,6 +79,20 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function getFriendlyErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof TypeError) {
+    return "Could not reach FoodTrace right now. Check your internet connection or try again shortly.";
+  }
+
+  return error instanceof Error ? error.message : fallback;
+}
+
+function resolveAssetUrl(url?: string | null) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${apiRoot}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
 function App() {
@@ -94,6 +140,8 @@ function App() {
   const [manufacturerSector, setManufacturerSector] = useState("food");
   const [subscriptionTier, setSubscriptionTier] = useState<"micro" | "small" | "medium" | "large">("small");
   const [batchNumber, setBatchNumber] = useState("FB-1001");
+  const [batchProductName, setBatchProductName] = useState("Tomato Paste 400g");
+  const [batchFarmOrigin, setBatchFarmOrigin] = useState("Ejisu, Ashanti");
   const [packagingDate, setPackagingDate] = useState("2026-05-01");
   const [expiryDate, setExpiryDate] = useState("2027-05-01");
   const [ingredientSources, setIngredientSources] = useState("farm inputs");
@@ -103,6 +151,7 @@ function App() {
   const [recallReason, setRecallReason] = useState("Possible contamination");
   const [recallType, setRecallType] = useState<"manufacturer" | "regulator">("manufacturer");
   const [recallScopeDistricts, setRecallScopeDistricts] = useState("Accra,Kumasi");
+  const [latestCreatedQr, setLatestCreatedQr] = useState<CreateProductBatchResponse["qrCode"] | null>(null);
   const [regulatorDashboard, setRegulatorDashboard] = useState<RegulatorDashboardResponse | null>(null);
   const [regulatorStatus, setRegulatorStatus] = useState("Regulator portal ready");
   const [reportId, setReportId] = useState("");
@@ -141,7 +190,7 @@ function App() {
   const [drugRecallBatchId, setDrugRecallBatchId] = useState("");
   const [drugRecallReason, setDrugRecallReason] = useState("Quality issue");
 
-  const roleList = useMemo(() => USER_ROLES, []);
+  const roleList = useMemo(() => (enableDrugModule ? USER_ROLES : USER_ROLES.filter((item) => item !== "pharmacist")), []);
   const currentRole = session?.user.role ?? null;
   const isConsumer = currentRole === "consumer";
   const isFarmer = currentRole === "farmer";
@@ -170,6 +219,14 @@ function App() {
     setStatus("Signed out.");
   }
 
+  function useDemoAccount(account: (typeof demoAccounts)[number]) {
+    setMode("login");
+    setIdentifier(account.email);
+    setPassword(demoPassword);
+    setRole(account.role);
+    setStatus(`Demo login ready for ${account.name}.`);
+  }
+
   async function submit() {
     setStatus("Sending request...");
     try {
@@ -193,7 +250,7 @@ function App() {
       setSession(data);
       setStatus(`Signed in as ${data.user.role}. Opening your portal...`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Authentication failed");
+      setStatus(getFriendlyErrorMessage(error, "Authentication failed"));
     }
   }
 
@@ -203,7 +260,7 @@ function App() {
     if (session.user.role === "farmer") void loadFoodDashboard();
     if (session.user.role === "manufacturer") void loadManufacturerDashboard();
     if (session.user.role === "regulator") void loadRegulatorDashboard();
-    if (session.user.role === "pharmacist") void loadPharmacyDashboard();
+    if (enableDrugModule && session.user.role === "pharmacist") void loadPharmacyDashboard();
   }, [session?.token, session?.user.role]);
 
   async function scanProduct(code = scanCode) {
@@ -223,7 +280,7 @@ function App() {
       setScanResult(data.result);
       setScanStatus(`Scan complete: ${data.result.status}`);
     } catch (error) {
-      setScanStatus(error instanceof Error ? error.message : "Scan failed");
+      setScanStatus(getFriendlyErrorMessage(error, "Scan failed"));
     } finally {
       setScanLoading(false);
     }
@@ -472,6 +529,8 @@ function App() {
 
     const payload: CreateProductBatchRequest = {
       batchNumber,
+      productName: batchProductName,
+      farmOrigin: batchFarmOrigin,
       ingredientSources: [ingredientSources],
       processingSteps: processingSteps.split(",").map((item) => item.trim()).filter(Boolean),
       qualityChecks: [qualityChecks],
@@ -493,7 +552,23 @@ function App() {
       throw new Error(typeof data.error === "string" ? data.error : "Could not create batch");
     }
     setManufacturerStatus(`Batch created. QR: ${data.qrCode.codeString}`);
+    setLatestCreatedQr(data.qrCode);
+    setScanCode(data.qrCode.codeString);
     await loadManufacturerDashboard();
+  }
+
+  async function copyLatestQrCode() {
+    if (!latestCreatedQr?.codeString) {
+      setManufacturerStatus("Create a batch first to get a QR code.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(latestCreatedQr.codeString);
+      setManufacturerStatus(`Copied QR code ${latestCreatedQr.codeString}.`);
+    } catch {
+      setManufacturerStatus(`QR code: ${latestCreatedQr.codeString}`);
+    }
   }
 
   async function createManufacturerRecall() {
@@ -751,7 +826,7 @@ function App() {
         <p style={styles.kicker}>FoodTrace GH</p>
         <h1 style={styles.title}>Scan It. Trace It. Trust It.</h1>
         <p style={styles.body}>
-          FoodTrace GH connects consumers, farmers, manufacturers, pharmacists, and FDA regulators in one traceability platform for safer food and medicine.
+          FoodTrace GH connects consumers, farmers, manufacturers, and FDA regulators in one traceability platform for safer local food.
         </p>
         {!session ? (
           <div style={styles.foodButtons}>
@@ -855,6 +930,58 @@ function App() {
         )}
       </section>
 
+      {showDemoMode ? (
+        <section style={styles.demoCard}>
+          <div style={styles.demoHeader}>
+            <div>
+              <p style={styles.scanKicker}>Demo mode</p>
+              <h2 style={styles.demoTitle}>Presentation shortcuts</h2>
+            </div>
+            <span style={styles.demoPassword}>Password: {demoPassword}</span>
+          </div>
+          <div style={styles.demoGrid}>
+            {demoAccounts.map((account) => (
+              <article key={account.email} style={styles.demoItem}>
+                <div>
+                  <p style={styles.demoName}>{account.name}</p>
+                  <p style={styles.demoMeta}>{account.role} | {account.email}</p>
+                  <p style={styles.demoPurpose}>{account.purpose}</p>
+                </div>
+                <button type="button" style={styles.sampleButton} onClick={() => useDemoAccount(account)}>
+                  Use login
+                </button>
+              </article>
+            ))}
+          </div>
+          <div style={styles.demoCodeGrid}>
+            <div>
+              <h3 style={styles.demoSubTitle}>Food QR codes</h3>
+              <div style={styles.sampleRow}>
+                {demoFoodCodes.map((item) => (
+                  <button key={item.code} type="button" style={styles.demoCodeButton} onClick={() => void scanProduct(item.code)}>
+                    <strong>{item.code}</strong>
+                    <span>{item.label}</span>
+                    <small>{item.detail}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 style={styles.demoSubTitle}>Drug QR codes</h3>
+              <div style={styles.sampleRow}>
+                {demoDrugCodes.map((item) => (
+                  <button key={item.code} type="button" style={styles.demoCodeButton} onClick={() => void scanDrug(item.code)}>
+                    <strong>{item.code}</strong>
+                    <span>{item.label}</span>
+                    <small>{item.detail}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {canUseConsumerScan ? (
       <section style={styles.scanCard}>
         <p style={styles.scanKicker}>Consumer scan</p>
@@ -873,13 +1000,15 @@ function App() {
             {scanLoading ? "Scanning..." : "Scan"}
           </button>
         </div>
-        <div style={styles.sampleRow}>
-          {sampleCodes.map((code) => (
-            <button key={code} type="button" style={styles.sampleButton} onClick={() => void scanProduct(code)}>
-              {code}
-            </button>
-          ))}
-        </div>
+        {showDemoMode ? (
+          <div style={styles.sampleRow}>
+            {sampleCodes.map((code) => (
+              <button key={code} type="button" style={styles.sampleButton} onClick={() => void scanProduct(code)}>
+                {code}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <p style={styles.status}>{scanStatus}</p>
         {scanResult ? (
           <article style={styles.resultCard}>
@@ -1056,6 +1185,8 @@ function App() {
             <option value="large">large</option>
           </select>
           <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} style={styles.scanInput} placeholder="Batch number" />
+          <input value={batchProductName} onChange={(e) => setBatchProductName(e.target.value)} style={styles.scanInput} placeholder="Product name" />
+          <input value={batchFarmOrigin} onChange={(e) => setBatchFarmOrigin(e.target.value)} style={styles.scanInput} placeholder="Farm origin" />
           <input value={packagingDate} onChange={(e) => setPackagingDate(e.target.value)} style={styles.scanInput} placeholder="Packaging date YYYY-MM-DD" />
           <input value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={styles.scanInput} placeholder="Expiry date YYYY-MM-DD" />
           <input value={recallBatchId} onChange={(e) => setRecallBatchId(e.target.value)} style={styles.scanInput} placeholder="Recall batch ID" />
@@ -1070,6 +1201,31 @@ function App() {
           </select>
         </div>
         <p style={styles.status}>{manufacturerStatus}</p>
+        {latestCreatedQr ? (
+          <article style={styles.qrCard}>
+            <div>
+              <p style={styles.scanKicker}>Generated QR</p>
+              <h3 style={styles.resultTitle}>{latestCreatedQr.codeString}</h3>
+              <p style={styles.resultSummary}>Use this QR code on the batch label. A consumer scan will resolve to the batch safety record.</p>
+              <div style={styles.foodButtons}>
+                <button type="button" style={styles.primaryButton} onClick={() => void scanProduct(latestCreatedQr.codeString)}>
+                  Test scan
+                </button>
+                <button type="button" style={styles.sampleButton} onClick={() => void copyLatestQrCode()}>
+                  Copy code
+                </button>
+                {resolveAssetUrl(latestCreatedQr.url) ? (
+                  <a style={styles.linkButton} href={resolveAssetUrl(latestCreatedQr.url) ?? undefined} download>
+                    Download QR
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            {resolveAssetUrl(latestCreatedQr.url) ? (
+              <img src={resolveAssetUrl(latestCreatedQr.url) ?? undefined} alt={`FoodTrace QR code ${latestCreatedQr.codeString}`} style={styles.qrImage} />
+            ) : null}
+          </article>
+        ) : null}
         {manufacturerDashboard ? (
           <article style={styles.resultCard}>
             <h3 style={styles.resultTitle}>Manufacturer metrics</h3>
@@ -1118,7 +1274,7 @@ function App() {
           <input value={regulatorRecallDistricts} onChange={(e) => setRegulatorRecallDistricts(e.target.value)} style={styles.scanInput} placeholder="Regulator recall districts comma separated" />
           <select value={regulatorRecallDomain} onChange={(e) => setRegulatorRecallDomain(e.target.value as typeof regulatorRecallDomain)} style={styles.scanInput}>
             <option value="food">food recall</option>
-            <option value="drug">drug recall</option>
+            {enableDrugModule ? <option value="drug">drug recall</option> : null}
           </select>
         </div>
         <p style={styles.status}>{regulatorStatus}</p>
@@ -1126,10 +1282,12 @@ function App() {
           <article style={styles.resultCard}>
             <h3 style={styles.resultTitle}>Compliance overview</h3>
             <p style={styles.resultSummary}>
-              Farms: {regulatorDashboard.compliance.farms} | Manufacturers: {regulatorDashboard.compliance.manufacturers} | Pharmacies: {regulatorDashboard.compliance.pharmacies}
+              Farms: {regulatorDashboard.compliance.farms} | Manufacturers: {regulatorDashboard.compliance.manufacturers}
+              {enableDrugModule ? ` | Pharmacies: ${regulatorDashboard.compliance.pharmacies}` : ""}
             </p>
             <p style={styles.resultSummary}>
-              Food recalls: {regulatorDashboard.compliance.foodRecalls} | Drug recalls: {regulatorDashboard.compliance.drugRecalls}
+              Food recalls: {regulatorDashboard.compliance.foodRecalls}
+              {enableDrugModule ? ` | Drug recalls: ${regulatorDashboard.compliance.drugRecalls}` : ""}
             </p>
             <p style={styles.resultSummary}>
               Reports pending: {regulatorDashboard.compliance.pendingReports} | Reviewing: {regulatorDashboard.compliance.reviewingReports} | Resolved: {regulatorDashboard.compliance.resolvedReports}
@@ -1158,7 +1316,7 @@ function App() {
       </section>
       ) : null}
 
-      {(canUseConsumerScan || isPharmacist) ? (
+      {enableDrugModule && (canUseConsumerScan || isPharmacist) ? (
       <section style={styles.foodCard}>
         <p style={styles.scanKicker}>Drug module</p>
         <h2 style={styles.scanTitle}>{isPharmacist ? "Pharmacy registration, batches, and drug scans." : "Drug QR scan."}</h2>
@@ -1337,6 +1495,84 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.08)",
     alignSelf: "start",
   },
+  demoCard: {
+    gridColumn: "1 / -1",
+    padding: 24,
+    borderRadius: 28,
+    background: "rgba(17, 22, 27, 0.92)",
+    border: "1px solid rgba(196,241,219,0.18)",
+  },
+  demoHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 16,
+    flexWrap: "wrap",
+    marginBottom: 18,
+  },
+  demoTitle: {
+    margin: "8px 0 0",
+    fontSize: 28,
+  },
+  demoPassword: {
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(196,241,219,0.12)",
+    border: "1px solid rgba(196,241,219,0.26)",
+    color: "#c4f1db",
+    fontWeight: 700,
+  },
+  demoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: 12,
+  },
+  demoItem: {
+    display: "grid",
+    gap: 12,
+    alignContent: "space-between",
+    padding: 16,
+    borderRadius: 18,
+    background: "#0d1216",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  demoName: {
+    margin: 0,
+    color: "#f4f4ef",
+    fontWeight: 800,
+  },
+  demoMeta: {
+    margin: "6px 0 0",
+    color: "#a9c7b8",
+    fontSize: 13,
+  },
+  demoPurpose: {
+    margin: "8px 0 0",
+    color: "rgba(244,244,239,0.76)",
+    lineHeight: 1.45,
+  },
+  demoCodeGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 18,
+    marginTop: 22,
+  },
+  demoSubTitle: {
+    margin: "0 0 10px",
+    color: "#f4f4ef",
+  },
+  demoCodeButton: {
+    display: "grid",
+    gap: 4,
+    minWidth: 190,
+    padding: "12px 14px",
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#192027",
+    color: "#f4f4ef",
+    textAlign: "left",
+    cursor: "pointer",
+  },
   segmented: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -1510,12 +1746,44 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#ecf2ef",
     cursor: "pointer",
   },
+  linkButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "10px 14px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#182028",
+    color: "#ecf2ef",
+    cursor: "pointer",
+    textDecoration: "none",
+    fontSize: 14,
+  },
   resultCard: {
     marginTop: 18,
     padding: 20,
     borderRadius: 24,
     background: "#0b0f13",
     border: "1px solid rgba(255,255,255,0.08)",
+  },
+  qrCard: {
+    marginTop: 18,
+    padding: 20,
+    borderRadius: 24,
+    background: "#0b0f13",
+    border: "1px solid rgba(119,199,162,0.35)",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: 18,
+    alignItems: "center",
+  },
+  qrImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 18,
+    background: "#fff",
+    padding: 10,
+    objectFit: "contain",
   },
   badge: {
     display: "inline-flex",
