@@ -20,14 +20,19 @@
       "package": "gh.foodtrace.app",
       "permissions": [
         "CAMERA",
-        "INTERNET"
+        "INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
     "extra": {
-      "apiBaseUrl": ""
+      "apiBaseUrl": "",
+      "eas": {
+        "projectId": "e521ccc2-7692-405e-869a-34eb8f29dce9"
+      }
     },
     "plugins": [
       [
@@ -36,7 +41,6 @@
           "cameraPermission": "Allow FoodTrace GH to use your camera to scan product QR codes."
         }
       ],
-      "expo-barcode-scanner",
       "expo-sqlite"
     ]
   }
