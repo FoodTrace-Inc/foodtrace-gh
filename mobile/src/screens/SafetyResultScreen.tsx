@@ -1,0 +1,375 @@
+/**
+ * SafetyResultScreen.tsx
+ *
+ * Displays the full-screen safety result after a QR scan.
+ * Background colour reflects the safety status:
+ *   safe     → #1B5E20  (deep green)
+ *   caution  → #E65100  (deep orange)
+ *   recalled → #7F0000  (deep red)
+ *
+ * Audio summary is played AUTOMATICALLY via expo-speech (with a Google TTS
+ * fallback through the backend) as soon as the screen mounts.
+ */
+
+import React, { useCallback, useEffect } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import * as Speech from "expo-speech";
+import { Audio } from "expo-av";
+import type { DrugScanResult, ProductScanResult, SpeechSummaryResponse } from "@foodtrace/shared";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type ScanResult = ProductScanResult | DrugScanResult;
+
+type SafetyResultScreenProps = {
+  /** The decoded scan result returned by the backend. */
+  result: ScanResult;
+  /** Active language for TTS: "en" or "tw" (Twi). */
+  scanLanguage: "en" | "tw";
+  /** Base URL of the backend API, e.g. "http://192.168.x.x:3000/api". */
+  apiBase: string;
+  /** Navigate back to the scanner. */
+  onBack: () => void;
+  /** Navigate to the scan history screen. */
+  onViewHistory: () => void;
+  /** Navigate to the consumer report screen. */
+  onReport: () => void;
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Returns the full-screen background hex for each scan status. */
+function backgroundForStatus(status: ProductScanResult["status"]): string {
+  switch (status) {
+    case "safe":
+      return "#1B5E20";
+    case "caution":
+      return "#E65100";
+    case "recalled":
+      return "#7F0000";
+    default:
+      return "#1a2228";
+  }
+}
+
+/** Returns a human-readable label for each scan status. */
+function labelForStatus(status: ProductScanResult["status"]): string {
+  switch (status) {
+    case "safe":
+      return "✓  SAFE";
+    case "caution":
+      return "⚠  CAUTION";
+    case "recalled":
+      return "✕  RECALLED";
+    default:
+      return status.toUpperCase();
+  }
+}
+
+/** Builds a short, spoken summary sentence from the result fields. */
+function buildSpeechText(result: ScanResult, language: "en" | "tw"): string {
+  const parts: string[] = [];
+
+  if (language === "tw") {
+    // Provide a minimal Twi prefix so Google TTS voices it correctly.
+    parts.push(`${result.title}.`);
+  } else {
+    parts.push(`${result.title}.`);
+  }
+
+  if (result.summary) parts.push(result.summary);
+  if (result.recommendedAction) parts.push(result.recommendedAction);
+
+  return parts.join(" ").trim();
+}
+
+/** Narrows a result to check whether it carries drug-specific fields. */
+function isDrugResult(result: ScanResult): result is DrugScanResult {
+  return "drugName" in result;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export function SafetyResultScreen({
+  result,
+  scanLanguage,
+  apiBase,
+  onBack,
+  onViewHistory,
+  onReport,
+}: SafetyResultScreenProps) {
+  const bgColor = backgroundForStatus(result.status);
+  const statusLabel = labelForStatus(result.status);
+
+  // ── Auto-play audio on mount ──────────────────────────────────────────────
+
+  /**
+   * Attempt to play the spoken summary through the backend Google TTS
+   * endpoint. Falls back to the on-device expo-speech engine when the
+   * network call fails or the backend is unavailable.
+   */
+  const playGoogleTTS = useCallback(
+    async (text: string): Promise<void> => {
+      const response = await fetch(`${apiBase}/audio/speech`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: scanLanguage }),
+      });
+
+      const data = (await response.json()) as SpeechSummaryResponse & {
+        error?: unknown;
+      };
+
+      if (!response.ok || !data.audioBase64) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Google TTS unavailable"
+        );
+      }
+
+      // Allow audio to play even when the iOS silent switch is on.
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:${data.mimeType};base64,${data.audioBase64}` },
+        { shouldPlay: true }
+      );
+
+      // Unload the sound object once playback finishes to free memory.
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if ("didJustFinish" in status && status.didJustFinish) {
+          void sound.unloadAsync();
+        }
+      });
+    },
+    [apiBase, scanLanguage]
+  );
+
+  /** Device TTS fallback via expo-speech. */
+  const speakFallback = useCallback(
+    (text: string): void => {
+      Speech.stop();
+      Speech.speak(text, {
+        language: scanLanguage === "tw" ? "tw" : "en-US",
+        rate: 0.95,
+      });
+    },
+    [scanLanguage]
+  );
+
+  /** Entry-point: try Google TTS, fall back to device TTS on any error. */
+  const playSummary = useCallback(async (): Promise<void> => {
+    const text = buildSpeechText(result, scanLanguage);
+    if (!text) return;
+
+    try {
+      await playGoogleTTS(text);
+    } catch {
+      speakFallback(text);
+    }
+  }, [result, scanLanguage, playGoogleTTS, speakFallback]);
+
+  // Trigger audio automatically when the screen mounts.
+  useEffect(() => {
+    void playSummary();
+
+    // Stop any in-progress speech when the component unmounts.
+    return () => {
+      Speech.stop();
+    };
+  }, [playSummary]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <ScrollView
+      style={{ backgroundColor: bgColor }}
+      contentContainerStyle={[styles.container, { backgroundColor: bgColor }]}
+    >
+      {/* ── Status badge ── */}
+      <View style={styles.statusBadge}>
+        <Text style={styles.statusLabel}>{statusLabel}</Text>
+      </View>
+
+      {/* ── Product title & summary ── */}
+      <Text style={styles.title}>{result.title}</Text>
+      <Text style={styles.summary}>{result.summary}</Text>
+
+      {/* ── Detail rows ── */}
+      <View style={styles.detailCard}>
+        {isDrugResult(result) && result.drugName ? (
+          <DetailRow label="Drug" value={result.drugName} />
+        ) : null}
+
+        <DetailRow label="Batch" value={result.batchNumber ?? "N/A"} />
+        <DetailRow label="Manufacturer" value={result.manufacturerName ?? "N/A"} />
+        <DetailRow label="Expiry" value={result.expiryDate ?? "N/A"} />
+
+        {result.recommendedAction ? (
+          <View style={styles.actionRow}>
+            <Text style={styles.actionLabel}>Recommended action</Text>
+            <Text style={styles.actionText}>{result.recommendedAction}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* ── Controls ── */}
+      <View style={styles.controls}>
+        {/* Replay the audio summary on demand */}
+        <Pressable style={styles.secondaryButton} onPress={() => void playSummary()}>
+          <Text style={styles.secondaryButtonText}>🔊  Play audio again</Text>
+        </Pressable>
+
+        <Pressable style={styles.ghostButton} onPress={onReport}>
+          <Text style={styles.ghostButtonText}>Report a concern</Text>
+        </Pressable>
+
+        <Pressable style={styles.ghostButton} onPress={onViewHistory}>
+          <Text style={styles.ghostButtonText}>View scan history</Text>
+        </Pressable>
+
+        <Pressable style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backButtonText}>← Scan another</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    padding: 24,
+    paddingTop: 60,
+    gap: 16,
+  },
+  statusBadge: {
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 999,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  statusLabel: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+  title: {
+    color: "#ffffff",
+    fontSize: 28,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  summary: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  detailCard: {
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderRadius: 20,
+    padding: 16,
+    gap: 12,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.1)",
+    paddingBottom: 8,
+  },
+  detailLabel: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  detailValue: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+    maxWidth: "60%",
+    textAlign: "right",
+  },
+  actionRow: {
+    paddingTop: 4,
+  },
+  actionLabel: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  actionText: {
+    color: "#ffffff",
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  controls: {
+    marginTop: 8,
+    gap: 10,
+  },
+  secondaryButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  secondaryButtonText: {
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  ghostButton: {
+    borderRadius: 16,
+    paddingVertical: 13,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  ghostButtonText: {
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "600",
+  },
+  backButton: {
+    marginTop: 4,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  backButtonText: {
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+});

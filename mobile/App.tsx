@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Constants from "expo-constants";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -20,7 +20,6 @@ import {
   type CreateProductBatchResponse,
   type CreateRecallRequest,
   type FoodDashboardResponse,
-  type SubmitConsumerReportResponse,
   type DrugDashboardResponse,
   type DrugScanResult,
   type ManufacturerDashboardResponse,
@@ -33,6 +32,12 @@ import {
   type UserRole,
   type SpeechSummaryResponse,
 } from "@foodtrace/shared";
+import {
+  QRScannerScreen,
+  SafetyResultScreen,
+  ScanHistoryScreen,
+  ConsumerReportScreen,
+} from "./src/screens";
 
 function resolveDefaultApiBase() {
   const constants = Constants as typeof Constants & {
@@ -70,7 +75,7 @@ const consumerHistoryKey = "foodtrace.consumer.history.v1";
 const apiBaseKey = "foodtrace.apiBase.v1";
 
 type Mode = "login" | "register";
-type ConsumerScreen = "home" | "food" | "drug" | "history";
+type ConsumerScreen = "home" | "scanner" | "result" | "report" | "drug" | "history";
 type ScannerTarget = {
   kind: "food" | "drug";
   codeString: string;
@@ -107,10 +112,6 @@ export default function App() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [scannerPaused, setScannerPaused] = useState(false);
   const [consumerHistory, setConsumerHistory] = useState<HistoryEntry[]>([]);
-  const [reportDescription, setReportDescription] = useState("The product looks damaged and the label is unclear.");
-  const [reportDistrict, setReportDistrict] = useState("Accra");
-  const [reportPhotoUrl, setReportPhotoUrl] = useState("");
-  const [reportStatusText, setReportStatusText] = useState("Ready to submit a consumer report");
   const [scanLanguage, setScanLanguage] = useState<"en" | "tw">("en");
   const [foodDashboard, setFoodDashboard] = useState<FoodDashboardResponse | null>(null);
   const [foodStatus, setFoodStatus] = useState("Food module ready");
@@ -184,6 +185,8 @@ export default function App() {
   const [drugSupplierName, setDrugSupplierName] = useState("Global Med Supplies");
   const [drugRecallBatchId, setDrugRecallBatchId] = useState("");
   const [drugRecallReason, setDrugRecallReason] = useState("Quality issue");
+  const [lastScanResult, setLastScanResult] = useState<ProductScanResult | DrugScanResult | null>(null);
+  const [lastScanKind, setLastScanKind] = useState<"food" | "drug">("food");
   const cameraResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const roleList = useMemo(() => USER_ROLES, []);
@@ -234,11 +237,6 @@ export default function App() {
     setStatus(`API set to ${next}`);
   }
 
-  useEffect(() => {
-    if (consumerScreen === "food" && cameraPermission === null) {
-      void requestCameraPermission();
-    }
-  }, [cameraPermission, consumerScreen, requestCameraPermission]);
 
   useEffect(() => {
     const detected = resolveDefaultApiBase();
@@ -279,6 +277,37 @@ export default function App() {
     ].slice(0, 25);
     void persistConsumerHistory(next);
   }
+
+  const handleScanResult = useCallback(
+    (result: ProductScanResult | DrugScanResult, kind: "food" | "drug") => {
+      setLastScanResult(result);
+      setLastScanKind(kind);
+      if (kind === "drug") {
+        setDrugScanResult(result as DrugScanResult);
+        pushConsumerHistory({
+          kind: "drug",
+          codeString: result.codeString,
+          status: result.status,
+          title: result.title,
+          summary: result.summary,
+          recommendedAction: result.recommendedAction,
+        });
+      } else {
+        setScanResult(result as ProductScanResult);
+        pushConsumerHistory({
+          kind: "food",
+          codeString: result.codeString,
+          status: result.status,
+          title: result.title,
+          summary: result.summary,
+          recommendedAction: result.recommendedAction,
+        });
+      }
+      setConsumerScreen("result");
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [consumerHistory]
+  );
 
   function buildScanSummaryText() {
     const result = scanResult
@@ -514,45 +543,6 @@ export default function App() {
 
   async function handleBarcodeScanned({ data }: { data: string }) {
     await handleCameraScan(data);
-  }
-
-  async function submitConsumerReport() {
-    const code = (scanResult?.codeString ?? scanCode).trim();
-    if (!session?.token) {
-      setReportStatusText("Log in as a consumer first.");
-      return;
-    }
-
-    if (!code) {
-      setReportStatusText("Scan a product before reporting.");
-      return;
-    }
-
-    setReportStatusText("Submitting report...");
-    try {
-      const response = await fetch(`${apiBase}/scan/${encodeURIComponent(code)}/report`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.token}`,
-        },
-        body: JSON.stringify({
-          description: reportDescription,
-          district: reportDistrict,
-          photoUrl: reportPhotoUrl || null,
-        }),
-      });
-
-      const data = (await response.json()) as SubmitConsumerReportResponse & { error?: unknown };
-      if (!response.ok) {
-        throw new Error(typeof data.error === "string" ? data.error : "Could not submit report");
-      }
-
-      setReportStatusText(`Report submitted: ${data.report.status}`);
-      setReportPhotoUrl("");
-    } catch (error) {
-      setReportStatusText(error instanceof Error ? error.message : "Could not submit report");
-    }
   }
 
   async function loadFoodDashboard() {
@@ -1022,14 +1012,14 @@ export default function App() {
           <Pressable style={consumerScreen === "home" ? styles.chipActive : styles.chip} onPress={() => setConsumerScreen("home")}>
             <Text style={consumerScreen === "home" ? styles.chipTextActive : styles.chipText}>Home</Text>
           </Pressable>
-          <Pressable style={consumerScreen === "food" ? styles.chipActive : styles.chip} onPress={() => setConsumerScreen("food")}>
-            <Text style={consumerScreen === "food" ? styles.chipTextActive : styles.chipText}>Scan Food</Text>
-          </Pressable>
-          <Pressable style={consumerScreen === "drug" ? styles.chipActive : styles.chip} onPress={() => setConsumerScreen("drug")}>
-            <Text style={consumerScreen === "drug" ? styles.chipTextActive : styles.chipText}>Scan Drug</Text>
+          <Pressable style={consumerScreen === "scanner" ? styles.chipActive : styles.chip} onPress={() => setConsumerScreen("scanner")}>
+            <Text style={consumerScreen === "scanner" ? styles.chipTextActive : styles.chipText}>Scanner</Text>
           </Pressable>
           <Pressable style={consumerScreen === "history" ? styles.chipActive : styles.chip} onPress={() => setConsumerScreen("history")}>
             <Text style={consumerScreen === "history" ? styles.chipTextActive : styles.chipText}>History</Text>
+          </Pressable>
+          <Pressable style={consumerScreen === "report" ? styles.chipActive : styles.chip} onPress={() => setConsumerScreen("report")}>
+            <Text style={consumerScreen === "report" ? styles.chipTextActive : styles.chipText}>Report</Text>
           </Pressable>
         </View>
         <View style={styles.rowWrap}>
@@ -1045,11 +1035,11 @@ export default function App() {
             <Text style={styles.meta}>Welcome: {session?.user.fullName || session?.user.email || "Guest"}</Text>
             <Text style={styles.meta}>Scan It. Trace It. Trust It.</Text>
             <View style={styles.rowWrap}>
-              <Pressable style={styles.button} onPress={() => setConsumerScreen("food")}>
-                <Text style={styles.buttonText}>Scan Food</Text>
+              <Pressable style={styles.button} onPress={() => setConsumerScreen("scanner")}>
+                <Text style={styles.buttonText}>Open Scanner</Text>
               </Pressable>
-              <Pressable style={styles.button} onPress={() => setConsumerScreen("drug")}>
-                <Text style={styles.buttonText}>Scan Drug</Text>
+              <Pressable style={styles.button} onPress={() => setConsumerScreen("history")}>
+                <Text style={styles.buttonText}>View History</Text>
               </Pressable>
             </View>
             <Text style={styles.meta}>Food result: {scanResult?.status ?? "None yet"}</Text>
@@ -1058,18 +1048,11 @@ export default function App() {
           </>
         ) : null}
         {consumerScreen === "history" ? (
-          <View style={styles.resultCard}>
-            <Text style={styles.resultTitle}>Scan history</Text>
-            {consumerHistory.length ? (
-              consumerHistory.slice(0, 5).map((entry) => (
-                <Text key={entry.id} style={styles.meta}>
-                  [{entry.kind}] {entry.codeString} - {entry.status.toUpperCase()}
-                </Text>
-              ))
-            ) : (
-              <Text style={styles.meta}>No scans saved yet.</Text>
-            )}
-          </View>
+          <ScanHistoryScreen
+            history={consumerHistory}
+            onClear={() => void persistConsumerHistory([])}
+            onBack={() => setConsumerScreen("scanner")}
+          />
         ) : null}
       </View>
 
@@ -1128,124 +1111,34 @@ export default function App() {
         ) : null}
       </View>
 
-      {showConsumerApp && consumerScreen === "food" ? (
-      <View style={styles.scanCard}>
-        <Text style={styles.scanKicker}>Consumer scan</Text>
-        <Text style={styles.scanTitle}>Scan a QR code with the camera.</Text>
-        <Text style={styles.scanBody}>
-          Point the camera at a FoodTrace GH QR code. If the camera cannot read it, use the text fallback below.
-        </Text>
-        <View style={styles.cameraFrame}>
-          {cameraPermission?.granted ? (
-            <CameraView
-              style={styles.camera}
-              facing="back"
-              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-              onBarcodeScanned={scannerPaused || scanLoading ? undefined : handleBarcodeScanned}
-            />
-          ) : (
-            <View style={styles.cameraPermissionBox}>
-              <Text style={styles.cameraPermissionText}>
-                {cameraPermission === null
-                  ? "Requesting camera permission..."
-                  : "Camera permission is needed to scan QR codes."}
-              </Text>
-              <Pressable style={styles.sampleButton} onPress={() => void requestCameraPermission()}>
-                <Text style={styles.sampleButtonText}>Grant camera access</Text>
-              </Pressable>
-            </View>
-          )}
-          <View style={styles.cameraOverlay}>
-            <Text style={styles.cameraOverlayTitle}>
-              {scannerPaused ? "Scanner paused" : scanLoading ? "Scanning..." : "Live camera ready"}
-            </Text>
-            <Text style={styles.cameraOverlayText}>
-              {scannerPaused
-                ? "We paused the camera briefly after a successful scan."
-                : "Hold the QR code inside the frame to read it."}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.rowWrap}>
-          <Pressable style={styles.sampleButton} onPress={() => setScannerPaused((value) => !value)}>
-            <Text style={styles.sampleButtonText}>{scannerPaused ? "Resume scanner" : "Pause scanner"}</Text>
-          </Pressable>
-          <Pressable style={styles.sampleButton} onPress={() => void requestCameraPermission()}>
-            <Text style={styles.sampleButtonText}>Refresh permission</Text>
-          </Pressable>
-        </View>
-        <TextInput
-          placeholder="Fallback code or QR URL"
-          placeholderTextColor="#748089"
-          style={styles.scanInput}
-          value={scanCode}
-          onChangeText={setScanCode}
+      {showConsumerApp && consumerScreen === "scanner" ? (
+        <QRScannerScreen
+          apiBase={apiBase}
+          token={session?.token ?? null}
+          scanLanguage={scanLanguage}
+          onScanResult={handleScanResult}
         />
-        <Pressable style={[styles.button, { marginTop: 12 }]} onPress={() => void scanProduct()} disabled={scanLoading}>
-          <Text style={styles.buttonText}>{scanLoading ? "Scanning..." : "Use fallback scan"}</Text>
-        </Pressable>
-        <View style={styles.sampleRow}>
-          {sampleCodes.map((code) => (
-            <Pressable key={code} style={styles.sampleButton} onPress={() => void scanProduct(code)}>
-              <Text style={styles.sampleButtonText}>{code}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.status}>{scanStatus}</Text>
-        {scanResult ? (
-          <View style={styles.resultCard}>
-            <View style={[styles.badge, badgeStyle(scanResult.status)]}>
-              <Text style={styles.badgeText}>{scanResult.status.toUpperCase()}</Text>
-            </View>
-            <Text style={styles.resultTitle}>{scanResult.title}</Text>
-            <Text style={styles.resultSummary}>{scanResult.summary}</Text>
-            <Text style={styles.meta}>Batch: {scanResult.batchNumber ?? "N/A"}</Text>
-            <Text style={styles.meta}>Manufacturer: {scanResult.manufacturerName ?? "N/A"}</Text>
-            <Text style={styles.meta}>Expiry: {scanResult.expiryDate ?? "N/A"}</Text>
-            <Text style={styles.meta}>{scanResult.recommendedAction}</Text>
-            <View style={styles.rowWrap}>
-              <Pressable style={styles.sampleButton} onPress={() => void playScanSummary()}>
-                <Text style={styles.sampleButtonText}>Play audio</Text>
-              </Pressable>
-              <Pressable style={styles.sampleButton} onPress={() => setConsumerScreen("history")}>
-                <Text style={styles.sampleButtonText}>View history</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>Report concern</Text>
-          <Text style={styles.resultSummary}>
-            Add a short description and an optional photo URL so the report can be reviewed.
-          </Text>
-          <TextInput
-            placeholder="Describe the issue"
-            placeholderTextColor="#748089"
-            style={[styles.input, { minHeight: 110 }]}
-            value={reportDescription}
-            onChangeText={setReportDescription}
-            multiline
-          />
-          <TextInput
-            placeholder="District"
-            placeholderTextColor="#748089"
-            style={styles.input}
-            value={reportDistrict}
-            onChangeText={setReportDistrict}
-          />
-          <TextInput
-            placeholder="Photo URL"
-            placeholderTextColor="#748089"
-            style={styles.input}
-            value={reportPhotoUrl}
-            onChangeText={setReportPhotoUrl}
-          />
-          <Pressable style={styles.button} onPress={() => void submitConsumerReport()}>
-            <Text style={styles.buttonText}>Submit consumer report</Text>
-          </Pressable>
-          <Text style={styles.status}>{reportStatusText}</Text>
-        </View>
-      </View>
+      ) : null}
+
+      {showConsumerApp && consumerScreen === "result" && lastScanResult ? (
+        <SafetyResultScreen
+          result={lastScanResult}
+          scanLanguage={scanLanguage}
+          apiBase={apiBase}
+          onBack={() => setConsumerScreen("scanner")}
+          onViewHistory={() => setConsumerScreen("history")}
+          onReport={() => setConsumerScreen("report")}
+        />
+      ) : null}
+
+      {showConsumerApp && consumerScreen === "report" ? (
+        <ConsumerReportScreen
+          apiBase={apiBase}
+          token={session?.token ?? null}
+          scannedCode={lastScanResult?.codeString ?? null}
+          onBack={() => setConsumerScreen(lastScanResult ? "result" : "scanner")}
+          onGoToScanner={() => setConsumerScreen("scanner")}
+        />
       ) : null}
 
       {isFarmer ? (

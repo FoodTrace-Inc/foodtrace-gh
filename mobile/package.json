@@ -15,7 +15,6 @@
     "axios": "^1.11.0",
     "expo": "~55.0.24",
     "expo-av": "~16.0.8",
-    "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "~55.0.18",
     "expo-constants": "~55.0.16",
     "expo-dev-client": "~55.0.33",
