@@ -86,8 +86,9 @@ public class ScanService {
     }
     Object qrId = jdbc.sql("SELECT id FROM qr_codes WHERE code_string = :code LIMIT 1")
         .param("code", normalize(codeString))
-        .query()
-        .optionalValue()
+        .query(DatabaseRowMapper::toMap)
+        .optional()
+        .map(row -> row.get("id"))
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Batch not found"));
     Map<String, Object> report = jdbc.sql("""
         INSERT INTO consumer_reports (qr_code_id, reporter_id, description, photo_url, district, status)
