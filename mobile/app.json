@@ -29,7 +29,7 @@
       "fallbackToCacheTimeout": 0
     },
     "extra": {
-      "apiBaseUrl": "",
+      "apiBaseUrl": "https://foodtrace-gh.onrender.com/api",
       "eas": {
         "projectId": "e521ccc2-7692-405e-869a-34eb8f29dce9"
       }
