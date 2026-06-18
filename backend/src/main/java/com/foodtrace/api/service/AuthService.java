@@ -72,8 +72,8 @@ public class AuthService {
     boolean exists = jdbc.sql("SELECT id FROM users WHERE (:phone IS NOT NULL AND phone = :phone) OR (:email IS NOT NULL AND email = :email) LIMIT 1")
         .param("phone", blankToNull(request.phone()))
         .param("email", blankToNull(request.email()))
-        .query()
-        .optionalValue()
+        .query(DatabaseRowMapper::toMap)
+        .optional()
         .isPresent();
     if (exists) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
