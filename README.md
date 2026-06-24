@@ -115,7 +115,7 @@ Useful demo QR codes:
 | Manufacturer | `GET /api/manufacturer/dashboard`, `POST /api/manufacturer/profile`, `POST /api/manufacturer/batches`, `POST /api/manufacturer/recalls` |
 | Drug scan | `GET /api/drug/scan/:code`, `GET /api/drugs/scan/:code` |
 | Pharmacy | `GET /api/pharmacy/dashboard`, `POST /api/pharmacy/register`, `POST /api/pharmacy/drugs`, `POST /api/pharmacy/drug-batches` |
-| Regulator | `GET /api/regulator/dashboard`, `PATCH /api/regulator/reports/:id`, `POST /api/regulator/recalls` |
+| Regulator | `GET /api/regulator/dashboard`, `PATCH /api/regulator/reports` (body: `{reportId, status}`), `POST /api/regulator/recalls` |
 | Audio | `POST /api/audio/speech` |
 | Assistant | `POST /api/assistant/query` |
 | USSD/SMS | `POST /api/ussd`, `POST /api/sms` |

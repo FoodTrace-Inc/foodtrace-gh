@@ -87,16 +87,17 @@ public class CompatibilityControllers {
   @RestController
   @RequestMapping("/api/assistant")
   static class AssistantController {
+    private static final String NOT_CONFIGURED =
+        "AI assistant is not configured. This endpoint is a stub reserved for a future LLM integration.";
+
     @GetMapping
     Map<String, Object> get() {
-      return Map.of("title", "General guidance", "answer", "FoodTrace assistant endpoint is available.");
+      return Map.of("status", "not_configured", "message", NOT_CONFIGURED);
     }
 
     @PostMapping("/query")
     Map<String, Object> query(@RequestBody Map<String, Object> body) {
-      Object question = body.getOrDefault("question", "FoodTrace guidance");
-      return Map.of("title", "General guidance",
-          "answer", "FoodTrace received your question: " + question);
+      return Map.of("status", "not_configured", "message", NOT_CONFIGURED);
     }
   }
 
@@ -105,8 +106,8 @@ public class CompatibilityControllers {
   static class AudioController {
     @PostMapping("/speech")
     Map<String, Object> speech(@RequestBody Map<String, Object> body) {
-      return Map.of("received", body, "status", "not_configured",
-          "message", "Google Cloud TTS is not configured. Set GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT.");
+      return Map.of("status", "not_configured",
+          "message", "Google Cloud TTS is not configured. Set GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT to enable audio summaries.");
     }
   }
 
@@ -115,7 +116,9 @@ public class CompatibilityControllers {
   static class SmsController {
     @PostMapping("/callback")
     Map<String, Object> callback(@RequestBody Map<String, Object> body) {
-      return Map.of("received", body, "status", "ok");
+      // Accepts Africa's Talking SMS callbacks; actual delivery not yet implemented
+      return Map.of("status", "not_configured",
+          "message", "SMS delivery not configured. Set AFRICASTALKING_API_KEY to enable.");
     }
   }
 
@@ -124,7 +127,8 @@ public class CompatibilityControllers {
   static class UssdController {
     @PostMapping("/callback")
     Map<String, Object> callback(@RequestBody Map<String, Object> body) {
-      return Map.of("response", "END FoodTrace received your request.", "received", body);
+      // Accepts Africa's Talking USSD callbacks; actual menu logic not yet implemented
+      return Map.of("response", "END FoodTrace USSD is not yet configured.", "status", "not_configured");
     }
   }
 }

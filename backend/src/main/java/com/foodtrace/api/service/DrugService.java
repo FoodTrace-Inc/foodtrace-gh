@@ -89,6 +89,7 @@ public class DrugService {
   }
 
   public Map<String, Object> registerPharmacy(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "businessName", "ghanaPharmacyCouncilNumber", "district", "region");
     boolean exists = jdbc.sql("SELECT 1 FROM pharmacies WHERE user_id = :uid")
         .param("uid", user.id()).query(Integer.class).optional().isPresent();
     if (exists) throw new ResponseStatusException(HttpStatus.CONFLICT, "Pharmacy already registered");
@@ -108,6 +109,7 @@ public class DrugService {
   }
 
   public Map<String, Object> createDrug(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "name");
     requirePharmacy(user);
     Map<String, Object> drug = jdbc.sql("""
         INSERT INTO drugs
@@ -138,6 +140,8 @@ public class DrugService {
   }
 
   public Map<String, Object> createBatch(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "drugId", "batchNumber", "manufactureDate", "expiryDate");
+    Validate.requirePositiveInt(body, "quantityReceived");
     UUID pharmacyId = requirePharmacy(user);
     UUID drugId = UUID.fromString(String.valueOf(body.get("drugId")));
     String batchNumber = String.valueOf(body.get("batchNumber"));

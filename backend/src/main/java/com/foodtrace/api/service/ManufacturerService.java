@@ -84,6 +84,7 @@ public class ManufacturerService {
   }
 
   public Map<String, Object> createProfile(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "companyName");
     boolean exists = jdbc.sql("SELECT 1 FROM manufacturers WHERE user_id = :uid")
         .param("uid", user.id()).query(Integer.class).optional().isPresent();
     if (exists) throw new ResponseStatusException(HttpStatus.CONFLICT, "Manufacturer profile already exists");
@@ -104,6 +105,7 @@ public class ManufacturerService {
   }
 
   public Map<String, Object> createBatch(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "batchNumber", "packagingDate", "expiryDate");
     UUID manufacturerId = jdbc.sql("SELECT id FROM manufacturers WHERE user_id = :uid LIMIT 1")
         .param("uid", user.id()).query(UUID.class).optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Create a manufacturer profile first"));
