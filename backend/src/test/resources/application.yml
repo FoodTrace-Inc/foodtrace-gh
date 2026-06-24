@@ -1,0 +1,23 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: false
+
+foodtrace:
+  jwt-secret: test-secret-key-minimum-32-characters-long
+  frontend-url: http://localhost:5173
+  mobile-origins: ""
+  uploads-dir: uploads
+  expose-otp: true
+  public-api-url: http://localhost:3000
+  africas-talking-api-key: ""
+  africas-talking-username: sandbox
+  africas-talking-shortcode: ""
+  google-cloud-project: ""

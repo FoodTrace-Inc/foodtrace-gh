@@ -27,9 +27,11 @@ public class RegulatorService {
     long pendingReports = count("SELECT COUNT(*) FROM consumer_reports WHERE status = 'pending'");
     long reviewingReports = count("SELECT COUNT(*) FROM consumer_reports WHERE status = 'reviewing'");
     long resolvedReports = count("SELECT COUNT(*) FROM consumer_reports WHERE status = 'resolved'");
-    long totalScans = count("SELECT COUNT(*) FROM consumer_scans");
-    long safeScans = count("SELECT COUNT(*) FROM qr_codes WHERE status = 'active'");
-    long recalledScans = count("SELECT COUNT(*) FROM qr_codes WHERE status = 'recalled'");
+    long foodScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM qr_codes").query(Long.class).single();
+    long drugScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM drug_qr_codes").query(Long.class).single();
+    long totalScans = foodScans + drugScans;
+    long safeScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM qr_codes WHERE status = 'active'").query(Long.class).single();
+    long recalledScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM qr_codes WHERE status = 'recalled'").query(Long.class).single();
     long highRiskAlerts = count("SELECT COUNT(*) FROM product_batches WHERE recall_status = 'recalled'");
 
     List<Map<String, Object>> reports = jdbc.sql("""
@@ -82,8 +84,11 @@ public class RegulatorService {
 
     Map<String, Object> analytics = new LinkedHashMap<>();
     analytics.put("totalScans", totalScans);
+    analytics.put("foodScans", foodScans);
+    analytics.put("drugScans", drugScans);
     analytics.put("highRiskAlerts", highRiskAlerts);
     analytics.put("topDistricts", topDistricts);
+    analytics.put("activeRecallCount", highRiskAlerts);
 
     Map<String, Object> dashboard = new LinkedHashMap<>();
     dashboard.put("compliance", compliance);

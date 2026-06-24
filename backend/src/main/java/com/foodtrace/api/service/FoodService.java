@@ -56,6 +56,7 @@ public class FoodService {
   }
 
   public Map<String, Object> createFarm(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "name", "district", "region");
     Map<String, Object> farm = jdbc.sql("""
         INSERT INTO farms (owner_id, name, district, region, size_acres, crop_types, epa_registration_number, verification_status, badge_status)
         VALUES (:owner, :name, :district, :region, :sizeAcres, CAST(:cropTypes AS text[]), :epa, 'pending', 'none')
@@ -69,6 +70,7 @@ public class FoodService {
   }
 
   public Map<String, Object> createCropCycle(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "farmId", "cropType", "plantingDate");
     Map<String, Object> cycle = jdbc.sql("""
         INSERT INTO crop_cycles (farm_id, crop_type, planting_date, notes, status)
         SELECT id, :cropType, :plantingDate, :notes, 'growing'
@@ -83,6 +85,7 @@ public class FoodService {
   }
 
   public Map<String, Object> createInputLog(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "cropCycleId", "productName", "applicationDate", "inputType");
     int withdrawalDays = Number.class.isInstance(body.get("withdrawalPeriodDays")) ? ((Number) body.get("withdrawalPeriodDays")).intValue() : 0;
     LocalDate applicationDate = LocalDate.parse(String.valueOf(body.get("applicationDate")));
     Map<String, Object> log = jdbc.sql("""
