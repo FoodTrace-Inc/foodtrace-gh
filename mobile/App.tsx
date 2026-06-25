@@ -268,8 +268,34 @@ export default function App() {
   // ── helpers ────────────────────────────────────────────────────────────────
 
   function getFriendlyError(error: unknown) {
-    if (error instanceof TypeError) return "Could not reach the server. Check your internet connection.";
-    return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+    if (error instanceof TypeError) return "Could not reach the server. Check your connection.";
+    const msg = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+    if (msg.toLowerCase().includes("server error") || msg.toLowerCase().includes("500")) {
+      return "Server is waking up — please wait 30 seconds and try again.";
+    }
+    return msg;
+  }
+
+  function isErrorMsg(msg: string) {
+    return /error|fail|could not|server|wrong|denied|unauthori/i.test(msg);
+  }
+
+  // Retries once after a short delay — handles Render cold start
+  async function fetchWithRetry(url: string, options?: RequestInit, retries = 1): Promise<Response> {
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok && res.status >= 500 && retries > 0) {
+        await new Promise(r => setTimeout(r, 4000));
+        return fetchWithRetry(url, options, retries - 1);
+      }
+      return res;
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 4000));
+        return fetchWithRetry(url, options, retries - 1);
+      }
+      throw err;
+    }
   }
 
   async function persistHistory(next: HistoryEntry[]) {
@@ -428,7 +454,7 @@ export default function App() {
     if (!session?.token) return;
     setFoodStatus("Loading…");
     try {
-      const response = await fetch(`${apiBase}/food/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const response = await fetchWithRetry(`${apiBase}/food/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await readJsonResponse<{ dashboard: FoodDashboardResponse }>(response);
       setFoodDashboard(data.dashboard);
       setFoodStatus("Dashboard loaded.");
@@ -491,7 +517,7 @@ export default function App() {
     if (!session?.token) return;
     setManufacturerStatus("Loading…");
     try {
-      const data = await readJsonResponse<{ dashboard: ManufacturerDashboardResponse }>(await fetch(`${apiBase}/manufacturer/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
+      const data = await readJsonResponse<{ dashboard: ManufacturerDashboardResponse }>(await fetchWithRetry(`${apiBase}/manufacturer/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setManufacturerDashboard(data.dashboard);
       setManufacturerStatus(data.dashboard.profile ? "Dashboard loaded." : "Create a profile to continue.");
       if (!recallBatchId && data.dashboard.batches[0]?.id) setRecallBatchId(data.dashboard.batches[0].id);
@@ -535,7 +561,7 @@ export default function App() {
     if (!session?.token) return;
     setRegulatorStatus("Loading…");
     try {
-      const data = await readJsonResponse<{ dashboard: RegulatorDashboardResponse }>(await fetch(`${apiBase}/regulator/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
+      const data = await readJsonResponse<{ dashboard: RegulatorDashboardResponse }>(await fetchWithRetry(`${apiBase}/regulator/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setRegulatorDashboard(data.dashboard);
       setRegulatorStatus("Dashboard loaded.");
       if (!reportId && data.dashboard.reports[0]?.id) setReportId(data.dashboard.reports[0].id);
@@ -567,7 +593,7 @@ export default function App() {
     if (!session?.token) return;
     setPharmacyStatus("Loading…");
     try {
-      const data = await readJsonResponse<{ dashboard: DrugDashboardResponse }>(await fetch(`${apiBase}/drug/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
+      const data = await readJsonResponse<{ dashboard: DrugDashboardResponse }>(await fetchWithRetry(`${apiBase}/drug/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setPharmacyDashboard(data.dashboard);
       setPharmacyStatus(data.dashboard.pharmacy ? "Dashboard loaded." : "Register your pharmacy to continue.");
     } catch (error) { setPharmacyStatus(getFriendlyError(error)); }
@@ -892,7 +918,7 @@ export default function App() {
               <Pressable style={s.primaryBtn} onPress={() => void loadFoodDashboard()}>
                 <Text style={s.primaryBtnText}>Load Dashboard</Text>
               </Pressable>
-              {foodStatus ? <Text style={s.statusMsg}>{foodStatus}</Text> : null}
+              {foodStatus ? <Text style={[s.statusMsg, isErrorMsg(foodStatus) ? s.statusErr : s.statusOk]}>{foodStatus}</Text> : null}
               {foodDashboard ? (
                 <View style={s.metricGrid}>
                   {[
@@ -952,7 +978,7 @@ export default function App() {
             <View style={s.card}>
               <Text style={s.cardKicker}>DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadManufacturerDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
-              {manufacturerStatus ? <Text style={s.statusMsg}>{manufacturerStatus}</Text> : null}
+              {manufacturerStatus ? <Text style={[s.statusMsg, isErrorMsg(manufacturerStatus) ? s.statusErr : s.statusOk]}>{manufacturerStatus}</Text> : null}
               {manufacturerDashboard ? (
                 <View style={s.metricGrid}>
                   {[
@@ -1002,7 +1028,7 @@ export default function App() {
             <View style={s.card}>
               <Text style={s.cardKicker}>DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadRegulatorDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
-              {regulatorStatus ? <Text style={s.statusMsg}>{regulatorStatus}</Text> : null}
+              {regulatorStatus ? <Text style={[s.statusMsg, isErrorMsg(regulatorStatus) ? s.statusErr : s.statusOk]}>{regulatorStatus}</Text> : null}
               {regulatorDashboard ? (
                 <View style={s.metricGrid}>
                   {[
@@ -1049,7 +1075,7 @@ export default function App() {
             <View style={s.card}>
               <Text style={s.cardKicker}>DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadPharmacyDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
-              {pharmacyStatus ? <Text style={s.statusMsg}>{pharmacyStatus}</Text> : null}
+              {pharmacyStatus ? <Text style={[s.statusMsg, isErrorMsg(pharmacyStatus) ? s.statusErr : s.statusOk]}>{pharmacyStatus}</Text> : null}
               {pharmacyDashboard ? (
                 <View style={s.metricGrid}>
                   {[
@@ -1107,7 +1133,7 @@ export default function App() {
             <FormCard title="Scan Drug QR">
               <TextInput placeholder="Drug QR code" placeholderTextColor="#748089" style={s.input} value={drugScanCode} onChangeText={setDrugScanCode} />
               <Pressable style={s.outlineBtn} onPress={() => void scanDrugProduct()}><Text style={s.outlineBtnText}>Scan Drug</Text></Pressable>
-              {drugScanStatus ? <Text style={s.statusMsg}>{drugScanStatus}</Text> : null}
+              {drugScanStatus ? <Text style={[s.statusMsg, isErrorMsg(drugScanStatus) ? s.statusErr : s.statusOk]}>{drugScanStatus}</Text> : null}
               {drugScanResult ? (
                 <View style={[s.metricGrid, { marginTop: 10 }]}>
                   <View style={[s.statusBadge, statusBadgeStyle(drugScanResult.status), { alignSelf: "flex-start" }]}>
@@ -1232,7 +1258,9 @@ const s = StyleSheet.create({
   metricItem: { backgroundColor: "#0b0f13", borderRadius: 12, padding: 12, minWidth: 90, alignItems: "center" },
   metricVal: { color: "#f4f4ef", fontWeight: "700", fontSize: 18, marginBottom: 2 },
   metricLabel: { color: "#748089", fontSize: 11, textAlign: "center" },
-  statusMsg: { color: "#77c7a2", marginTop: 10, fontSize: 13 },
+  statusMsg: { marginTop: 10, fontSize: 13 },
+  statusOk: { color: "#77c7a2" },
+  statusErr: { color: "#f87171" },
 
   // chips / lang toggle
   langRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
