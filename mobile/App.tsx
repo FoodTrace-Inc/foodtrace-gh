@@ -622,13 +622,16 @@ export default function App() {
     const text = aiInput.trim();
     if (!text || aiLoading) return;
     setAiInput("");
-    setAiMessages((prev) => [...prev, { role: "user", content: text }]);
+    const updatedMessages = [...aiMessages, { role: "user" as const, content: text }];
+    setAiMessages(updatedMessages);
     setAiLoading(true);
     try {
+      // Send last 10 messages as history so Claude remembers the conversation
+      const history = updatedMessages.slice(-10).slice(0, -1);
       const response = await fetch(`${apiBase}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}) },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, history }),
       });
       const data = await readJsonResponse<{ reply: string }>(response);
       setAiMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
