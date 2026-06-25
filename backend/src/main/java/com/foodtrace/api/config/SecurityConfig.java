@@ -42,8 +42,9 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/scan/**").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/drug/scan/**",
                 "/api/drugs/scan/**", "/api/pharmacy/scan/**").permitAll()
-            // Public: static assets and health
+            // Public: static assets, health, and AI assistant
             .requestMatchers("/uploads/**", "/actuator/**").permitAll()
+            .requestMatchers("/api/assistant/**").permitAll()
             // Role-guarded: farmer portal
             .requestMatchers("/api/food/**", "/api/farmer/**")
                 .hasAnyRole("FARMER", "REGULATOR")
