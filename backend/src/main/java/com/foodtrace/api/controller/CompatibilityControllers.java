@@ -3,6 +3,12 @@ package com.foodtrace.api.controller;
 import com.foodtrace.api.security.CurrentUser;
 import com.foodtrace.api.service.ManufacturerService;
 import com.foodtrace.api.service.RegulatorService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -87,17 +93,82 @@ public class CompatibilityControllers {
   @RestController
   @RequestMapping("/api/assistant")
   static class AssistantController {
-    private static final String NOT_CONFIGURED =
-        "AI assistant is not configured. This endpoint is a stub reserved for a future LLM integration.";
+    private static final HttpClient HTTP = HttpClient.newHttpClient();
+    private static final String SYSTEM_PROMPT =
+        "You are a helpful assistant for FoodTrace GH, a food and drug safety platform in Ghana. "
+        + "Help users understand food safety, medicine safety, expiry dates, proper storage, recalls, "
+        + "and how to use the FoodTrace platform. Be concise, friendly, and relevant to Ghana's context. "
+        + "Keep responses under 200 words.";
+
+    private final ObjectMapper mapper;
+
+    AssistantController(ObjectMapper mapper) {
+      this.mapper = mapper;
+    }
 
     @GetMapping
     Map<String, Object> get() {
-      return Map.of("status", "not_configured", "message", NOT_CONFIGURED);
+      String key = System.getenv("ANTHROPIC_API_KEY");
+      return Map.of("status", key != null && !key.isBlank() ? "ready" : "not_configured");
+    }
+
+    @PostMapping("/chat")
+    Map<String, Object> chat(@RequestBody Map<String, Object> body) {
+      String message = String.valueOf(body.getOrDefault("message", "")).trim();
+      if (message.isBlank()) return Map.of("reply", "Please ask a question.");
+      String key = System.getenv("ANTHROPIC_API_KEY");
+      if (key == null || key.isBlank()) return Map.of("reply", fallback(message));
+      try {
+        return Map.of("reply", callClaude(key, message));
+      } catch (Exception e) {
+        return Map.of("reply", fallback(message));
+      }
     }
 
     @PostMapping("/query")
     Map<String, Object> query(@RequestBody Map<String, Object> body) {
-      return Map.of("status", "not_configured", "message", NOT_CONFIGURED);
+      return chat(body);
+    }
+
+    private String callClaude(String apiKey, String message) throws Exception {
+      String payload = mapper.writeValueAsString(Map.of(
+          "model", "claude-haiku-4-5-20251001",
+          "max_tokens", 512,
+          "system", SYSTEM_PROMPT,
+          "messages", java.util.List.of(Map.of("role", "user", "content", message))
+      ));
+      HttpRequest req = HttpRequest.newBuilder()
+          .uri(URI.create("https://api.anthropic.com/v1/messages"))
+          .header("Content-Type", "application/json")
+          .header("x-api-key", apiKey)
+          .header("anthropic-version", "2023-06-01")
+          .POST(HttpRequest.BodyPublishers.ofString(payload))
+          .build();
+      HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+      JsonNode root = mapper.readTree(res.body());
+      return root.path("content").path(0).path("text").asText("I could not generate a response. Please try again.");
+    }
+
+    private String fallback(String message) {
+      String q = message.toLowerCase();
+      if (q.contains("expir") || q.contains("date")) {
+        return "Always check the expiry date on packaging before consuming any food or medicine. "
+            + "If expired, do not use it. Scan the QR code on FoodTrace to see if a product has an active recall.";
+      }
+      if (q.contains("recall") || q.contains("unsafe") || q.contains("dangerous")) {
+        return "If a product is recalled, stop using it immediately and dispose of it safely. "
+            + "Use FoodTrace to report it. If you feel unwell after consuming a recalled product, seek medical help.";
+      }
+      if (q.contains("store") || q.contains("storage") || q.contains("keep")) {
+        return "Store medicines in a cool, dry place away from direct sunlight. "
+            + "Refrigerate only if the label says so. Keep food sealed and away from pests.";
+      }
+      if (q.contains("scan") || q.contains("qr") || q.contains("how")) {
+        return "Open the Scanner tab, point your camera at the QR code on the product, and FoodTrace will show you "
+            + "if the product is safe, under caution, or recalled — with a recommended action.";
+      }
+      return "To enable the full AI assistant, add your ANTHROPIC_API_KEY to the server environment. "
+          + "I can answer questions about food safety, medicine storage, expiry dates, and how to use FoodTrace GH.";
     }
   }
 
