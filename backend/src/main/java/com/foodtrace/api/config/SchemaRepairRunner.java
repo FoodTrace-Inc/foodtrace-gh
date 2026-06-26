@@ -73,11 +73,28 @@ public class SchemaRepairRunner implements ApplicationRunner {
               applied++;
             } catch (Exception ex) {
               failed++;
-              log.debug("Schema repair statement skipped ({}): {}", script.getFilename(), ex.getMessage());
+              String firstLine = trimmed.trim().replaceAll("\\s+", " ");
+              if (firstLine.length() > 80) firstLine = firstLine.substring(0, 80);
+              log.warn("Schema repair statement FAILED ({}): {} -> {}", script.getFilename(), firstLine, ex.getMessage());
             }
           }
         }
         log.info("Schema repair complete — {} statements applied, {} skipped. Portal tables verified.", applied, failed);
+
+        // Diagnostic: log the live manufacturers columns so we can confirm the
+        // repair actually took effect on the database the app queries.
+        try (Statement diag = connection.createStatement();
+             var rs = diag.executeQuery(
+                 "SELECT current_database() AS db, current_schema() AS schema, "
+                 + "(SELECT string_agg(column_name, ',') FROM information_schema.columns "
+                 + "WHERE table_name='manufacturers') AS cols")) {
+          if (rs.next()) {
+            log.info("Schema check — db={}, schema={}, manufacturers columns=[{}]",
+                rs.getString("db"), rs.getString("schema"), rs.getString("cols"));
+          }
+        } catch (Exception ex) {
+          log.warn("Schema check failed: {}", ex.getMessage());
+        }
       }
     } catch (Exception ex) {
       log.error("Schema repair could not run: {}", ex.getMessage());
