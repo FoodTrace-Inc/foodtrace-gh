@@ -8,6 +8,7 @@ import gh.foodtrace.analytics.repo.BatchRepository;
 import gh.foodtrace.analytics.repo.FarmRepository;
 import gh.foodtrace.analytics.repo.InputLogRepository;
 import gh.foodtrace.analytics.repo.RecallRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -36,6 +37,7 @@ public class AnalyticsService {
     }
 
     /** Headline KPI numbers for the summary cards. */
+    @Cacheable("summary")
     public SummaryDto getSummary() {
         return new SummaryDto(
                 batches.count(),
@@ -47,6 +49,7 @@ public class AnalyticsService {
     }
 
     /** Batch counts grouped by lifecycle status (bar chart). */
+    @Cacheable("batchesByStatus")
     public List<BatchesByStatusDto> batchesByStatus() {
         return batches.countByStatus().stream()
                 .map(row -> new BatchesByStatusDto(
@@ -56,6 +59,7 @@ public class AnalyticsService {
     }
 
     /** Recall counts grouped by calendar month, oldest first (line chart). */
+    @Cacheable("recallsByMonth")
     public List<RecallsByMonthDto> recallsByMonth() {
         return recalls.countByMonth().stream()
                 .map(row -> {
@@ -69,6 +73,7 @@ public class AnalyticsService {
     }
 
     /** Farm counts grouped by region (pie chart). */
+    @Cacheable("farmsByRegion")
     public List<FarmsByRegionDto> farmsByRegion() {
         return farms.countByRegion().stream()
                 .map(row -> new FarmsByRegionDto(

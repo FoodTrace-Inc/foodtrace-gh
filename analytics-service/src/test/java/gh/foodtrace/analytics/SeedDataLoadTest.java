@@ -7,6 +7,7 @@ import gh.foodtrace.analytics.repo.RecallRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the foreign-key insert ordering holds, and the read-model entities map cleanly.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class SeedDataLoadTest {
 
     @Autowired
