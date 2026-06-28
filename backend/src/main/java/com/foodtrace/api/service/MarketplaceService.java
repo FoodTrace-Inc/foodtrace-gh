@@ -38,8 +38,11 @@ public class MarketplaceService {
         LEFT JOIN marketplace_post_likes l ON l.post_id = mp.id
         LEFT JOIN marketplace_post_comments c ON c.post_id = mp.id
         WHERE mp.status <> 'hidden'
-          AND (:domain IS NULL OR mp.domain = CAST(:domain AS marketplace_post_domain))
-          AND (:search IS NULL OR lower(mp.title) LIKE :search OR lower(mp.caption) LIKE :search OR lower(u.full_name) LIKE :search)
+          AND (CAST(:domain AS text) IS NULL OR mp.domain = CAST(:domain AS marketplace_post_domain))
+          AND (CAST(:search AS text) IS NULL
+               OR lower(mp.title) LIKE CAST(:search AS text)
+               OR lower(mp.caption) LIKE CAST(:search AS text)
+               OR lower(u.full_name) LIKE CAST(:search AS text))
         GROUP BY mp.id, u.full_name, u.role
         ORDER BY mp.created_at DESC
         LIMIT :limit
