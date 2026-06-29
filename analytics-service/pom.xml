@@ -67,6 +67,9 @@
     </dependencies>
 
     <build>
+        <!-- Stable artifact name so the EB Procfile / deploy bundle don't depend
+             on the version string: target/application.jar. -->
+        <finalName>application</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

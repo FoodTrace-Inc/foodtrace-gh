@@ -24,7 +24,10 @@ spring:
 
   sql:
     init:
-      mode: always
+      # Local/dev/test default "always" runs schema.sql + data.sql on the H2
+      # database. On AWS set SQL_INIT_MODE=never — Role 1 owns the RDS tables
+      # and seeding them on every EB restart would violate unique constraints.
+      mode: ${SQL_INIT_MODE:always}
 
   data:
     redis:
