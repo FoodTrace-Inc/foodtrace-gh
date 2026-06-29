@@ -130,13 +130,19 @@ body {
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .field span { font-size: 13px; font-weight: 600; color: var(--ink); }
-.field input {
+.field input, .field select, .field textarea {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 15px;
+  font-family: inherit;
+  background: #fff;
 }
-.field input:focus { outline: 2px solid var(--green); border-color: transparent; }
+.field textarea { resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: 2px solid var(--green);
+  border-color: transparent;
+}
 
 .form-error {
   background: #fdecec;
@@ -150,6 +156,13 @@ body {
 /* ---- Content pieces ----------------------------------------------------- */
 .page-title { margin: 0; font-size: 24px; }
 .page-sub { margin: 4px 0 22px; color: var(--muted); }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+
+/* ---- Forms (New recall) ------------------------------------------------- */
+.form-panel { max-width: 680px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+@media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
 
 .kpi-grid {
   display: grid;

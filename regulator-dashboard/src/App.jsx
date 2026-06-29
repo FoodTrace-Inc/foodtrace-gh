@@ -4,6 +4,7 @@ import { ProtectedRoute } from './auth/AuthContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Recalls from './pages/Recalls'
+import NewRecall from './pages/NewRecall'
 import RecallDetail from './pages/RecallDetail'
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/recalls" element={<Recalls />} />
+        <Route path="/recalls/new" element={<NewRecall />} />
         <Route path="/recalls/:id" element={<RecallDetail />} />
       </Route>
 

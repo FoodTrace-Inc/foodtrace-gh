@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { listRecalls } from '../api/recalls'
 import RecallStatusBadge from '../components/RecallStatusBadge'
 
@@ -28,8 +28,13 @@ export default function Recalls() {
 
   return (
     <section>
-      <h1 className="page-title">Recalls</h1>
-      <p className="page-sub">View, filter, and action food-safety recalls</p>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Recalls</h1>
+          <p className="page-sub">View, filter, and action food-safety recalls</p>
+        </div>
+        <Link to="/recalls/new" className="btn-primary">+ New recall</Link>
+      </div>
 
       <div className="filters">
         <label className="field-inline">
