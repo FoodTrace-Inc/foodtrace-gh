@@ -122,9 +122,44 @@ public class CompatibilityControllers {
         + "- Be warm and friendly, like a knowledgeable health worker from the community";
 
     private final ObjectMapper mapper;
+    private final java.util.List<KbEntry> knowledge;
 
     AssistantController(ObjectMapper mapper) {
       this.mapper = mapper;
+      this.knowledge = loadKnowledge(mapper);
+    }
+
+    /** One knowledge-base topic: trigger keywords + one or more varied answers. */
+    private record KbEntry(java.util.List<String> keywords, java.util.List<String> answers) {}
+
+    private static java.util.List<KbEntry> loadKnowledge(ObjectMapper mapper) {
+      try (java.io.InputStream in = AssistantController.class.getResourceAsStream("/assistant_kb.json")) {
+        if (in == null) return java.util.List.of();
+        return java.util.List.of(mapper.readValue(in, KbEntry[].class));
+      } catch (Exception ex) {
+        return java.util.List.of();
+      }
+    }
+
+    /**
+     * Scores every knowledge-base entry against the question and returns a random
+     * answer from the best match. Multi-word keywords count more than single words.
+     * Returns null when nothing matches, so the caller can fall back.
+     */
+    private String knowledgeAnswer(String q) {
+      KbEntry best = null;
+      int bestScore = 0;
+      for (KbEntry entry : knowledge) {
+        int score = 0;
+        for (String keyword : entry.keywords()) {
+          if (keyword == null || keyword.isBlank()) continue;
+          String k = keyword.toLowerCase();
+          if (q.contains(k)) score += k.contains(" ") ? 3 : 1;
+        }
+        if (score > bestScore) { bestScore = score; best = entry; }
+      }
+      if (best == null || best.answers().isEmpty()) return null;
+      return best.answers().get(RNG.nextInt(best.answers().size()));
     }
 
     @GetMapping
@@ -204,6 +239,10 @@ public class CompatibilityControllers {
             "Good day! Ask me about any food or medicine safety concern and I'll do my best to help you."
         );
       }
+
+      // Broad knowledge base (100+ Ghana food & drug safety topics, varied answers)
+      String kb = knowledgeAnswer(q);
+      if (kb != null) return kb;
 
       // Expiry / shelf life / best before
       if (q.matches(".*(expir|best before|shelf life|use by|out of date|gone bad|stale).*")) {
