@@ -18,6 +18,8 @@ export { ConsumerReportScreen } from "./ConsumerReportScreen";
 export { MarketplaceFeedScreen } from "./MarketplaceFeedScreen";
 export { MarketplaceComposeScreen } from "./MarketplaceComposeScreen";
 export { SplashIntro } from "./SplashIntro";
+export { NotificationsModal } from "./NotificationsModal";
+export type { AppNotification } from "./NotificationsModal";
 
 // Re-export the HistoryEntry type so App.tsx doesn't need to import it
 // from the individual file.

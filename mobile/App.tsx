@@ -49,7 +49,9 @@ import {
   MarketplaceFeedScreen,
   MarketplaceComposeScreen,
   SplashIntro,
+  NotificationsModal,
 } from "./src/screens";
+import type { AppNotification } from "./src/screens";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -155,6 +157,11 @@ export default function App() {
 
   // launch intro
   const [showIntro, setShowIntro] = useState(true);
+
+  // notifications
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // api
   const [apiBase, setApiBase] = useState(defaultApiBase);
@@ -287,6 +294,24 @@ export default function App() {
     })();
   }, [session?.user.id]);
 
+  const loadNotifications = useCallback(async () => {
+    if (!session?.token) return;
+    try {
+      const res = await fetch(`${apiBase}/notifications`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const data = await res.json();
+      setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+      setUnread(typeof data.unread === "number" ? data.unread : 0);
+    } catch { /* best effort */ }
+  }, [apiBase, session?.token]);
+
+  // Load notifications on sign-in; refresh every 45s while signed in.
+  useEffect(() => {
+    if (!session?.token) { setNotifications([]); setUnread(0); return; }
+    void loadNotifications();
+    const timer = setInterval(() => void loadNotifications(), 45000);
+    return () => clearInterval(timer);
+  }, [session?.token, loadNotifications]);
+
   useEffect(() => {
     const detected = resolveDefaultApiBase();
     setApiBase((cur) => (!cur || cur === "http://localhost:3000/api" || cur === "http://10.0.2.2:3000/api") ? detected : cur);
@@ -336,6 +361,15 @@ export default function App() {
       }
       throw err;
     }
+  }
+
+  async function openNotifications() {
+    await loadNotifications();
+    setShowNotifications(true);
+    setUnread(0);
+    try {
+      await fetch(`${apiBase}/notifications/read`, { method: "POST", headers: { Authorization: `Bearer ${session?.token}` } });
+    } catch { /* best effort */ }
   }
 
   async function persistHistory(next: HistoryEntry[]) {
@@ -428,6 +462,9 @@ export default function App() {
     setLastScanResult(null);
     setScanResult(null);
     setDrugScanResult(null);
+    setNotifications([]);
+    setUnread(0);
+    setShowNotifications(false);
   }
 
   // ── scan ──────────────────────────────────────────────────────────────────
@@ -842,7 +879,13 @@ export default function App() {
         {/* Top header */}
         <View style={s.topBar}>
           <Text style={s.topBarLogo}>FOODTRACE GH</Text>
-          <Text style={s.topBarUser} numberOfLines={1}>{session.user.fullName || "Account"}</Text>
+          <View style={s.topBarRight}>
+            <Text style={s.topBarUser} numberOfLines={1}>{session.user.fullName || "Account"}</Text>
+            <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
+              <Text style={s.bellIcon}>🔔</Text>
+              {unread > 0 ? <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text></View> : null}
+            </Pressable>
+          </View>
         </View>
 
         {/* Screen content */}
@@ -984,6 +1027,8 @@ export default function App() {
             );
           })}
         </View>
+
+        <NotificationsModal visible={showNotifications} items={notifications} onClose={() => setShowNotifications(false)} />
       </SafeAreaView>
     );
   }
@@ -999,9 +1044,15 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor="#071a10" />
       <View style={s.topBar}>
         <Text style={s.topBarLogo}>FOODTRACE GH</Text>
-        <Pressable onPress={signOut} style={s.signOutBtn}>
-          <Text style={s.signOutText}>Sign out</Text>
-        </Pressable>
+        <View style={s.topBarRight}>
+          <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
+            <Text style={s.bellIcon}>🔔</Text>
+            {unread > 0 ? <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text></View> : null}
+          </Pressable>
+          <Pressable onPress={signOut} style={s.signOutBtn}>
+            <Text style={s.signOutText}>Sign out</Text>
+          </Pressable>
+        </View>
       </View>
 
       {portalView !== "compose" && portalView !== "result" ? (
@@ -1290,6 +1341,8 @@ export default function App() {
         ) : null}
       </ScrollView>
       )}
+
+      <NotificationsModal visible={showNotifications} items={notifications} onClose={() => setShowNotifications(false)} />
     </SafeAreaView>
   );
 }
@@ -1364,6 +1417,11 @@ const s = StyleSheet.create({
   topBarLogo: { color: "#77c7a2", fontWeight: "800", fontSize: 16, letterSpacing: 1 },
   topBarUser: { color: "#93b9ac", fontSize: 13, maxWidth: 140 },
   signOutBtn: { backgroundColor: "#182028", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
+  topBarRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bellBtn: { position: "relative", padding: 2 },
+  bellIcon: { fontSize: 20 },
+  bellBadge: { position: "absolute", top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: "#E24B4A", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
+  bellBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   signOutText: { color: "#93b9ac", fontSize: 13, fontWeight: "600" },
 
   screenArea: { flex: 1 },

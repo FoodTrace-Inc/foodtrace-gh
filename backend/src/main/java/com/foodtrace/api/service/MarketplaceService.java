@@ -14,9 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class MarketplaceService {
   private final JdbcClient jdbc;
+  private final NotificationService notifications;
 
-  public MarketplaceService(JdbcClient jdbc) {
+  public MarketplaceService(JdbcClient jdbc, NotificationService notifications) {
     this.jdbc = jdbc;
+    this.notifications = notifications;
   }
 
   public Map<String, Object> feed(CurrentUser user, String domain, String query, int limit) {
@@ -101,6 +103,12 @@ public class MarketplaceService {
         .query(DatabaseRowMapper::toMap)
         .single();
 
+    notifications.notifyRegulators(
+        "pending_review",
+        "New post to review",
+        user.fullName() + " posted \"" + post.get("title") + "\" — awaiting approval.",
+        String.valueOf(post.get("id")));
+
     return Map.of("post", post);
   }
 
@@ -183,6 +191,20 @@ public class MarketplaceService {
         .single();
     comment.put("authorName", user.fullName());
     comment.put("authorRole", user.role());
+
+    // Notify the post owner (unless they commented on their own post).
+    jdbc.sql("SELECT seller_id, title FROM marketplace_posts WHERE id = CAST(:p AS uuid)")
+        .param("p", postId)
+        .query(DatabaseRowMapper::toMap)
+        .optional()
+        .ifPresent(owner -> {
+          String sellerId = String.valueOf(owner.get("sellerId"));
+          if (!sellerId.equals(user.id())) {
+            notifications.notify(sellerId, "comment", "New comment",
+                user.fullName() + " commented on \"" + owner.get("title") + "\": " + text,
+                postId);
+          }
+        });
     return Map.of("comment", comment);
   }
 
@@ -194,12 +216,18 @@ public class MarketplaceService {
         UPDATE marketplace_posts
         SET status = 'active', updated_at = now()
         WHERE id = CAST(:postId AS uuid) AND status = 'pending'
-        RETURNING id, status, title
+        RETURNING id, status, title, seller_id
         """)
         .param("postId", postId)
         .query(DatabaseRowMapper::toMap)
         .optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No pending post with that id"));
+    notifications.notify(
+        String.valueOf(post.get("sellerId")),
+        "post_approved",
+        "Post approved",
+        "Your product \"" + post.get("title") + "\" is now live in the marketplace.",
+        String.valueOf(post.get("id")));
     return Map.of("post", post);
   }
 
@@ -212,13 +240,19 @@ public class MarketplaceService {
         SET status = 'recalled', safety_status = 'recalled', safety_label = 'Recalled',
             regulator_note = :note, updated_at = now()
         WHERE id = CAST(:postId AS uuid)
-        RETURNING id, status, safety_status, safety_label, regulator_note
+        RETURNING id, status, safety_status, safety_label, regulator_note, title, seller_id
         """)
         .param("postId", postId)
         .param("note", String.valueOf(body.getOrDefault("note", "Recalled by regulator")))
         .query(DatabaseRowMapper::toMap)
         .optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+    notifications.notify(
+        String.valueOf(post.get("sellerId")),
+        "post_recalled",
+        "Product recalled",
+        "Your product \"" + post.get("title") + "\" has been recalled by a regulator.",
+        String.valueOf(post.get("id")));
     return Map.of("post", post);
   }
 
