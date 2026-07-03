@@ -48,6 +48,7 @@ import {
   ConsumerReportScreen,
   MarketplaceFeedScreen,
   MarketplaceComposeScreen,
+  SplashIntro,
 } from "./src/screens";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -137,6 +138,9 @@ export default function App() {
   const [role, setRole] = useState<UserRole>("consumer");
   const [authStatus, setAuthStatus] = useState("");
   const [session, setSession] = useState<AuthResponse | null>(null);
+
+  // launch intro
+  const [showIntro, setShowIntro] = useState(true);
 
   // api
   const [apiBase, setApiBase] = useState(defaultApiBase);
@@ -718,6 +722,14 @@ export default function App() {
     } catch {
       setAiMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I could not respond. Please check your connection and try again." }]);
     } finally { setAiLoading(false); }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER: ANIMATED INTRO (plays on every launch)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  if (showIntro) {
+    return <SplashIntro onFinish={() => setShowIntro(false)} />;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
