@@ -10,6 +10,7 @@ import { FarmerSection } from "./components/FarmerSection";
 import { ManufacturerSection } from "./components/ManufacturerSection";
 import { RegulatorSection } from "./components/RegulatorSection";
 import { DrugSection } from "./components/DrugSection";
+import { MarketplaceSection } from "./components/MarketplaceSection";
 
 function App() {
   const [session, setSession] = useState<AuthResponse | null>(null);
@@ -99,6 +100,8 @@ function App() {
         onSignIn={setSession}
         onSignOut={() => setSession(null)}
       />
+
+      {session ? <MarketplaceSection session={session} /> : null}
 
       {showDemoMode ? (
         <DemoPanel
