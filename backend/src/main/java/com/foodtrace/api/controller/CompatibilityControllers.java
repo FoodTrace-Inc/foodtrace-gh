@@ -153,8 +153,16 @@ public class CompatibilityControllers {
         int score = 0;
         for (String keyword : entry.keywords()) {
           if (keyword == null || keyword.isBlank()) continue;
-          String k = keyword.toLowerCase();
-          if (q.contains(k)) score += k.contains(" ") ? 3 : 1;
+          String k = keyword.toLowerCase().trim();
+          String[] parts = k.split("\\s+");
+          // A multi-word keyword matches if ALL its words appear anywhere in the
+          // question (not necessarily adjacent), so "baby has diarrhoea" still
+          // matches the "baby diarrhoea" topic. Multi-word matches score higher.
+          boolean all = true;
+          for (String p : parts) {
+            if (!q.contains(p)) { all = false; break; }
+          }
+          if (all) score += parts.length * 2;
         }
         if (score > bestScore) { bestScore = score; best = entry; }
       }
@@ -232,7 +240,7 @@ public class CompatibilityControllers {
       String q = message.toLowerCase();
 
       // Greetings
-      if (q.matches(".*(hello|hi|hey|good morning|good afternoon|good evening|how are you).*")) {
+      if (q.matches(".*\\b(hello|hi|hey|good morning|good afternoon|good evening|how are you|good day)\\b.*")) {
         return pick(
             "Hello! I'm your FoodTrace GH food and drug safety assistant. Ask me anything about food safety, medicine storage, expiry dates, recalls, or how to use the app.",
             "Hi there! I'm here to help you stay safe with food and medicines in Ghana. What would you like to know?",
