@@ -102,6 +102,9 @@ public class AuthService {
     if (phone != null && !isValidGhanaPhone(phone)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid Ghana phone number (e.g. 024 123 4567)");
     }
+    // Normalise so login is consistent (email stored lowercase, phone trimmed).
+    if (email != null) email = email.trim().toLowerCase();
+    if (phone != null) phone = phone.trim();
     if (phone != null && userExistsByPhone(phone)) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
     }
@@ -127,13 +130,14 @@ public class AuthService {
   public AuthResponse login(LoginRequest request) {
     requirePresent(request.identifier(), "Identifier is required");
     requirePresent(request.password(), "Password is required");
+    String identifier = request.identifier().trim();
     Map<String, Object> user = jdbc.sql("""
         SELECT id, full_name, phone, email, password_hash, role, language, is_verified, is_active
         FROM users
-        WHERE email = :identifier OR phone = :identifier
+        WHERE LOWER(email) = LOWER(:identifier) OR phone = :identifier
         LIMIT 1
         """)
-        .param("identifier", request.identifier())
+        .param("identifier", identifier)
         .query(DatabaseRowMapper::toMap)
         .optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
