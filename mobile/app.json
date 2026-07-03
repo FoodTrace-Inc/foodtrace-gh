@@ -47,6 +47,12 @@
           "cameraPermission": "Allow FoodTrace GH to use your camera to scan product QR codes."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow FoodTrace GH to add product photos to your marketplace posts."
+        }
+      ],
       "expo-sqlite"
     ],
     "splash": {

@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   Share,
   StyleSheet,
@@ -30,6 +31,7 @@ type MarketplacePost = {
   title: string;
   caption: string;
   location: string | null;
+  imageUrl: string | null;
   hashtags: string[];
   qrCodeString: string | null;
   safetyStatus: string;
@@ -225,7 +227,11 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
         </View>
 
         <View style={s.imageArea}>
-          <Text style={s.imageIcon}>{domainIcon(post.domain)}</Text>
+          {post.imageUrl ? (
+            <Image source={{ uri: post.imageUrl }} style={s.image} resizeMode="cover" />
+          ) : (
+            <Text style={s.imageIcon}>{domainIcon(post.domain)}</Text>
+          )}
           <View style={[s.badge, { backgroundColor: badge.bg, borderColor: badge.fg }]}>
             <Text style={[s.badgeText, { color: badge.fg }]}>{badgeLabel}</Text>
           </View>
@@ -368,6 +374,7 @@ const s = StyleSheet.create({
   metaText: { color: "#7d8a84", fontSize: 11, marginTop: 1 },
 
   imageArea: { height: 168, backgroundColor: "#10241b", alignItems: "center", justifyContent: "center" },
+  image: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   imageIcon: { fontSize: 54 },
   badge: { position: "absolute", top: 10, right: 10, borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   badgeText: { fontSize: 11, fontWeight: "600" },

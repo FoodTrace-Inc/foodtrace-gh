@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
 type Props = {
   apiBase: string;
@@ -72,6 +74,7 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
   const [location, setLocation] = useState("");
   const [hashtags, setHashtags] = useState("");
   const [attached, setAttached] = useState<Product | null>(null);
+  const [image, setImage] = useState<string | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -101,6 +104,20 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
     if (!title.trim()) setTitle(p.label);
   }
 
+  async function pickPhoto() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { setStatus("Photo permission is needed to add a picture."); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]?.base64) {
+      setImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  }
+
   async function submit() {
     if (!title.trim()) {
       setStatus("Please add a product title.");
@@ -118,6 +135,7 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
       };
       if (attached?.qrCode) body.qrCodeString = attached.qrCode;
       if (attached?.farmId) body.farmId = attached.farmId;
+      if (image) body.imageUrl = image;
 
       const res = await fetch(`${apiBase}/marketplace/posts`, {
         method: "POST",
@@ -176,6 +194,12 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
         </View>
       )}
 
+      <Text style={s.label}>Product photo</Text>
+      {image ? <Image source={{ uri: image }} style={s.preview} /> : null}
+      <Pressable style={s.photoBtn} onPress={() => void pickPhoto()}>
+        <Text style={s.photoBtnText}>{image ? "Change photo" : "＋ Add product photo"}</Text>
+      </Pressable>
+
       <Text style={s.label}>Title</Text>
       <TextInput style={s.input} placeholder="e.g. ZenMalt Barley Drink" placeholderTextColor="#5f6b65" value={title} onChangeText={setTitle} />
 
@@ -212,6 +236,9 @@ const s = StyleSheet.create({
   chipText: { color: "#a9b8b1", fontSize: 12 },
   chipTextOn: { color: "#77c7a2", fontWeight: "600" },
   input: { backgroundColor: "#0e1712", borderWidth: 0.5, borderColor: "rgba(119,199,162,0.2)", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, color: "#e8f0ec", fontSize: 14 },
+  preview: { width: "100%", height: 180, borderRadius: 12, marginBottom: 8 },
+  photoBtn: { backgroundColor: "#0e1712", borderWidth: 1, borderColor: "#77c7a2", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  photoBtnText: { color: "#77c7a2", fontWeight: "600", fontSize: 14 },
   multiline: { height: 84, textAlignVertical: "top" },
   error: { color: "#F09595", fontSize: 13, marginTop: 12 },
   postBtn: { backgroundColor: "#77c7a2", borderRadius: 14, paddingVertical: 15, alignItems: "center", marginTop: 24 },
