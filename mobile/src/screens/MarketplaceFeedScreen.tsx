@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -160,6 +161,19 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
     }
   }
 
+  async function sharePost(post: MarketplacePost) {
+    const lines = [
+      `${post.title} — ${post.safetyLabel} on FoodTrace GH`,
+      post.caption || "",
+      post.qrCodeString ? `Verify this product, code: ${post.qrCodeString}` : "",
+      "Scan before you buy. Stay safe with FoodTrace GH.",
+    ].filter(Boolean);
+    try {
+      // Opens the native share sheet — WhatsApp, SMS, and any other social apps.
+      await Share.share({ message: lines.join("\n") });
+    } catch { /* user dismissed */ }
+  }
+
   async function approve(post: MarketplacePost) {
     patchPost(post.id, { status: "active" });
     try {
@@ -237,6 +251,9 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
           </Pressable>
           <Pressable style={s.actionBtn} onPress={() => void toggleComments(post)}>
             <Text style={s.actionText}>💬 {post.commentCount}</Text>
+          </Pressable>
+          <Pressable style={s.actionBtn} onPress={() => void sharePost(post)}>
+            <Text style={[s.actionText, s.shareOn]}>➦ Share</Text>
           </Pressable>
           <Pressable style={s.actionBtn} onPress={() => void toggleSave(post)}>
             <Text style={[s.actionText, post.savedByViewer && s.saveOn]}>{post.savedByViewer ? "★ Saved" : "☆ Save"}</Text>
@@ -367,6 +384,7 @@ const s = StyleSheet.create({
   actionText: { color: "#a9b8b1", fontSize: 13 },
   likeOn: { color: "#D4537E" },
   saveOn: { color: "#EF9F27" },
+  shareOn: { color: "#25D366" },
   approveBtn: { margin: 12, marginTop: 0, backgroundColor: "#0f2c1f", borderWidth: 1, borderColor: "#77c7a2", borderRadius: 10, paddingVertical: 11, alignItems: "center" },
   approveBtnText: { color: "#77c7a2", fontWeight: "700", fontSize: 13 },
   pendingNote: { color: "#EF9F27", fontSize: 11, paddingHorizontal: 14, paddingBottom: 12 },
