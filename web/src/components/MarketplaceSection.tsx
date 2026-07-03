@@ -8,6 +8,7 @@ type Post = {
   title: string;
   caption: string;
   location: string | null;
+  imageUrl: string | null;
   hashtags: string[];
   qrCodeString: string | null;
   safetyStatus: string;
@@ -182,6 +183,9 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
                   </div>
                   <span style={{ background: b.bg, color: b.fg, border: `1px solid ${b.fg}`, borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600 }}>{label}</span>
                 </div>
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.title} style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: 10, marginBottom: 10, display: "block" }} />
+                ) : null}
                 {p.title ? <div style={{ color: "#f4f4ef", fontWeight: 600 }}>{p.title}</div> : null}
                 {p.caption ? <div style={{ color: "#d8e2dc", fontSize: 14, marginTop: 4 }}>{p.caption}</div> : null}
                 {p.hashtags?.length ? <div style={{ color: "#77c7a2", fontSize: 13, marginTop: 6 }}>{p.hashtags.map((h) => `#${h}`).join("  ")}</div> : null}
@@ -227,8 +231,18 @@ function ComposeForm({ token, role, onPosted }: { token: string; role: string; o
   const [location, setLocation] = useState("");
   const [hashtags, setHashtags] = useState("");
   const [qr, setQr] = useState("");
+  const [image, setImage] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function onPickImage(file: File | undefined) {
+    if (!file) return;
+    try {
+      setImage(await fileToDataUrl(file));
+    } catch {
+      setStatus("Could not read that image.");
+    }
+  }
 
   async function submit() {
     if (!title.trim()) { setStatus("Add a product title."); return; }
@@ -241,6 +255,7 @@ function ComposeForm({ token, role, onPosted }: { token: string; role: string; o
           title: title.trim(), domain, caption: caption.trim(), location: location.trim() || null,
           hashtags: hashtags.split(/[,\s]+/).map((h) => h.replace(/^#/, "").trim()).filter(Boolean),
           qrCodeString: qr.trim() || null,
+          imageUrl: image,
         }),
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || e.detail || "Could not post."); }
@@ -252,7 +267,12 @@ function ComposeForm({ token, role, onPosted }: { token: string; role: string; o
 
   return (
     <div style={{ background: "#0d1216", borderRadius: 12, padding: 16, marginBottom: 14, border: "1px solid rgba(119,199,162,0.14)", display: "grid", gap: 8 }}>
-      <div style={{ color: "#a9c7b8", fontSize: 13 }}>Post a {domain} product. Add its QR code to stamp the verified safety badge.</div>
+      <div style={{ color: "#a9c7b8", fontSize: 13 }}>Post a {domain} product. Add a photo, and its QR code to stamp the verified safety badge.</div>
+      {image ? <img src={image} alt="preview" style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10 }} /> : null}
+      <label style={{ ...btn(false), display: "inline-block", width: "fit-content" }}>
+        {image ? "Change photo" : "📷 Add product photo"}
+        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => void onPickImage(e.target.files?.[0])} />
+      </label>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Product title" style={input} />
       <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption" style={input} />
       <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location (e.g. Greater Accra)" style={input} />
@@ -267,6 +287,32 @@ function ComposeForm({ token, role, onPosted }: { token: string; role: string; o
 function initials(name: string) {
   const p = (name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2);
   return p.map((x) => x[0]?.toUpperCase()).join("") || "FT";
+}
+
+// Resize + compress an uploaded image to a small JPEG data URI so it can be
+// stored directly on the post (no file server / S3 needed).
+function fileToDataUrl(file: File, maxW = 800, quality = 0.6): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("image failed"));
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no canvas"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 const avatar = { width: 40, height: 40, borderRadius: "50%", background: "#1d9e75", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 14 } as const;
 const roleTag = { background: "rgba(119,199,162,0.16)", color: "#77c7a2", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999, marginLeft: 6 } as const;
