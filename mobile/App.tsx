@@ -135,7 +135,7 @@ const roleLabels: Record<string, string> = {
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "forgot";
 type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type HistoryEntry = {
@@ -152,6 +152,10 @@ export default function App() {
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
   const [identifier, setIdentifier] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -473,6 +477,42 @@ export default function App() {
       setAuthStatus(isDuplicate
         ? "That phone number or email is already registered. Use a different one, or log in instead."
         : msg);
+    }
+  }
+
+  async function requestPasswordReset() {
+    if (!forgotEmail.trim() || !isValidEmail(forgotEmail)) {
+      setAuthStatus("Enter a valid email address.");
+      return;
+    }
+    setAuthStatus("Please wait…");
+    try {
+      const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/forgot-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: forgotEmail.trim() }),
+      }));
+      setCodeSent(true);
+      setAuthStatus(data.message ?? "Check your email for a reset code.");
+    } catch (error) {
+      setAuthStatus(getFriendlyError(error));
+    }
+  }
+
+  async function submitPasswordReset() {
+    if (!resetCode.trim()) { setAuthStatus("Enter the code from your email."); return; }
+    if (newPassword.trim().length < 6) { setAuthStatus("New password must be at least 6 characters."); return; }
+    setAuthStatus("Please wait…");
+    try {
+      const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/reset-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: newPassword.trim() }),
+      }));
+      setMode("login");
+      setIdentifier(forgotEmail.trim());
+      setPassword("");
+      setForgotEmail(""); setResetCode(""); setNewPassword(""); setCodeSent(false);
+      setAuthStatus(data.message ?? "Password updated. Log in with your new password.");
+    } catch (error) {
+      setAuthStatus(getFriendlyError(error));
     }
   }
 
@@ -894,12 +934,39 @@ export default function App() {
                   <Text style={s.primaryBtnText}>Create account as {roleLabels[role]}</Text>
                 </Pressable>
               </>
+            ) : mode === "forgot" ? (
+              <>
+                <TextInput placeholder="Email address" placeholderTextColor="#748089" style={s.input} value={forgotEmail} onChangeText={setForgotEmail} autoCapitalize="none" keyboardType="email-address" editable={!codeSent} />
+                {codeSent ? (
+                  <>
+                    <Text style={s.hint}>We sent a code to {forgotEmail}. Enter it below with your new password.</Text>
+                    <TextInput placeholder="6-digit code" placeholderTextColor="#748089" style={s.input} value={resetCode} onChangeText={setResetCode} keyboardType="number-pad" maxLength={6} />
+                    <TextInput placeholder="New password" placeholderTextColor="#748089" style={s.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry />
+                    <Pressable style={s.primaryBtn} onPress={() => void submitPasswordReset()}>
+                      <Text style={s.primaryBtnText}>Reset password</Text>
+                    </Pressable>
+                    <Pressable onPress={() => { setCodeSent(false); void requestPasswordReset(); }}>
+                      <Text style={s.forgotLink}>Resend code</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable style={s.primaryBtn} onPress={() => void requestPasswordReset()}>
+                    <Text style={s.primaryBtnText}>Send reset code</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={() => { setMode("login"); setAuthStatus(""); setCodeSent(false); }}>
+                  <Text style={s.forgotLink}>Back to log in</Text>
+                </Pressable>
+              </>
             ) : (
               <>
                 <TextInput placeholder="Phone number or email" placeholderTextColor="#748089" style={s.input} value={identifier} onChangeText={setIdentifier} autoCapitalize="none" />
                 <TextInput placeholder="Password" placeholderTextColor="#748089" style={s.input} value={password} onChangeText={setPassword} secureTextEntry />
                 <Pressable style={s.primaryBtn} onPress={() => void submit()}>
                   <Text style={s.primaryBtnText}>Log in</Text>
+                </Pressable>
+                <Pressable onPress={() => { setMode("forgot"); setAuthStatus(""); setForgotEmail(identifier.includes("@") ? identifier : ""); }}>
+                  <Text style={s.forgotLink}>Forgot password?</Text>
                 </Pressable>
               </>
             )}
@@ -1456,6 +1523,7 @@ const s = StyleSheet.create({
   input: { backgroundColor: "#0b0f13", borderRadius: 12, minHeight: 52, paddingHorizontal: 16, color: "#f4f4ef", fontSize: 15, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 10 },
   batchPhotoPreview: { width: "100%", height: 160, borderRadius: 12, marginBottom: 10, backgroundColor: "#0b0f13" },
   hint: { color: "#748089", fontSize: 12, lineHeight: 18, marginBottom: 12 },
+  forgotLink: { color: "#77c7a2", fontSize: 13, fontWeight: "600", textAlign: "center", marginTop: 12 },
 
   primaryBtn: { backgroundColor: "#77c7a2", borderRadius: 14, minHeight: 52, alignItems: "center", justifyContent: "center", paddingHorizontal: 20, marginBottom: 4 },
   primaryBtnText: { color: "#062014", fontSize: 15, fontWeight: "700" },

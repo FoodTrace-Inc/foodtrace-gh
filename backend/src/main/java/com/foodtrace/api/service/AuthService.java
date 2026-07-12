@@ -27,13 +27,17 @@ public class AuthService {
   private final JwtService jwtService;
   private final PasswordEncoder passwordEncoder;
   private final AppProperties properties;
+  private final EmailService emailService;
   private final SecureRandom random = new SecureRandom();
 
-  public AuthService(JdbcClient jdbc, JwtService jwtService, PasswordEncoder passwordEncoder, AppProperties properties) {
+  private static final String PASSWORD_RESET_PURPOSE = "password_reset";
+
+  public AuthService(JdbcClient jdbc, JwtService jwtService, PasswordEncoder passwordEncoder, AppProperties properties, EmailService emailService) {
     this.jdbc = jdbc;
     this.jwtService = jwtService;
     this.passwordEncoder = passwordEncoder;
     this.properties = properties;
+    this.emailService = emailService;
   }
 
   public Map<String, Object> requestOtp(OtpRequest request) {
@@ -63,7 +67,7 @@ public class AuthService {
     Map<String, Object> user = findUserByIdentifier(request.identifier())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     Map<String, Object> otp = jdbc.sql("""
-        SELECT id, expires_at, used_at
+        SELECT id, used_at, (expires_at < now()) AS is_expired
         FROM otp_tokens
         WHERE user_id = :userId AND token = :token AND purpose = :purpose
         ORDER BY created_at DESC
@@ -78,7 +82,7 @@ public class AuthService {
     if (otp.get("usedAt") != null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP already used");
     }
-    if (OffsetDateTime.parse(String.valueOf(otp.get("expiresAt"))).isBefore(OffsetDateTime.now())) {
+    if (Boolean.TRUE.equals(otp.get("isExpired"))) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP expired");
     }
     jdbc.sql("UPDATE otp_tokens SET used_at = now() WHERE id = :id").param("id", otp.get("id")).update();
@@ -145,6 +149,64 @@ public class AuthService {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     }
     return authResponse(user);
+  }
+
+  /**
+   * Always returns a generic success response, whether or not the email is
+   * registered — this avoids leaking which emails have accounts.
+   */
+  public Map<String, Object> forgotPassword(ApiDtos.ForgotPasswordRequest request) {
+    requirePresent(request.email(), "Email is required");
+    String email = request.email().trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid email address");
+    }
+    findUserByIdentifier(email).ifPresent(user -> {
+      String code = String.format("%06d", random.nextInt(1_000_000));
+      OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(15);
+      jdbc.sql("INSERT INTO otp_tokens (user_id, token, purpose, expires_at) VALUES (:userId, :token, :purpose, :expiresAt)")
+          .param("userId", user.get("id"))
+          .param("token", code)
+          .param("purpose", PASSWORD_RESET_PURPOSE)
+          .param("expiresAt", expiresAt)
+          .update();
+      emailService.sendPasswordResetCode(email, code);
+    });
+    return Map.of("sent", true, "message", "If that email is registered, a reset code is on its way.");
+  }
+
+  public Map<String, Object> resetPassword(ApiDtos.ResetPasswordRequest request) {
+    requirePresent(request.email(), "Email is required");
+    requirePresent(request.code(), "Reset code is required");
+    requirePresent(request.newPassword(), "New password is required");
+    if (request.newPassword().length() < 6) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
+    }
+    String email = request.email().trim().toLowerCase();
+    Map<String, Object> user = findUserByIdentifier(email)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired code"));
+    Map<String, Object> otp = jdbc.sql("""
+        SELECT id, used_at, (expires_at < now()) AS is_expired
+        FROM otp_tokens
+        WHERE user_id = :userId AND token = :token AND purpose = :purpose
+        ORDER BY created_at DESC
+        LIMIT 1
+        """)
+        .param("userId", user.get("id"))
+        .param("token", request.code().trim())
+        .param("purpose", PASSWORD_RESET_PURPOSE)
+        .query(DatabaseRowMapper::toMap)
+        .optional()
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired code"));
+    if (otp.get("usedAt") != null || Boolean.TRUE.equals(otp.get("isExpired"))) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired code");
+    }
+    jdbc.sql("UPDATE otp_tokens SET used_at = now() WHERE id = :id").param("id", otp.get("id")).update();
+    jdbc.sql("UPDATE users SET password_hash = :hash, updated_at = now() WHERE id = :id")
+        .param("hash", passwordEncoder.encode(request.newPassword()))
+        .param("id", user.get("id"))
+        .update();
+    return Map.of("reset", true, "message", "Password updated. Log in with your new password.");
   }
 
   public AuthUser me(String userId) {

@@ -1,9 +1,11 @@
 package com.foodtrace.api.controller;
 
 import com.foodtrace.api.dto.ApiDtos;
+import com.foodtrace.api.dto.ApiDtos.ForgotPasswordRequest;
 import com.foodtrace.api.dto.ApiDtos.LoginRequest;
 import com.foodtrace.api.dto.ApiDtos.OtpRequest;
 import com.foodtrace.api.dto.ApiDtos.RegisterRequest;
+import com.foodtrace.api.dto.ApiDtos.ResetPasswordRequest;
 import com.foodtrace.api.dto.ApiDtos.VerifyOtpRequest;
 import com.foodtrace.api.security.CurrentUser;
 import com.foodtrace.api.service.AuthService;
@@ -47,6 +49,16 @@ public class AuthController {
   @PostMapping("/login")
   public Object login(@RequestBody LoginRequest request) {
     return authService.login(request);
+  }
+
+  @PostMapping("/forgot-password")
+  public Map<String, Object> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    return authService.forgotPassword(request);
+  }
+
+  @PostMapping("/reset-password")
+  public Map<String, Object> resetPassword(@RequestBody ResetPasswordRequest request) {
+    return authService.resetPassword(request);
   }
 
   @GetMapping("/me")

@@ -3,7 +3,7 @@ import type { AuthResponse, UserRole } from "@foodtrace/shared";
 import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage } from "../lib/api";
 import { styles } from "../lib/styles";
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "forgot";
 
 interface Props {
   session: AuthResponse | null;
@@ -23,6 +23,10 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState("en");
   const [status, setStatus] = useState("Ready");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
 
   const displayName = session?.user.fullName || session?.user.email || session?.user.phone || "Account";
   const avatarLabel = useMemo(() => {
@@ -53,6 +57,40 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
       setStatus(`Signed in as ${data.user.role}. Opening your portal...`);
     } catch (error) {
       setStatus(getFriendlyErrorMessage(error, "Authentication failed"));
+    }
+  }
+
+  async function requestReset() {
+    setStatus("Sending request...");
+    try {
+      const response = await fetch(`${apiBase}/auth/forgot-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: forgotEmail }),
+      });
+      const data = (await readJsonResponse(response)) as { message?: string; error?: unknown };
+      if (!response.ok) throw new Error(getApiErrorMessage(data.error, "Could not send reset code"));
+      setCodeSent(true);
+      setStatus(data.message ?? "Check your email for a reset code.");
+    } catch (error) {
+      setStatus(getFriendlyErrorMessage(error, "Could not send reset code"));
+    }
+  }
+
+  async function submitReset() {
+    setStatus("Sending request...");
+    try {
+      const response = await fetch(`${apiBase}/auth/reset-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail, code: resetCode, newPassword }),
+      });
+      const data = (await readJsonResponse(response)) as { message?: string; error?: unknown };
+      if (!response.ok) throw new Error(getApiErrorMessage(data.error, "Could not reset password"));
+      setMode("login");
+      setIdentifier(forgotEmail);
+      setPassword("");
+      setForgotEmail(""); setResetCode(""); setNewPassword(""); setCodeSent(false);
+      setStatus(data.message ?? "Password updated. Log in with your new password.");
+    } catch (error) {
+      setStatus(getFriendlyErrorMessage(error, "Could not reset password"));
     }
   }
 
@@ -102,11 +140,28 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
           <label style={styles.label}>Language<input value={language} onChange={(e) => setLanguage(e.target.value)} style={styles.input} /></label>
           <button type="button" onClick={submit} style={styles.primaryButton}>Create account</button>
         </div>
+      ) : mode === "forgot" ? (
+        <div style={styles.form}>
+          <label style={styles.label}>Email address<input value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={styles.input} disabled={codeSent} /></label>
+          {codeSent ? (
+            <>
+              <p style={styles.status}>We sent a code to {forgotEmail}. Enter it below with your new password.</p>
+              <label style={styles.label}>Reset code<input value={resetCode} onChange={(e) => setResetCode(e.target.value)} style={styles.input} maxLength={6} /></label>
+              <label style={styles.label}>New password<input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={styles.input} /></label>
+              <button type="button" onClick={submitReset} style={styles.primaryButton}>Reset password</button>
+              <button type="button" onClick={() => { setCodeSent(false); void requestReset(); }} style={styles.secondaryButton}>Resend code</button>
+            </>
+          ) : (
+            <button type="button" onClick={requestReset} style={styles.primaryButton}>Send reset code</button>
+          )}
+          <button type="button" onClick={() => { setMode("login"); setCodeSent(false); setStatus("Ready"); }} style={styles.secondaryButton}>Back to log in</button>
+        </div>
       ) : (
         <div style={styles.form}>
           <label style={styles.label}>Phone or email<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} style={styles.input} /></label>
           <label style={styles.label}>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} /></label>
           <button type="button" onClick={submit} style={styles.primaryButton}>Log in</button>
+          <button type="button" onClick={() => { setMode("forgot"); setForgotEmail(identifier.includes("@") ? identifier : ""); setStatus("Ready"); }} style={styles.secondaryButton}>Forgot password?</button>
         </div>
       )}
 

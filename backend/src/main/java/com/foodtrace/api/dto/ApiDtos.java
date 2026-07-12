@@ -25,6 +25,12 @@ public final class ApiDtos {
   public record VerifyOtpRequest(String identifier, String token, String purpose) {
   }
 
+  public record ForgotPasswordRequest(String email) {
+  }
+
+  public record ResetPasswordRequest(String email, String code, String newPassword) {
+  }
+
   public record DashboardResponse(Map<String, Object> dashboard) {
   }
 
