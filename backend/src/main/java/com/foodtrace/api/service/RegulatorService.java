@@ -1,21 +1,30 @@
 package com.foodtrace.api.service;
 
 import com.foodtrace.api.security.CurrentUser;
+import com.foodtrace.api.storage.StorageService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class RegulatorService {
+  private static final Logger log = LoggerFactory.getLogger(RegulatorService.class);
   private final JdbcClient jdbc;
+  private final RecallSmsNotifier recallSmsNotifier;
+  private final StorageService storageService;
 
-  public RegulatorService(JdbcClient jdbc) {
+  public RegulatorService(JdbcClient jdbc, RecallSmsNotifier recallSmsNotifier, StorageService storageService) {
     this.jdbc = jdbc;
+    this.recallSmsNotifier = recallSmsNotifier;
+    this.storageService = storageService;
   }
 
   public Map<String, Object> dashboard() {
@@ -152,6 +161,7 @@ public class RegulatorService {
           .param("issuedBy", user.id())
           .param("reason", reason)
           .query(DatabaseRowMapper::toMap).single();
+      recallSmsNotifier.notifyDrugRecall(UUID.fromString(batchId), reason);
       return Map.of("recall", recall);
     }
 
@@ -175,6 +185,32 @@ public class RegulatorService {
         .param("reason", reason)
         .param("districts", districts)
         .query(DatabaseRowMapper::toMap).single();
+    recallSmsNotifier.notifyFoodRecall(UUID.fromString(batchId), reason);
+    return Map.of("recall", recall);
+  }
+
+  public Map<String, Object> addRecallEvidence(String recallId, MultipartFile file) {
+    if (file == null || file.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An evidence file is required");
+    }
+    String url;
+    try {
+      url = storageService.store(file.getBytes(), file.getOriginalFilename() != null ? file.getOriginalFilename() : "evidence",
+          file.getContentType() != null ? file.getContentType() : "application/octet-stream");
+    } catch (Exception e) {
+      log.error("Failed to store recall evidence for recall {}", recallId, e);
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store the evidence file");
+    }
+
+    Map<String, Object> recall = jdbc.sql("""
+        UPDATE recall_events SET evidence_urls = array_append(evidence_urls, :url)
+        WHERE id = :id
+        RETURNING id, batch_id, evidence_urls
+        """)
+        .param("id", UUID.fromString(recallId))
+        .param("url", url)
+        .query(DatabaseRowMapper::toMap).optional()
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recall not found"));
     return Map.of("recall", recall);
   }
 

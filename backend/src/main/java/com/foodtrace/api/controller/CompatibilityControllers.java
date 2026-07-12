@@ -14,9 +14,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -83,6 +85,11 @@ public class CompatibilityControllers {
     @ResponseStatus(HttpStatus.CREATED)
     Map<String, Object> createRecall(@RequestBody Map<String, Object> body, Authentication authentication) {
       return regulatorService.createRecall(currentUser(authentication), body);
+    }
+
+    @PostMapping("/recalls/{id}/evidence")
+    Map<String, Object> addRecallEvidence(@PathVariable String id, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+      return regulatorService.addRecallEvidence(id, file);
     }
 
     private CurrentUser currentUser(Authentication auth) {
@@ -439,13 +446,5 @@ public class CompatibilityControllers {
     }
   }
 
-  @RestController
-  @RequestMapping("/api/ussd")
-  static class UssdController {
-    @PostMapping("/callback")
-    Map<String, Object> callback(@RequestBody Map<String, Object> body) {
-      // Accepts Africa's Talking USSD callbacks; actual menu logic not yet implemented
-      return Map.of("response", "END FoodTrace USSD is not yet configured.", "status", "not_configured");
-    }
-  }
+  // Real USSD webhook now lives in com.foodtrace.api.controller.UssdController (POST /api/ussd).
 }

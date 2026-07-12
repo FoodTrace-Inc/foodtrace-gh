@@ -31,6 +31,11 @@ foodtrace:
   # Google Cloud TTS — the SDK reads GOOGLE_APPLICATION_CREDENTIALS automatically;
   # only google-cloud-project is wired here for explicit reference in code
   google-cloud-project: ${GOOGLE_CLOUD_PROJECT:}
+  # AWS S3 for recall evidence uploads — leave AWS_BUCKET_NAME blank to fall back to local disk
+  aws-access-key-id: ${AWS_ACCESS_KEY_ID:}
+  aws-secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+  aws-region: ${AWS_REGION:eu-west-1}
+  aws-bucket-name: ${AWS_BUCKET_NAME:}
 
 management:
   endpoints:

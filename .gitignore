@@ -26,3 +26,6 @@ demo_qr_images/
 # Built mobile binaries (large; distribute via EAS, not git)
 *.apk
 *.aab
+
+# Local file storage fallback (QR codes, recall evidence) — runtime-generated
+backend/uploads/

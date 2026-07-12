@@ -15,5 +15,10 @@ public record AppProperties(
     String africasTalkingUsername,
     String africasTalkingShortcode,
     // Google Cloud TTS — set GOOGLE_APPLICATION_CREDENTIALS (file path) + GOOGLE_CLOUD_PROJECT
-    String googleCloudProject) {
+    String googleCloudProject,
+    // AWS S3 recall-evidence uploads — set AWS_BUCKET_NAME etc to enable; falls back to local disk
+    String awsAccessKeyId,
+    String awsSecretAccessKey,
+    String awsRegion,
+    String awsBucketName) {
 }

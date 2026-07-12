@@ -15,11 +15,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class ManufacturerService {
   private final JdbcClient jdbc;
   private final QrCodeService qrCodeService;
+  private final RecallSmsNotifier recallSmsNotifier;
   private final ObjectMapper json = new ObjectMapper();
 
-  public ManufacturerService(JdbcClient jdbc, QrCodeService qrCodeService) {
+  public ManufacturerService(JdbcClient jdbc, QrCodeService qrCodeService, RecallSmsNotifier recallSmsNotifier) {
     this.jdbc = jdbc;
     this.qrCodeService = qrCodeService;
+    this.recallSmsNotifier = recallSmsNotifier;
   }
 
   public Map<String, Object> dashboard(CurrentUser user) {
@@ -183,6 +185,8 @@ public class ManufacturerService {
 
     jdbc.sql("UPDATE qr_codes SET status = 'recalled' WHERE batch_id = :batchId")
         .param("batchId", UUID.fromString(batchId)).update();
+
+    recallSmsNotifier.notifyFoodRecall(UUID.fromString(batchId), reason);
 
     return Map.of("recall", recall);
   }
