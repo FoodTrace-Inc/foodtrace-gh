@@ -16,6 +16,7 @@ import Constants from "expo-constants";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import * as ImagePicker from "expo-image-picker";
+import * as Notifications from "expo-notifications";
 import AsyncStorage from "expo-sqlite/kv-store";
 import {
   USER_ROLES,
@@ -116,6 +117,16 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
 }
 
 // ─── constants ───────────────────────────────────────────────────────────────
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 const defaultApiBase = resolveDefaultApiBase();
 // Scan history is stored per-user so one account never sees another's scans
@@ -302,6 +313,32 @@ export default function App() {
       } catch { /* ignore */ }
     })();
   }, []);
+
+  // Register this device for real OS-level push notifications once signed in.
+  useEffect(() => {
+    if (!session?.token) return;
+    void (async () => {
+      try {
+        const existing = await Notifications.getPermissionsAsync();
+        let status = existing.status;
+        if (status !== "granted") {
+          const requested = await Notifications.requestPermissionsAsync();
+          status = requested.status;
+        }
+        if (status !== "granted") return;
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("default", { name: "default", importance: Notifications.AndroidImportance.DEFAULT });
+        }
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        const pushToken = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
+        await fetch(`${apiBase}/notifications/push-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+          body: JSON.stringify({ token: pushToken }),
+        });
+      } catch { /* push registration is best-effort — app works fine without it */ }
+    })();
+  }, [session?.token, apiBase]);
 
   // Let the Android hardware back button step back through in-app views
   // instead of exiting the app whenever we're not already at the root.

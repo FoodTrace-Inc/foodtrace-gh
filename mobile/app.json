@@ -53,7 +53,13 @@
           "photosPermission": "Allow FoodTrace GH to add product photos to your marketplace posts."
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#77c7a2"
+        }
+      ]
     ],
     "splash": {
       "image": "./assets/splash.png",

@@ -23,14 +23,18 @@ public class ScanController {
   }
 
   @GetMapping("/{codeString}")
-  public Map<String, Object> scan(@PathVariable String codeString) {
-    return Map.of("result", scanService.scanFood(codeString), "cached", false);
+  public Map<String, Object> scan(@PathVariable String codeString, Authentication authentication) {
+    return Map.of("result", scanService.scanFood(codeString, currentUserId(authentication)), "cached", false);
+  }
+
+  private String currentUserId(Authentication authentication) {
+    return authentication != null && authentication.getPrincipal() instanceof CurrentUser user ? user.id() : null;
   }
 
   @PostMapping("/{codeString}/log")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void log(@PathVariable String codeString) {
-    scanService.scanFood(codeString);
+  public void log(@PathVariable String codeString, Authentication authentication) {
+    scanService.scanFood(codeString, currentUserId(authentication));
   }
 
   @PostMapping("/{codeString}/report")

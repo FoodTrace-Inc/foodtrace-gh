@@ -16,12 +16,14 @@ public class ManufacturerService {
   private final JdbcClient jdbc;
   private final QrCodeService qrCodeService;
   private final RecallSmsNotifier recallSmsNotifier;
+  private final NotificationService notifications;
   private final ObjectMapper json = new ObjectMapper();
 
-  public ManufacturerService(JdbcClient jdbc, QrCodeService qrCodeService, RecallSmsNotifier recallSmsNotifier) {
+  public ManufacturerService(JdbcClient jdbc, QrCodeService qrCodeService, RecallSmsNotifier recallSmsNotifier, NotificationService notifications) {
     this.jdbc = jdbc;
     this.qrCodeService = qrCodeService;
     this.recallSmsNotifier = recallSmsNotifier;
+    this.notifications = notifications;
   }
 
   public Map<String, Object> dashboard(CurrentUser user) {
@@ -187,6 +189,9 @@ public class ManufacturerService {
         .param("batchId", UUID.fromString(batchId)).update();
 
     recallSmsNotifier.notifyFoodRecall(UUID.fromString(batchId), reason);
+    String productName = jdbc.sql("SELECT COALESCE(product_name, batch_number) FROM product_batches WHERE id = :batchId")
+        .param("batchId", UUID.fromString(batchId)).query(String.class).single();
+    notifications.notifyScannersOfRecall(batchId, productName);
 
     return Map.of("recall", recall);
   }

@@ -17,7 +17,7 @@ public class ScanService {
 
   // ── Food scan ──────────────────────────────────────────────────────────────
 
-  public Map<String, Object> scanFood(String codeString) {
+  public Map<String, Object> scanFood(String codeString, String userId) {
     String code = normalize(codeString);
     return jdbc.sql("""
         SELECT
@@ -56,6 +56,10 @@ public class ScanService {
         .map(row -> {
           jdbc.sql("UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = :id")
               .param("id", row.get("qrId")).update();
+          jdbc.sql("INSERT INTO consumer_scans (qr_code_id, user_id) VALUES (:qrId, CAST(:userId AS uuid))")
+              .param("qrId", row.get("qrId"))
+              .param("userId", userId)
+              .update();
           return buildFoodResult(row);
         })
         .orElseGet(() -> notFound(code));

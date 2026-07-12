@@ -1,5 +1,6 @@
 package com.foodtrace.api.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,7 +29,7 @@ class ScanControllerTest {
 
   @Test
   void scan_safe_product_returns_green_status() throws Exception {
-    when(scanService.scanFood(eq("FT-QR-1001"))).thenReturn(Map.of(
+    when(scanService.scanFood(eq("FT-QR-1001"), any())).thenReturn(Map.of(
         "codeString", "FT-QR-1001",
         "status", "safe",
         "statusLabel", "GREEN",
@@ -44,7 +45,7 @@ class ScanControllerTest {
 
   @Test
   void scan_recalled_product_returns_red_status() throws Exception {
-    when(scanService.scanFood(eq("FT-QR-4004"))).thenReturn(Map.of(
+    when(scanService.scanFood(eq("FT-QR-4004"), any())).thenReturn(Map.of(
         "codeString", "FT-QR-4004",
         "status", "recalled",
         "statusLabel", "RED",
@@ -60,7 +61,7 @@ class ScanControllerTest {
 
   @Test
   void scan_unknown_code_returns_not_found() throws Exception {
-    when(scanService.scanFood(eq("UNKNOWN"))).thenReturn(Map.of(
+    when(scanService.scanFood(eq("UNKNOWN"), any())).thenReturn(Map.of(
         "codeString", "UNKNOWN",
         "status", "not_found",
         "title", "Product not found",
@@ -73,7 +74,7 @@ class ScanControllerTest {
 
   @Test
   void scan_is_public_no_auth_required() throws Exception {
-    when(scanService.scanFood(eq("FT-QR-1001"))).thenReturn(Map.of(
+    when(scanService.scanFood(eq("FT-QR-1001"), any())).thenReturn(Map.of(
         "codeString", "FT-QR-1001", "status", "safe", "title", "t", "summary", "s"));
 
     // No Authorization header — should still return 200

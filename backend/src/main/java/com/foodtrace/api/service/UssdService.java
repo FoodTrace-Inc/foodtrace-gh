@@ -47,7 +47,7 @@ public class UssdService {
   private String handleVerify(String[] parts) {
     if (parts.length < 2) return "CON Enter the batch or QR code (e.g. FT-QR-1001):";
     String code = parts[1].trim();
-    Map<String, Object> result = scanService.scanFood(code);
+    Map<String, Object> result = scanService.scanFood(code, null);
     if ("not_found".equals(result.get("status"))) {
       result = scanService.scanDrug(code);
     }

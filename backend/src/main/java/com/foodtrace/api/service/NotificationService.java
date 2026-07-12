@@ -14,9 +14,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class NotificationService {
   private final JdbcClient jdbc;
+  private final PushNotificationService pushNotificationService;
 
-  public NotificationService(JdbcClient jdbc) {
+  public NotificationService(JdbcClient jdbc, PushNotificationService pushNotificationService) {
     this.jdbc = jdbc;
+    this.pushNotificationService = pushNotificationService;
   }
 
   public void notify(String userId, String type, String title, String body, String postId) {
@@ -31,6 +33,24 @@ public class NotificationService {
         .param("b", body == null ? "" : body)
         .param("p", postId)
         .update();
+    pushNotificationService.sendToUser(userId, title, body == null ? "" : body);
+  }
+
+  /** Notifies every user who previously scanned this batch that it's now recalled. */
+  public void notifyScannersOfRecall(String batchId, String productName) {
+    List<String> scannerIds = jdbc.sql("""
+        SELECT DISTINCT cs.user_id
+        FROM consumer_scans cs
+        JOIN qr_codes q ON q.id = cs.qr_code_id
+        WHERE q.batch_id = CAST(:batchId AS uuid) AND cs.user_id IS NOT NULL
+        """)
+        .param("batchId", batchId)
+        .query(String.class)
+        .list();
+    for (String userId : scannerIds) {
+      notify(userId, "recall", "Product you scanned was recalled",
+          productName + " has just been recalled. Do not consume it — check the app for details.", null);
+    }
   }
 
   public void notifyRegulators(String type, String title, String body, String postId) {

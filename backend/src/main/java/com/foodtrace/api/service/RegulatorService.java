@@ -20,11 +20,13 @@ public class RegulatorService {
   private final JdbcClient jdbc;
   private final RecallSmsNotifier recallSmsNotifier;
   private final StorageService storageService;
+  private final NotificationService notifications;
 
-  public RegulatorService(JdbcClient jdbc, RecallSmsNotifier recallSmsNotifier, StorageService storageService) {
+  public RegulatorService(JdbcClient jdbc, RecallSmsNotifier recallSmsNotifier, StorageService storageService, NotificationService notifications) {
     this.jdbc = jdbc;
     this.recallSmsNotifier = recallSmsNotifier;
     this.storageService = storageService;
+    this.notifications = notifications;
   }
 
   public Map<String, Object> dashboard() {
@@ -186,6 +188,10 @@ public class RegulatorService {
         .param("districts", districts)
         .query(DatabaseRowMapper::toMap).single();
     recallSmsNotifier.notifyFoodRecall(UUID.fromString(batchId), reason);
+    // consumer_scans only tracks food QR scans, not drug ones — see drug branch above.
+    String productName = jdbc.sql("SELECT COALESCE(product_name, batch_number) FROM product_batches WHERE id = :batchId")
+        .param("batchId", UUID.fromString(batchId)).query(String.class).single();
+    notifications.notifyScannersOfRecall(batchId, productName);
     return Map.of("recall", recall);
   }
 
