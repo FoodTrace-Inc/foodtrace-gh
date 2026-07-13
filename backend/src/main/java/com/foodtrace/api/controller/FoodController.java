@@ -2,6 +2,7 @@ package com.foodtrace.api.controller;
 
 import com.foodtrace.api.security.CurrentUser;
 import com.foodtrace.api.service.FoodService;
+import com.foodtrace.api.service.WeatherService;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,14 +20,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping({"/api/food", "/api/farmer"})
 public class FoodController {
   private final FoodService foodService;
+  private final WeatherService weatherService;
 
-  public FoodController(FoodService foodService) {
+  public FoodController(FoodService foodService, WeatherService weatherService) {
     this.foodService = foodService;
+    this.weatherService = weatherService;
   }
 
   @GetMapping("/dashboard")
   public Map<String, Object> dashboard(Authentication authentication) {
     return Map.of("dashboard", foodService.dashboard(currentUser(authentication)));
+  }
+
+  @GetMapping("/weather")
+  public Map<String, Object> weather(@RequestParam(required = false) String region) {
+    return weatherService.forRegion(region);
   }
 
   @PostMapping("/farms")

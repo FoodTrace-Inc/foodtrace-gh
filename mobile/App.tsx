@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import Constants from "expo-constants";
+import { LinearGradient } from "expo-linear-gradient";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import * as ImagePicker from "expo-image-picker";
@@ -44,6 +45,7 @@ import {
   type ReviewReportRequest,
   type UserRole,
   type SpeechSummaryResponse,
+  type WeatherResponse,
 } from "@foodtrace/shared";
 import {
   QRScannerScreen,
@@ -203,6 +205,7 @@ export default function App() {
   // farmer / food
   const [foodDashboard, setFoodDashboard] = useState<FoodDashboardResponse | null>(null);
   const [foodStatus, setFoodStatus] = useState("");
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [farmName, setFarmName] = useState("Agyemang Farm");
   const [farmDistrict, setFarmDistrict] = useState("Ejisu");
   const [farmRegion, setFarmRegion] = useState("Ashanti");
@@ -687,7 +690,18 @@ export default function App() {
       setFoodStatus("Dashboard loaded.");
       if (!cycleFarmId && data.dashboard.farms[0]?.id) setCycleFarmId(data.dashboard.farms[0].id);
       if (!inputCycleId && data.dashboard.cropCycles[0]?.id) setInputCycleId(data.dashboard.cropCycles[0].id);
+      void loadWeather(data.dashboard.farms[0]?.region);
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
+  }
+
+  async function loadWeather(region?: string) {
+    if (!session?.token) return;
+    try {
+      const qs = region ? `?region=${encodeURIComponent(region)}` : "";
+      const response = await fetchWithRetry(`${apiBase}/food/weather${qs}`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const data = await readJsonResponse<WeatherResponse>(response);
+      setWeather(data);
+    } catch { /* weather is a nice-to-have — dashboard still works without it */ }
   }
 
   async function createFarm() {
@@ -1138,6 +1152,7 @@ export default function App() {
               <Text style={s.homeGreeting}>Hi, {(session.user.fullName || "there").split(" ")[0]}</Text>
 
               <Pressable style={s.scanHero} onPress={() => setConsumerTab("scanner")}>
+                <LinearGradient colors={["#1c4a34", "#0a1e15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                 <View style={[s.scanCorner, s.scanCornerTL]} />
                 <View style={[s.scanCorner, s.scanCornerTR]} />
                 <View style={[s.scanCorner, s.scanCornerBL]} />
@@ -1150,7 +1165,8 @@ export default function App() {
               </Pressable>
 
               <View style={s.bentoRow}>
-                <View style={s.bentoBig}>
+                <View style={[s.bentoBig, { overflow: "hidden" }]}>
+                  <LinearGradient colors={["#1a3d2c", "#12241a"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                   <Text style={s.bentoBigNumber}>{consumerHistory.length === 0 ? "—" : `${Math.round((consumerHistory.filter((h) => h.status !== "recalled").length / consumerHistory.length) * 100)}%`}</Text>
                   <Text style={s.bentoBigLabel}>Safe scans so far</Text>
                 </View>
@@ -1227,6 +1243,15 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
 
   const portalTitle = roleLabels[currentRole ?? ""] ?? "Portal";
+  const portalGradient: [string, string] = isFarmer
+    ? ["#1a4a34", "#0a2418"]
+    : isManufacturer
+    ? ["#4a3712", "#241b0a"]
+    : isPharmacist
+    ? ["#123a4a", "#0a2130"]
+    : isRegulator
+    ? ["#4a1e1e", "#2a1010"]
+    : ["#0d3428", "#081e18"];
 
   return (
     <SafeAreaView style={s.root}>
@@ -1282,7 +1307,8 @@ export default function App() {
         />
       ) : (
       <ScrollView contentContainerStyle={s.scrollPad} keyboardShouldPersistTaps="handled">
-        <View style={s.portalHero}>
+        <View style={[s.portalHero, { overflow: "hidden" }]}>
+          <LinearGradient colors={portalGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <Text style={s.heroKicker}>{portalTitle.toUpperCase()} PORTAL</Text>
           <Text style={s.heroTitle}>{session.user.fullName || portalTitle}</Text>
         </View>
@@ -1313,6 +1339,35 @@ export default function App() {
                 </View>
               ) : null}
             </View>
+
+            {weather ? (
+              <View style={[s.card, { overflow: "hidden" }]}>
+                <LinearGradient colors={["#173a2c", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+                <Text style={[s.cardKicker, { color: "#77c7a2" }]}>{weather.region.toUpperCase()} · WEATHER</Text>
+                <View style={s.weatherNow}>
+                  <View>
+                    <Text style={s.weatherTemp}>{Math.round(weather.current.temperatureC)}°C</Text>
+                    <Text style={s.weatherCondition}>{weather.current.condition}</Text>
+                  </View>
+                  <View style={s.weatherStatsCol}>
+                    <Text style={s.weatherStat}>Humidity {Math.round(weather.current.humidityPercent)}%</Text>
+                    <Text style={s.weatherStat}>Wind {Math.round(weather.current.windSpeedKmh)} km/h</Text>
+                    <Text style={s.weatherStat}>Rain {weather.current.precipitationMm} mm</Text>
+                  </View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.weatherForecastRow}>
+                  {weather.forecast.time.map((day, i) => (
+                    <View key={day} style={s.weatherDayTile}>
+                      <Text style={s.weatherDayLabel}>
+                        {i === 0 ? "Today" : new Date(day).toLocaleDateString("en-GB", { weekday: "short" })}
+                      </Text>
+                      <Text style={s.weatherDayTemp}>{Math.round(weather.forecast.temperature_2m_max[i])}°/{Math.round(weather.forecast.temperature_2m_min[i])}°</Text>
+                      <Text style={s.weatherDayRain}>{weather.forecast.precipitation_probability_max[i]}% rain</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
 
             <FormCard title="Create Farm">
               <TextInput placeholder="Farm name" placeholderTextColor="#748089" style={s.input} value={farmName} onChangeText={setFarmName} />
@@ -1352,7 +1407,8 @@ export default function App() {
         {/* MANUFACTURER */}
         {isManufacturer ? (
           <>
-            <View style={s.card}>
+            <View style={[s.card, { overflow: "hidden" }]}>
+              <LinearGradient colors={["#3d2e10", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
               <Text style={[s.cardKicker, { color: "#E0A83B" }]}>MANUFACTURER · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadManufacturerDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {manufacturerStatus ? <Text style={[s.statusMsg, isErrorMsg(manufacturerStatus) ? s.statusErr : s.statusOk]}>{manufacturerStatus}</Text> : null}
@@ -1404,7 +1460,8 @@ export default function App() {
         {/* REGULATOR */}
         {isRegulator ? (
           <>
-            <View style={s.card}>
+            <View style={[s.card, { overflow: "hidden" }]}>
+              <LinearGradient colors={["#3d1c1c", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
               <Text style={[s.cardKicker, { color: "#E27D7D" }]}>REGULATOR · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadRegulatorDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {regulatorStatus ? <Text style={[s.statusMsg, isErrorMsg(regulatorStatus) ? s.statusErr : s.statusOk]}>{regulatorStatus}</Text> : null}
@@ -1451,7 +1508,8 @@ export default function App() {
         {/* PHARMACIST */}
         {isPharmacist ? (
           <>
-            <View style={s.card}>
+            <View style={[s.card, { overflow: "hidden" }]}>
+              <LinearGradient colors={["#12303d", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
               <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>PHARMACY · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadPharmacyDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {pharmacyStatus ? <Text style={[s.statusMsg, isErrorMsg(pharmacyStatus) ? s.statusErr : s.statusOk]}>{pharmacyStatus}</Text> : null}
@@ -1692,6 +1750,16 @@ const s = StyleSheet.create({
   metricItem: { backgroundColor: "#151A15", borderRadius: 16, padding: 14, minWidth: 96, flex: 1, alignItems: "flex-start", borderWidth: 0.5, borderColor: "#26302A" },
   metricVal: { color: "#f4f4ef", fontWeight: "800", fontSize: 22, marginBottom: 3 },
   metricLabel: { color: "#7C9C8C", fontSize: 11 },
+  weatherNow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14 },
+  weatherTemp: { color: "#f4f4ef", fontWeight: "800", fontSize: 34 },
+  weatherCondition: { color: "#77c7a2", fontSize: 13, marginTop: 2 },
+  weatherStatsCol: { alignItems: "flex-end" },
+  weatherStat: { color: "#7C9C8C", fontSize: 12, marginBottom: 3 },
+  weatherForecastRow: { marginTop: 16 },
+  weatherDayTile: { backgroundColor: "#151A15", borderRadius: 14, padding: 12, marginRight: 8, minWidth: 76, alignItems: "center", borderWidth: 0.5, borderColor: "#26302A" },
+  weatherDayLabel: { color: "#7C9C8C", fontSize: 11, marginBottom: 6 },
+  weatherDayTemp: { color: "#f4f4ef", fontSize: 13, fontWeight: "700" },
+  weatherDayRain: { color: "#5CA8E0", fontSize: 10, marginTop: 4 },
   statusMsg: { marginTop: 10, fontSize: 13 },
   statusOk: { color: "#77c7a2" },
   statusErr: { color: "#f87171" },

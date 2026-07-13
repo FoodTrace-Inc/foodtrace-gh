@@ -201,6 +201,24 @@ export interface FoodDashboardResponse {
   };
 }
 
+export interface WeatherResponse {
+  region: string;
+  current: {
+    temperatureC: number;
+    humidityPercent: number;
+    precipitationMm: number;
+    windSpeedKmh: number;
+    condition: string;
+  };
+  forecast: {
+    time: string[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_probability_max: number[];
+    weather_code: number[];
+  };
+}
+
 export interface CreateFarmRequest {
   name: string;
   district: string;
