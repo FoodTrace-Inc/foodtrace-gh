@@ -82,7 +82,9 @@ Default local URLs:
 - Health check: `http://localhost:3000/health`
 ## Demo Accounts
 
-All seeded accounts use the password `Password123!`.
+All seeded accounts use the password `Password123!`. These exist on both
+local dev (via `scripts/seed/seed_dev.cjs`) and production
+(`foodtrace-gh.onrender.com`, seeded manually to match this table).
 
 | Role | Email |
 | --- | --- |
@@ -92,16 +94,27 @@ All seeded accounts use the password `Password123!`.
 | Pharmacist | `kumasi.pharmacy@foodtrace.gh` |
 | Regulator | `regulator@foodtrace.gh` |
 
-Useful demo QR codes:
+Production also has ~500 bulk demo products/batches seeded via
+`seed_demo_data.py` under a separate `accra.foods@foodtrace.gh`-style
+manufacturer/pharmacist pair (phones `0200000001` / `0200000002`,
+password `Demo@1234`) — that script's full QR list is written to
+`demo_qr_codes.txt` (gitignored, regenerate by re-running the script).
+
+Useful demo QR codes (verified working on production):
 
 | Flow | Code | Expected result |
 | --- | --- | --- |
-| Safe food | `FT-QR-1001` | Accra Foods Tomato Paste 400g |
-| Safe beverage | `FT-QR-2002` | GoldCoast Sobolo Drink 500ml |
-| Recalled food | `FT-QR-4004` | Recalled Sobolo batch |
-| OTC drug | `DR-QR-1001` | Paracetamol 500mg |
-| Prescription drug | `DR-QR-2002` | Artesunate 50mg |
-| Banned/recalled drug | `DR-QR-4004` | Fake Chloroquine test batch |
+| Safe food | `FT-FD1001-2B5B7A` | ZenMalt Barley Drink |
+| Recalled food | `FT-FD1000-932BF6` | AquaFresh Pure Water (recalled) |
+| Expired/caution food | `FT-FD1007-6FDD72` | AquaBliss Table Water (expired) |
+| Safe drug | `DR-DR2001-7FEA32` | AmoxiCure 500mg Capsules |
+| Recalled drug | `DR-DR2000-C652FA` | AmoxiCure 250mg Capsules (recalled) |
+| Expired/caution drug | `DR-DR2007-ACD24D` | OfloxiCure 400mg Tablets (expired) |
+
+Note: food codes resolve via `GET /api/scan/:code`, drug codes via
+`GET /api/drug/scan/:code` — the apps route to the right one
+automatically, but if testing with `curl` directly, use the matching
+endpoint or the code will return `not_found`.
 
 ## API Endpoints
 
