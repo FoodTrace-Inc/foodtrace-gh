@@ -179,8 +179,10 @@ public class CompatibilityControllers {
 
     @GetMapping
     Map<String, Object> get() {
-      String key = System.getenv("ANTHROPIC_API_KEY");
-      return Map.of("status", key != null && !key.isBlank() ? "ready" : "not_configured");
+      String gemini = System.getenv("GEMINI_API_KEY");
+      String claude = System.getenv("ANTHROPIC_API_KEY");
+      boolean ready = (gemini != null && !gemini.isBlank()) || (claude != null && !claude.isBlank());
+      return Map.of("status", ready ? "ready" : "not_configured");
     }
 
     @SuppressWarnings("unchecked")
@@ -188,8 +190,11 @@ public class CompatibilityControllers {
     Map<String, Object> chat(@RequestBody Map<String, Object> body) {
       String message = String.valueOf(body.getOrDefault("message", "")).trim();
       if (message.isBlank()) return Map.of("reply", "Please ask a question.");
-      String key = System.getenv("ANTHROPIC_API_KEY");
-      if (key == null || key.isBlank()) return Map.of("reply", fallback(message));
+      String geminiKey = System.getenv("GEMINI_API_KEY");
+      String claudeKey = System.getenv("ANTHROPIC_API_KEY");
+      if ((geminiKey == null || geminiKey.isBlank()) && (claudeKey == null || claudeKey.isBlank())) {
+        return Map.of("reply", fallback(message));
+      }
       try {
         // Support conversation history for context-aware responses
         java.util.List<Map<String, Object>> history = new java.util.ArrayList<>();
@@ -206,7 +211,10 @@ public class CompatibilityControllers {
           }
         }
         history.add(Map.of("role", "user", "content", message));
-        return Map.of("reply", callClaude(key, history));
+        if (geminiKey != null && !geminiKey.isBlank()) {
+          return Map.of("reply", callGemini(geminiKey, history));
+        }
+        return Map.of("reply", callClaude(claudeKey, history));
       } catch (Exception e) {
         return Map.of("reply", fallback(message));
       }
@@ -238,6 +246,36 @@ public class CompatibilityControllers {
       JsonNode root = mapper.readTree(res.body());
       String text = root.path("content").path(0).path("text").asText("");
       if (text.isBlank()) throw new RuntimeException("Empty response from Anthropic");
+      return text;
+    }
+
+    private String callGemini(String apiKey, java.util.List<Map<String, Object>> messages) throws Exception {
+      java.util.List<Map<String, Object>> contents = new java.util.ArrayList<>();
+      for (Map<String, Object> msg : messages) {
+        String role = "user".equals(msg.get("role")) ? "user" : "model";
+        contents.add(Map.of(
+            "role", role,
+            "parts", java.util.List.of(Map.of("text", String.valueOf(msg.get("content"))))
+        ));
+      }
+      String payload = mapper.writeValueAsString(Map.of(
+          "system_instruction", Map.of("parts", java.util.List.of(Map.of("text", SYSTEM_PROMPT))),
+          "contents", contents,
+          "generationConfig", Map.of("maxOutputTokens", 700)
+      ));
+      HttpRequest req = HttpRequest.newBuilder()
+          .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent"))
+          .header("Content-Type", "application/json")
+          .header("x-goog-api-key", apiKey)
+          .POST(HttpRequest.BodyPublishers.ofString(payload))
+          .build();
+      HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+      if (res.statusCode() != 200) {
+        throw new RuntimeException("Gemini error " + res.statusCode() + ": " + res.body());
+      }
+      JsonNode root = mapper.readTree(res.body());
+      String text = root.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
+      if (text.isBlank()) throw new RuntimeException("Empty response from Gemini");
       return text;
     }
 
