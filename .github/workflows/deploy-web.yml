@@ -32,6 +32,7 @@ jobs:
         env:
           GITHUB_PAGES: "true"
           VITE_API_BASE_URL: https://foodtrace-gh.onrender.com/api
+          VITE_ENABLE_DRUG_MODULE: "true"
         run: npm run build --workspace web
       - uses: actions/upload-pages-artifact@v3
         with:
