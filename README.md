@@ -4,6 +4,8 @@
 
 FoodTrace GH is a Ghana-focused food traceability platform for consumers, farmers, manufacturers, and FDA regulators. It helps people verify product safety from a QR code, gives farmers and manufacturers a practical way to log traceability data, and gives regulators a faster view of recalls, consumer reports, and high-risk products across districts.
 
+**Live app:** https://foodtrace-inc.github.io/foodtrace-gh/ (web) · backend API at https://foodtrace-gh.onrender.com
+
 ## Key Features
 
 - Food traceability from farm input to packaged product.
