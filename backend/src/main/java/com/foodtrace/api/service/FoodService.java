@@ -91,16 +91,26 @@ public class FoodService {
     Validate.require(body, "cropCycleId", "productName", "applicationDate", "inputType");
     int withdrawalDays = Number.class.isInstance(body.get("withdrawalPeriodDays")) ? ((Number) body.get("withdrawalPeriodDays")).intValue() : 0;
     LocalDate applicationDate = LocalDate.parse(String.valueOf(body.get("applicationDate")));
+    String productName = String.valueOf(body.get("productName"));
+
+    // Cross-check the product name against the EPA pesticide registry — a
+    // known match is authoritative over whatever the farmer manually picks.
+    // Falls back to the farmer's own claim (or "unverified") when unmatched.
+    String matchedStatus = jdbc.sql("SELECT epa_status::text FROM pesticides WHERE lower(name) = lower(:name) LIMIT 1")
+        .param("name", productName).query(String.class).optional().orElse(null);
+    String epaStatus = matchedStatus != null ? matchedStatus
+        : body.get("epaApprovalStatus") != null ? String.valueOf(body.get("epaApprovalStatus")) : "unverified";
+
     Map<String, Object> log = jdbc.sql("""
         INSERT INTO input_logs (crop_cycle_id, input_type, product_name, epa_approval_status, application_date, concentration, unit, withdrawal_period_days, safe_harvest_date)
-        SELECT cc.id, CAST(:inputType AS input_type), :productName, 'unverified', :applicationDate, :concentration, :unit, :withdrawalDays, :safeHarvestDate
+        SELECT cc.id, CAST(:inputType AS input_type), :productName, CAST(:epaStatus AS epa_status), :applicationDate, :concentration, :unit, :withdrawalDays, :safeHarvestDate
         FROM crop_cycles cc
         JOIN farms f ON f.id = cc.farm_id
         WHERE cc.id = :cycleId AND f.owner_id = :owner
         RETURNING id, crop_cycle_id, input_type, product_name, application_date, withdrawal_period_days, safe_harvest_date, epa_approval_status
         """)
         .param("cycleId", body.get("cropCycleId")).param("owner", user.id()).param("inputType", body.get("inputType"))
-        .param("productName", body.get("productName")).param("applicationDate", applicationDate)
+        .param("productName", productName).param("epaStatus", epaStatus).param("applicationDate", applicationDate)
         .param("concentration", body.get("concentration")).param("unit", body.get("unit"))
         .param("withdrawalDays", withdrawalDays).param("safeHarvestDate", applicationDate.plusDays(withdrawalDays))
         .query(DatabaseRowMapper::toMap).single();
@@ -122,6 +132,20 @@ public class FoodService {
         .param("harvestDate", body.get("harvestDate"))
         .query(DatabaseRowMapper::toMap).single();
     return Map.of("cropCycle", cycle);
+  }
+
+  public List<Map<String, Object>> searchPesticides(String query) {
+    if (query == null || query.isBlank()) {
+      return jdbc.sql("SELECT name, active_ingredient, epa_status, withdrawal_days, health_risks, ban_reason FROM pesticides ORDER BY name")
+          .query(DatabaseRowMapper::toMap).list();
+    }
+    return jdbc.sql("""
+        SELECT name, active_ingredient, epa_status, withdrawal_days, health_risks, ban_reason
+        FROM pesticides WHERE name ILIKE :q OR active_ingredient ILIKE :q
+        ORDER BY name LIMIT 10
+        """)
+        .param("q", "%" + query.trim() + "%")
+        .query(DatabaseRowMapper::toMap).list();
   }
 
   private String[] cropTypes(Object value) {

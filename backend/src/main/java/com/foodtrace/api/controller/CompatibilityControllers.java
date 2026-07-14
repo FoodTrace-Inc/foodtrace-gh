@@ -1,6 +1,7 @@
 package com.foodtrace.api.controller;
 
 import com.foodtrace.api.security.CurrentUser;
+import com.foodtrace.api.service.AuditLogService;
 import com.foodtrace.api.service.ManufacturerService;
 import com.foodtrace.api.service.RegulatorService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -66,9 +67,11 @@ public class CompatibilityControllers {
   @RequestMapping("/api/regulator")
   static class RegulatorController {
     private final RegulatorService regulatorService;
+    private final AuditLogService auditLogService;
 
-    RegulatorController(RegulatorService regulatorService) {
+    RegulatorController(RegulatorService regulatorService, AuditLogService auditLogService) {
       this.regulatorService = regulatorService;
+      this.auditLogService = auditLogService;
     }
 
     @GetMapping("/dashboard")
@@ -76,9 +79,14 @@ public class CompatibilityControllers {
       return regulatorService.dashboard();
     }
 
+    @GetMapping("/audit-logs")
+    Map<String, Object> auditLogs() {
+      return Map.of("logs", auditLogService.recent(100));
+    }
+
     @PatchMapping("/reports")
-    Map<String, Object> reviewReport(@RequestBody Map<String, Object> body) {
-      return regulatorService.reviewReport(body);
+    Map<String, Object> reviewReport(@RequestBody Map<String, Object> body, Authentication authentication) {
+      return regulatorService.reviewReport(currentUser(authentication), body);
     }
 
     @PostMapping("/recalls")

@@ -21,12 +21,14 @@ public class RegulatorService {
   private final RecallSmsNotifier recallSmsNotifier;
   private final StorageService storageService;
   private final NotificationService notifications;
+  private final AuditLogService auditLog;
 
-  public RegulatorService(JdbcClient jdbc, RecallSmsNotifier recallSmsNotifier, StorageService storageService, NotificationService notifications) {
+  public RegulatorService(JdbcClient jdbc, RecallSmsNotifier recallSmsNotifier, StorageService storageService, NotificationService notifications, AuditLogService auditLog) {
     this.jdbc = jdbc;
     this.recallSmsNotifier = recallSmsNotifier;
     this.storageService = storageService;
     this.notifications = notifications;
+    this.auditLog = auditLog;
   }
 
   public Map<String, Object> dashboard() {
@@ -112,7 +114,7 @@ public class RegulatorService {
 
   private static final List<String> REPORT_STATUSES = List.of("pending", "reviewing", "resolved", "dismissed");
 
-  public Map<String, Object> reviewReport(Map<String, Object> body) {
+  public Map<String, Object> reviewReport(CurrentUser user, Map<String, Object> body) {
     String reportId = blankToNull(body.get("reportId"));
     String status = blankToNull(body.get("status"));
     if (reportId == null) {
@@ -135,6 +137,7 @@ public class RegulatorService {
         .param("status", status.toLowerCase())
         .update();
     if (updated == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found");
+    auditLog.log(user.id(), "report.review", "consumer_report", reportId, Map.of("status", status.toLowerCase()));
     return Map.of("updated", true);
   }
 
@@ -170,6 +173,7 @@ public class RegulatorService {
           .param("id", UUID.fromString(batchId))
           .query(String.class).optional().orElse("A medicine");
       notifications.notifyDrugScannersOfRecall(batchId, drugName);
+      auditLog.log(user.id(), "recall.issued", "drug_batch", batchId, Map.of("reason", reason, "issuedBy", "regulator"));
       return Map.of("recall", recall);
     }
 
@@ -197,6 +201,7 @@ public class RegulatorService {
     String productName = jdbc.sql("SELECT COALESCE(product_name, batch_number) FROM product_batches WHERE id = :batchId")
         .param("batchId", UUID.fromString(batchId)).query(String.class).single();
     notifications.notifyScannersOfRecall(batchId, productName);
+    auditLog.log(user.id(), "recall.issued", "product_batch", batchId, Map.of("reason", reason, "issuedBy", "regulator"));
     return Map.of("recall", recall);
   }
 

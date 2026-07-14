@@ -201,6 +201,15 @@ export interface FoodDashboardResponse {
   };
 }
 
+export interface PesticideEntry {
+  name: string;
+  activeIngredient?: string | null;
+  epaStatus: "approved" | "banned" | "restricted" | "unverified";
+  withdrawalDays: number;
+  healthRisks?: string | null;
+  banReason?: string | null;
+}
+
 export interface WeatherResponse {
   region: string;
   current: {

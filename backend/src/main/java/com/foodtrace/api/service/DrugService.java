@@ -15,11 +15,13 @@ public class DrugService {
   private final JdbcClient jdbc;
   private final QrCodeService qrCodeService;
   private final NotificationService notifications;
+  private final AuditLogService auditLog;
 
-  public DrugService(JdbcClient jdbc, QrCodeService qrCodeService, NotificationService notifications) {
+  public DrugService(JdbcClient jdbc, QrCodeService qrCodeService, NotificationService notifications, AuditLogService auditLog) {
     this.jdbc = jdbc;
     this.qrCodeService = qrCodeService;
     this.notifications = notifications;
+    this.auditLog = auditLog;
   }
 
   public Map<String, Object> dashboard(CurrentUser user) {
@@ -218,6 +220,7 @@ public class DrugService {
         .param("id", UUID.fromString(batchId))
         .query(String.class).optional().orElse("A medicine");
     notifications.notifyDrugScannersOfRecall(batchId, drugName);
+    auditLog.log(user.id(), "recall.issued", "drug_batch", batchId, Map.of("reason", reason, "issuedBy", "pharmacist"));
 
     return Map.of("recall", recall);
   }

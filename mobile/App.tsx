@@ -46,6 +46,7 @@ import {
   type UserRole,
   type SpeechSummaryResponse,
   type WeatherResponse,
+  type PesticideEntry,
 } from "@foodtrace/shared";
 import {
   QRScannerScreen,
@@ -158,6 +159,20 @@ type HistoryEntry = {
 };
 type ScannerTarget = { kind: "food" | "drug"; codeString: string };
 
+function epaStatusColor(status: string) {
+  if (status === "banned") return { color: "#f87171" };
+  if (status === "restricted") return { color: "#E0A83B" };
+  if (status === "approved") return { color: "#4ade80" };
+  return { color: "#7C9C8C" };
+}
+
+function epaBannerColor(status: string) {
+  if (status === "banned") return { backgroundColor: "#3d1c1c", borderColor: "#f87171" };
+  if (status === "restricted") return { backgroundColor: "#3d2e10", borderColor: "#E0A83B" };
+  if (status === "approved") return { backgroundColor: "#1a3d2c", borderColor: "#4ade80" };
+  return { backgroundColor: "#151A15", borderColor: "#26302A" };
+}
+
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -219,6 +234,8 @@ export default function App() {
   const [inputApplicationDate, setInputApplicationDate] = useState("2026-04-20");
   const [inputWithdrawalDays, setInputWithdrawalDays] = useState("14");
   const [inputEpaStatus, setInputEpaStatus] = useState("approved");
+  const [pesticideSuggestions, setPesticideSuggestions] = useState<PesticideEntry[]>([]);
+  const [matchedPesticide, setMatchedPesticide] = useState<PesticideEntry | null>(null);
   const [marketReadyCycleId, setMarketReadyCycleId] = useState("");
   const [marketReadyValue, setMarketReadyValue] = useState(true);
   const [offlineQueue, setOfflineQueue] = useState("[]");
@@ -702,6 +719,25 @@ export default function App() {
       const data = await readJsonResponse<WeatherResponse>(response);
       setWeather(data);
     } catch { /* weather is a nice-to-have — dashboard still works without it */ }
+  }
+
+  async function searchPesticides(query: string) {
+    setInputProductName(query);
+    setMatchedPesticide(null);
+    if (!session?.token || query.trim().length < 2) { setPesticideSuggestions([]); return; }
+    try {
+      const response = await fetch(`${apiBase}/food/pesticides?q=${encodeURIComponent(query.trim())}`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const data = await readJsonResponse<{ pesticides: PesticideEntry[] }>(response);
+      setPesticideSuggestions(data.pesticides ?? []);
+    } catch { /* suggestions are a nice-to-have */ }
+  }
+
+  function selectPesticide(entry: PesticideEntry) {
+    setInputProductName(entry.name);
+    setInputEpaStatus(entry.epaStatus);
+    if (entry.withdrawalDays) setInputWithdrawalDays(String(entry.withdrawalDays));
+    setMatchedPesticide(entry);
+    setPesticideSuggestions([]);
   }
 
   async function createFarm() {
@@ -1418,7 +1454,27 @@ export default function App() {
 
             <FormCard title="Log Input">
               <TextInput placeholder="Crop cycle ID (auto-filled after load)" placeholderTextColor="#748089" style={s.input} value={inputCycleId} onChangeText={setInputCycleId} />
-              <TextInput placeholder="Product name" placeholderTextColor="#748089" style={s.input} value={inputProductName} onChangeText={setInputProductName} />
+              <TextInput placeholder="Product name (search EPA registry)" placeholderTextColor="#748089" style={s.input} value={inputProductName} onChangeText={(v) => void searchPesticides(v)} />
+              {pesticideSuggestions.length > 0 ? (
+                <View style={s.pesticideSuggestBox}>
+                  {pesticideSuggestions.map((p) => (
+                    <Pressable key={p.name} style={s.pesticideSuggestRow} onPress={() => selectPesticide(p)}>
+                      <Text style={s.pesticideSuggestName}>{p.name}</Text>
+                      <Text style={[s.pesticideSuggestStatus, epaStatusColor(p.epaStatus)]}>{p.epaStatus.toUpperCase()}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+              {matchedPesticide ? (
+                <View style={[s.pesticideBanner, epaBannerColor(matchedPesticide.epaStatus)]}>
+                  <Text style={s.pesticideBannerText}>
+                    {matchedPesticide.epaStatus === "banned" ? `⚠ Banned by EPA Ghana${matchedPesticide.banReason ? `: ${matchedPesticide.banReason}` : ""}`
+                      : matchedPesticide.epaStatus === "restricted" ? "⚠ Restricted-use pesticide — trained applicators only"
+                      : matchedPesticide.epaStatus === "approved" ? "✓ EPA Ghana registered pesticide"
+                      : "EPA status not yet verified"}
+                  </Text>
+                </View>
+              ) : null}
               <TextInput placeholder="Application date (YYYY-MM-DD)" placeholderTextColor="#748089" style={s.input} value={inputApplicationDate} onChangeText={setInputApplicationDate} />
               <TextInput placeholder="Withdrawal days" placeholderTextColor="#748089" style={s.input} value={inputWithdrawalDays} onChangeText={setInputWithdrawalDays} keyboardType="numeric" />
               <TextInput placeholder="EPA status" placeholderTextColor="#748089" style={s.input} value={inputEpaStatus} onChangeText={setInputEpaStatus} />
@@ -1917,6 +1973,12 @@ const s = StyleSheet.create({
   expiryDaysText: { fontSize: 12, fontWeight: "700" },
   expiryTrack: { height: 6, borderRadius: 4, backgroundColor: "#26302A", overflow: "hidden" },
   expiryFill: { height: "100%", borderRadius: 4 },
+  pesticideSuggestBox: { backgroundColor: "#151A15", borderRadius: 12, borderWidth: 0.5, borderColor: "#26302A", marginBottom: 10, overflow: "hidden" },
+  pesticideSuggestRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 0.5, borderBottomColor: "#26302A" },
+  pesticideSuggestName: { color: "#f4f4ef", fontSize: 13 },
+  pesticideSuggestStatus: { fontSize: 11, fontWeight: "700" },
+  pesticideBanner: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 10 },
+  pesticideBannerText: { color: "#f4f4ef", fontSize: 12, lineHeight: 17 },
   statusMsg: { marginTop: 10, fontSize: 13 },
   statusOk: { color: "#77c7a2" },
   statusErr: { color: "#f87171" },

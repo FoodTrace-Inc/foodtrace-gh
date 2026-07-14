@@ -37,6 +37,11 @@ public class FoodController {
     return weatherService.forRegion(region);
   }
 
+  @GetMapping("/pesticides")
+  public Map<String, Object> pesticides(@RequestParam(required = false) String q) {
+    return Map.of("pesticides", foodService.searchPesticides(q));
+  }
+
   @PostMapping("/farms")
   @ResponseStatus(HttpStatus.CREATED)
   public Map<String, Object> createFarm(@RequestBody Map<String, Object> body, Authentication authentication) {
