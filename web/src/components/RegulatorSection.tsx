@@ -126,6 +126,47 @@ export function RegulatorSection({ session }: Props) {
           <p style={styles.resultSummary}>Latest recall: {regulatorDashboard.recalls[0]?.reason ?? "None yet"}</p>
         </article>
       ) : null}
+      {regulatorDashboard ? (() => {
+        const { safeScans, cautionScans, recalledScans } = regulatorDashboard.compliance;
+        const totalScans = safeScans + cautionScans + recalledScans;
+        const segments: [string, number, string][] = [
+          ["Safe", safeScans, "#4ade80"],
+          ["Caution", cautionScans, "#E0A83B"],
+          ["Recalled", recalledScans, "#f87171"],
+        ];
+        return (
+          <article style={styles.resultCard}>
+            <p style={styles.scanKicker}>National scan overview</p>
+            {totalScans > 0 ? (
+              <>
+                <div style={styles.pipelineBar}>
+                  {segments.filter(([, count]) => count > 0).map(([label, count, color]) => (
+                    <div key={label} style={{ flex: count, background: color }} />
+                  ))}
+                </div>
+                <div style={styles.pipelineLegendRow}>
+                  {segments.map(([label, count, color]) => (
+                    <div key={label} style={styles.pipelineLegendItem}>
+                      <span style={{ ...styles.pipelineDot, background: color }} />
+                      <p style={styles.pipelineLegendText}>{label} · {count}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : <p style={styles.pipelineTotal}>No scans recorded yet.</p>}
+            {regulatorDashboard.analytics.topDistricts.length > 0 ? (
+              <>
+                <p style={{ ...styles.pipelineTotal, marginTop: 14, marginBottom: 6 }}>Top districts by activity</p>
+                <div style={styles.districtChipRow}>
+                  {regulatorDashboard.analytics.topDistricts.map((d) => (
+                    <div key={d} style={styles.districtChip}><p style={styles.districtChipText}>{d}</p></div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </article>
+        );
+      })() : null}
       {regulatorDashboard ? (
         <article style={styles.resultCard}>
           <h3 style={styles.resultTitle}>Violation alerts</h3>

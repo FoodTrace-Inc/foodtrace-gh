@@ -435,6 +435,21 @@ export const styles: Record<string, CSSProperties> = {
   weatherDayLabel: { color: "#8fa39a", fontSize: 12, margin: "0 0 6px" },
   weatherDayTemp: { color: "#f4f4ef", fontSize: 14, fontWeight: 700, margin: 0 },
   weatherDayRain: { color: "#5CA8E0", fontSize: 11, margin: "4px 0 0" },
+  pipelineBar: { display: "flex", height: 10, borderRadius: 6, overflow: "hidden", marginTop: 14, background: "#26302A" },
+  pipelineLegendRow: { display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 },
+  pipelineLegendItem: { display: "flex", alignItems: "center", gap: 6 },
+  pipelineDot: { width: 8, height: 8, borderRadius: 4, display: "inline-block" },
+  pipelineLegendText: { color: "#B9C4BC", fontSize: 12, margin: 0 },
+  pipelineTotal: { color: "#7C9C8C", fontSize: 12, marginTop: 10 },
+  districtChipRow: { display: "flex", flexWrap: "wrap", gap: 8 },
+  districtChip: { background: "#151A15", borderRadius: 999, padding: "6px 14px", border: "1px solid #26302A" },
+  districtChipText: { color: "#E27D7D", fontSize: 12, fontWeight: 600, margin: 0 },
+  expiryRow: { marginTop: 14 },
+  expiryRowHead: { display: "flex", justifyContent: "space-between", marginBottom: 6 },
+  expiryBatchNumber: { color: "#f4f4ef", fontSize: 13, fontWeight: 600, margin: 0 },
+  expiryDaysText: { fontSize: 12, fontWeight: 700, margin: 0 },
+  expiryTrack: { height: 6, borderRadius: 4, background: "#26302A", overflow: "hidden" },
+  expiryFill: { height: "100%", borderRadius: 4 },
 };
 
 export function scanBadgeStyle(status: ProductScanResult["status"]): CSSProperties {

@@ -238,6 +238,36 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
           <p style={styles.resultSummary}>Latest recall: {pharmacyDashboard.recalls[0]?.reason ?? "None yet"}</p>
         </article>
       ) : null}
+      {isPharmacist && pharmacyDashboard && pharmacyDashboard.batches.length > 0 ? (() => {
+        const now = Date.now();
+        const rows = pharmacyDashboard.batches
+          .filter((b) => b.recallStatus !== "recalled")
+          .map((b) => ({ ...b, daysLeft: Math.ceil((new Date(b.expiryDate).getTime() - now) / 86400000) }))
+          .sort((a, b) => a.daysLeft - b.daysLeft)
+          .slice(0, 5);
+        return (
+          <article style={styles.resultCard}>
+            <p style={styles.scanKicker}>Inventory · expiry watch</p>
+            {rows.map((b) => {
+              const urgent = b.daysLeft <= 7;
+              const soon = b.daysLeft <= 30;
+              const pct = Math.max(0, Math.min(100, 100 - (b.daysLeft / 180) * 100));
+              const color = b.daysLeft < 0 ? "#f87171" : urgent ? "#f87171" : soon ? "#E0A83B" : "#5CA8E0";
+              return (
+                <div key={b.id} style={styles.expiryRow}>
+                  <div style={styles.expiryRowHead}>
+                    <p style={styles.expiryBatchNumber}>{b.batchNumber}</p>
+                    <p style={{ ...styles.expiryDaysText, color }}>{b.daysLeft < 0 ? "Expired" : `${b.daysLeft}d left`}</p>
+                  </div>
+                  <div style={styles.expiryTrack}>
+                    <div style={{ ...styles.expiryFill, width: `${pct}%`, background: color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </article>
+        );
+      })() : null}
     </section>
   );
 }

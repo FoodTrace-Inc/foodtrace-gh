@@ -196,6 +196,36 @@ export function ManufacturerSection({ session }: Props) {
           <p style={styles.resultSummary}>Latest recall: {manufacturerDashboard.recalls[0]?.reason ?? "None yet"}</p>
         </article>
       ) : null}
+      {manufacturerDashboard && manufacturerDashboard.batches.length > 0 ? (() => {
+        const counts: Record<string, number> = { active: 0, recalled: 0, under_investigation: 0, expired: 0 };
+        manufacturerDashboard.batches.forEach((b) => { counts[b.recallStatus] = (counts[b.recallStatus] ?? 0) + 1; });
+        const total = manufacturerDashboard.batches.length;
+        const segments: [string, number, string][] = [
+          ["Active", counts.active, "#4ade80"],
+          ["Under investigation", counts.under_investigation, "#E0A83B"],
+          ["Recalled", counts.recalled, "#f87171"],
+          ["Expired", counts.expired, "#5F5E5A"],
+        ];
+        return (
+          <article style={styles.resultCard}>
+            <p style={styles.scanKicker}>Batch pipeline</p>
+            <div style={styles.pipelineBar}>
+              {segments.filter(([, count]) => count > 0).map(([label, count, color]) => (
+                <div key={label} style={{ flex: count, background: color }} />
+              ))}
+            </div>
+            <div style={styles.pipelineLegendRow}>
+              {segments.map(([label, count, color]) => (
+                <div key={label} style={styles.pipelineLegendItem}>
+                  <span style={{ ...styles.pipelineDot, background: color }} />
+                  <p style={styles.pipelineLegendText}>{label} · {count}</p>
+                </div>
+              ))}
+            </div>
+            <p style={styles.pipelineTotal}>{total} batch{total === 1 ? "" : "es"} tracked</p>
+          </article>
+        );
+      })() : null}
     </section>
   );
 }
