@@ -4,7 +4,6 @@ import {
   Image,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { Audio } from "expo-av";
@@ -184,6 +184,17 @@ function epaBannerColor(status: string) {
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function App() {
+  // SafeAreaProvider supplies real device insets (status bar, notch, gesture
+  // bar) to the SafeAreaView wrappers below. Without it, SDK 55 draws
+  // edge-to-edge on Android and content spills under the system bars.
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   // auth
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
