@@ -3,6 +3,9 @@ package com.foodtrace.api.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -53,5 +56,32 @@ class SchemaRepairRunnerTest {
     List<String> parts = SchemaRepairRunner.splitStatements(sql);
     assertEquals(2, parts.size());
     assertTrue(parts.get(1).contains("'-- not a comment'"));
+  }
+
+  @Test
+  void v19_real_demo_images_splits_without_truncation() throws IOException {
+    // Regression coverage for the bug this class was created to fix (V13/V14
+    // mis-splitting SQL inside base64 data URIs): run the real V19 migration
+    // through splitStatements and confirm every UPDATE line in the source file
+    // becomes exactly one statement -- i.e. nothing got merged or truncated.
+    String sql;
+    try (InputStream in =
+        getClass()
+            .getClassLoader()
+            .getResourceAsStream("db/migration/V19__real_demo_images.sql")) {
+      assertTrue(in != null, "V19__real_demo_images.sql not found on classpath");
+      sql = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    long expectedUpdateCount =
+        sql.lines().filter(line -> line.startsWith("UPDATE ")).count();
+    assertTrue(expectedUpdateCount > 0, "expected at least one UPDATE statement in V19");
+
+    List<String> parts = SchemaRepairRunner.splitStatements(sql);
+    assertEquals(expectedUpdateCount, parts.size());
+    for (String part : parts) {
+      assertTrue(part.trim().startsWith("UPDATE"));
+      assertTrue(part.contains("image_url"));
+    }
   }
 }
