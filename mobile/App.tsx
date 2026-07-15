@@ -149,6 +149,14 @@ const roleLabels: Record<string, string> = {
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
+const SECURITY_QUESTIONS = [
+  "What was the name of your first school?",
+  "What is your mother's maiden name?",
+  "What was the name of your first pet?",
+  "What town were you born in?",
+  "What is your favourite food?",
+];
+
 type Mode = "login" | "register" | "forgot";
 type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market";
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -181,9 +189,11 @@ export default function App() {
   const [fullName, setFullName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
-  const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [codeSent, setCodeSent] = useState(false);
+  const [securityQuestion, setSecurityQuestion] = useState(SECURITY_QUESTIONS[0]);
+  const [securityAnswer, setSecurityAnswer] = useState("");
+  const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
+  const [securityAnswerReset, setSecurityAnswerReset] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -519,7 +529,8 @@ export default function App() {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
       const payload = mode === "login"
         ? { identifier, password }
-        : { fullName, phone: phone.trim() || null, email: email.trim() || null, password, role, language: "en" };
+        : { fullName, phone: phone.trim() || null, email: email.trim() || null, password, role, language: "en",
+            securityQuestion, securityAnswer: securityAnswer.trim() || null };
       const response = await fetch(`${apiBase}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
@@ -537,36 +548,33 @@ export default function App() {
     }
   }
 
-  async function requestPasswordReset() {
-    if (!forgotEmail.trim() || !isValidEmail(forgotEmail)) {
-      setAuthStatus("Enter a valid email address.");
-      return;
-    }
+  async function lookupSecurityQuestion() {
+    if (!forgotEmail.trim()) { setAuthStatus("Enter your email or phone number."); return; }
     setAuthStatus("Please wait…");
     try {
-      const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/forgot-password`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: forgotEmail.trim() }),
+      const data = await readJsonResponse<{ question?: string }>(await fetch(`${apiBase}/auth/security-question/lookup`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: forgotEmail.trim() }),
       }));
-      setCodeSent(true);
-      setAuthStatus(data.message ?? "Check your email for a reset code.");
+      setFetchedQuestion(data.question ?? null);
+      setAuthStatus("Answer your security question and set a new password.");
     } catch (error) {
       setAuthStatus(getFriendlyError(error));
     }
   }
 
   async function submitPasswordReset() {
-    if (!resetCode.trim()) { setAuthStatus("Enter the code from your email."); return; }
+    if (!securityAnswerReset.trim()) { setAuthStatus("Enter your security answer."); return; }
     if (newPassword.trim().length < 6) { setAuthStatus("New password must be at least 6 characters."); return; }
     setAuthStatus("Please wait…");
     try {
-      const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/reset-password`, {
+      const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/reset-with-security`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: newPassword.trim() }),
+        body: JSON.stringify({ identifier: forgotEmail.trim(), answer: securityAnswerReset.trim(), newPassword: newPassword.trim() }),
       }));
       setMode("login");
       setIdentifier(forgotEmail.trim());
       setPassword("");
-      setForgotEmail(""); setResetCode(""); setNewPassword(""); setCodeSent(false);
+      setForgotEmail(""); setNewPassword(""); setFetchedQuestion(null); setSecurityAnswerReset("");
       setAuthStatus(data.message ?? "Password updated. Log in with your new password.");
     } catch (error) {
       setAuthStatus(getFriendlyError(error));
@@ -1016,6 +1024,11 @@ export default function App() {
                 <TextInput placeholder="Phone number (+233...)" placeholderTextColor="#748089" style={s.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 <TextInput placeholder="Email (optional)" placeholderTextColor="#748089" style={s.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
                 <TextInput placeholder="Password" placeholderTextColor="#748089" style={s.input} value={password} onChangeText={setPassword} secureTextEntry />
+                <Pressable style={s.input} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion); setSecurityQuestion(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
+                  <Text style={{ color: "#f4f4ef" }}>{securityQuestion}</Text>
+                </Pressable>
+                <Text style={s.hint}>Tap the question to change it — you'll answer it to recover your account.</Text>
+                <TextInput placeholder="Security answer" placeholderTextColor="#748089" style={s.input} value={securityAnswer} onChangeText={setSecurityAnswer} autoCapitalize="none" />
                 <Text style={s.hint}>Each account needs a unique phone number or email. To test a different role, use a different number.</Text>
                 <Pressable style={s.primaryBtn} onPress={() => void submit()}>
                   <Text style={s.primaryBtnText}>Create account as {roleLabels[role]}</Text>
@@ -1023,25 +1036,22 @@ export default function App() {
               </>
             ) : mode === "forgot" ? (
               <>
-                <TextInput placeholder="Email address" placeholderTextColor="#748089" style={s.input} value={forgotEmail} onChangeText={setForgotEmail} autoCapitalize="none" keyboardType="email-address" editable={!codeSent} />
-                {codeSent ? (
+                <TextInput placeholder="Email or phone number" placeholderTextColor="#748089" style={s.input} value={forgotEmail} onChangeText={setForgotEmail} autoCapitalize="none" editable={!fetchedQuestion} />
+                {fetchedQuestion ? (
                   <>
-                    <Text style={s.hint}>We sent a code to {forgotEmail}. Enter it below with your new password.</Text>
-                    <TextInput placeholder="6-digit code" placeholderTextColor="#748089" style={s.input} value={resetCode} onChangeText={setResetCode} keyboardType="number-pad" maxLength={6} />
+                    <Text style={s.hint}>{fetchedQuestion}</Text>
+                    <TextInput placeholder="Your answer" placeholderTextColor="#748089" style={s.input} value={securityAnswerReset} onChangeText={setSecurityAnswerReset} autoCapitalize="none" />
                     <TextInput placeholder="New password" placeholderTextColor="#748089" style={s.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry />
                     <Pressable style={s.primaryBtn} onPress={() => void submitPasswordReset()}>
                       <Text style={s.primaryBtnText}>Reset password</Text>
                     </Pressable>
-                    <Pressable onPress={() => { setCodeSent(false); void requestPasswordReset(); }}>
-                      <Text style={s.forgotLink}>Resend code</Text>
-                    </Pressable>
                   </>
                 ) : (
-                  <Pressable style={s.primaryBtn} onPress={() => void requestPasswordReset()}>
-                    <Text style={s.primaryBtnText}>Send reset code</Text>
+                  <Pressable style={s.primaryBtn} onPress={() => void lookupSecurityQuestion()}>
+                    <Text style={s.primaryBtnText}>Continue</Text>
                   </Pressable>
                 )}
-                <Pressable onPress={() => { setMode("login"); setAuthStatus(""); setCodeSent(false); }}>
+                <Pressable onPress={() => { setMode("login"); setAuthStatus(""); setFetchedQuestion(null); }}>
                   <Text style={s.forgotLink}>Back to log in</Text>
                 </Pressable>
               </>
@@ -1052,7 +1062,7 @@ export default function App() {
                 <Pressable style={s.primaryBtn} onPress={() => void submit()}>
                   <Text style={s.primaryBtnText}>Log in</Text>
                 </Pressable>
-                <Pressable onPress={() => { setMode("forgot"); setAuthStatus(""); setForgotEmail(identifier.includes("@") ? identifier : ""); }}>
+                <Pressable onPress={() => { setMode("forgot"); setAuthStatus(""); setFetchedQuestion(null); setForgotEmail(identifier); }}>
                   <Text style={s.forgotLink}>Forgot password?</Text>
                 </Pressable>
               </>
