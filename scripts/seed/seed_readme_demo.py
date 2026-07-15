@@ -14,21 +14,36 @@ import requests
 BASE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("API_BASE", "https://foodtrace-gh.onrender.com/api")
 PASSWORD = "Password123!"
 
+# All demo accounts get the same recovery question so a reviewer can test the
+# security-question password reset on any of them (answer: Accra).
+SECURITY_QUESTION = "What town were you born in?"
+SECURITY_ANSWER = "Accra"
+
 def post(url, body, token=None):
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return requests.post(f"{BASE}{url}", json=body, headers=headers, timeout=30)
 
+def set_security_question(token):
+    if not token:
+        return
+    requests.put(f"{BASE}/auth/security-question",
+                 json={"securityQuestion": SECURITY_QUESTION, "securityAnswer": SECURITY_ANSWER},
+                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}, timeout=30)
+
 def register_and_login(full_name, email, role):
-    r = post("/auth/register", {"fullName": full_name, "email": email, "password": PASSWORD, "role": role, "language": "en"})
+    r = post("/auth/register", {"fullName": full_name, "email": email, "password": PASSWORD, "role": role, "language": "en",
+                                "securityQuestion": SECURITY_QUESTION, "securityAnswer": SECURITY_ANSWER})
     if r.status_code == 200:
         print(f"  [OK] registered {email}")
         return r.json()["token"]
     r2 = post("/auth/login", {"identifier": email, "password": PASSWORD})
     if r2.status_code == 200:
         print(f"  [OK] already existed, logged in {email}")
-        return r2.json()["token"]
+        token = r2.json()["token"]
+        set_security_question(token)  # ensure recovery works on pre-existing accounts too
+        return token
     print(f"  [ERR] {email}: register={r.status_code} {r.text[:150]} | login={r2.status_code} {r2.text[:150]}")
     return None
 

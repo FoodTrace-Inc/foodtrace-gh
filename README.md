@@ -96,6 +96,14 @@ local dev (via `scripts/seed/seed_dev.cjs`) and production
 | Pharmacist | `kumasi.pharmacy@foodtrace.gh` |
 | Regulator | `regulator@foodtrace.gh` |
 
+**Password recovery (security questions):** every account can reset its
+password without email/SMS — on the login screen, tap *Forgot password?*,
+enter the email or phone, answer the security question, and set a new
+password. All demo accounts above share the question **"What town were you
+born in?"** with the answer **`Accra`** (answers are case- and
+whitespace-insensitive). New accounts set their own question/answer at
+registration.
+
 Production also has ~500 bulk demo products/batches seeded via
 `seed_demo_data.py` under a separate `accra.foods@foodtrace.gh`-style
 manufacturer/pharmacist pair (phones `0200000001` / `0200000002`,
