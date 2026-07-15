@@ -103,24 +103,54 @@ public class SchemaRepairRunner implements ApplicationRunner {
 
   /**
    * Splits a SQL script into individual statements on semicolons, while keeping
-   * dollar-quoted blocks ({@code $$ ... $$}, used by the migrations' {@code DO}
-   * blocks) intact so their internal semicolons are not treated as separators.
-   * Line ({@code --}) comments are stripped.
+   * both dollar-quoted blocks ({@code $$ ... $$}, used by the migrations'
+   * {@code DO} blocks) and single-quoted string literals ({@code '...'}) intact
+   * so their internal semicolons, {@code --} sequences, and {@code $$} are
+   * treated as literal content, not separators. This matters for migrations
+   * that embed base64 data URIs ({@code data:image/jpeg;base64,...}) or free
+   * text containing semicolons ({@code 'Neurotoxic; restricted...'}). Line
+   * ({@code --}) comments outside strings are stripped.
    */
   static List<String> splitStatements(String sql) {
     List<String> statements = new ArrayList<>();
     StringBuilder current = new StringBuilder();
     boolean inDollar = false;
+    boolean inSingle = false;
     int i = 0;
     int n = sql.length();
     while (i < n) {
       char c = sql.charAt(i);
 
-      // Skip -- line comments when not inside a dollar-quoted block.
+      // Inside a single-quoted string literal, everything is literal until the
+      // closing quote. A doubled quote ('') is an escaped quote, not the end.
+      if (inSingle) {
+        current.append(c);
+        if (c == '\'') {
+          if (i + 1 < n && sql.charAt(i + 1) == '\'') {
+            current.append('\'');
+            i += 2;
+            continue;
+          }
+          inSingle = false;
+        }
+        i++;
+        continue;
+      }
+
+      // Skip -- line comments when not inside a quoted block.
       if (!inDollar && c == '-' && i + 1 < n && sql.charAt(i + 1) == '-') {
         int eol = sql.indexOf('\n', i);
         if (eol < 0) break;
         i = eol + 1;
+        continue;
+      }
+
+      // Enter a single-quoted string literal (dollar-quoted content is verbatim,
+      // so a bare quote there does not open a string).
+      if (!inDollar && c == '\'') {
+        inSingle = true;
+        current.append(c);
+        i++;
         continue;
       }
 
