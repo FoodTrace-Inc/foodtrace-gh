@@ -13,6 +13,7 @@ import java.util.Map;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +60,22 @@ public class AuthController {
   @PostMapping("/reset-password")
   public Map<String, Object> resetPassword(@RequestBody ResetPasswordRequest request) {
     return authService.resetPassword(request);
+  }
+
+  @PostMapping("/security-question/lookup")
+  public Map<String, Object> lookupSecurityQuestion(@RequestBody ApiDtos.SecurityQuestionLookupRequest request) {
+    return authService.lookupSecurityQuestion(request);
+  }
+
+  @PostMapping("/reset-with-security")
+  public Map<String, Object> resetWithSecurity(@RequestBody ApiDtos.SecurityResetRequest request) {
+    return authService.resetPasswordWithSecurity(request);
+  }
+
+  @PutMapping("/security-question")
+  public Map<String, Object> setSecurityQuestion(@RequestBody ApiDtos.SetSecurityQuestionRequest request, Authentication authentication) {
+    CurrentUser user = (CurrentUser) authentication.getPrincipal();
+    return authService.setSecurityQuestion(user.id(), request);
   }
 
   @GetMapping("/me")

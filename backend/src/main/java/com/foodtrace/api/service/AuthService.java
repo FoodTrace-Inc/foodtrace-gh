@@ -115,9 +115,12 @@ public class AuthService {
     if (email != null && userExistsByEmail(email)) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
     }
+    String securityQuestion = blankToNull(request.securityQuestion());
+    String securityAnswerHash = blankToNull(request.securityAnswer()) == null
+        ? null : passwordEncoder.encode(normalizeAnswer(request.securityAnswer()));
     Map<String, Object> user = jdbc.sql("""
-        INSERT INTO users (full_name, phone, email, password_hash, role, language, is_verified, is_active)
-        VALUES (:fullName, :phone, :email, :passwordHash, CAST(:role AS user_role), :language, false, true)
+        INSERT INTO users (full_name, phone, email, password_hash, role, language, is_verified, is_active, security_question, security_answer_hash)
+        VALUES (:fullName, :phone, :email, :passwordHash, CAST(:role AS user_role), :language, false, true, :securityQuestion, :securityAnswerHash)
         RETURNING id, full_name, phone, email, role, language, is_verified, is_active
         """)
         .param("fullName", request.fullName())
@@ -126,6 +129,8 @@ public class AuthService {
         .param("passwordHash", passwordEncoder.encode(request.password()))
         .param("role", request.role())
         .param("language", valueOrDefault(request.language(), "en"))
+        .param("securityQuestion", securityQuestion)
+        .param("securityAnswerHash", securityAnswerHash)
         .query(DatabaseRowMapper::toMap)
         .single();
     return authResponse(user);
@@ -207,6 +212,80 @@ public class AuthService {
         .param("id", user.get("id"))
         .update();
     return Map.of("reset", true, "message", "Password updated. Log in with your new password.");
+  }
+
+  // ── Security-question recovery (works with no email/SMS delivery) ───────────
+
+  /** Returns the security question for an account, so the reset screen can show it. */
+  public Map<String, Object> lookupSecurityQuestion(ApiDtos.SecurityQuestionLookupRequest request) {
+    requirePresent(request.identifier(), "Enter your email or phone number");
+    Map<String, Object> row = jdbc.sql("""
+        SELECT security_question
+        FROM users
+        WHERE (:isEmail IS TRUE AND LOWER(email) = :identifier)
+           OR (:isEmail IS FALSE AND phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = :phoneDigits)
+        LIMIT 1
+        """)
+        .param("isEmail", request.identifier().contains("@"))
+        .param("identifier", request.identifier().trim().toLowerCase())
+        .param("phoneDigits", request.identifier().replaceAll("\\D", ""))
+        .query(DatabaseRowMapper::toMap)
+        .optional()
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No account found for that email or phone number"));
+    String question = stringOrNull(row.get("securityQuestion"));
+    if (question == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No security question is set on this account");
+    }
+    return Map.of("question", question);
+  }
+
+  /** Verifies the security answer, then sets a new password. */
+  public Map<String, Object> resetPasswordWithSecurity(ApiDtos.SecurityResetRequest request) {
+    requirePresent(request.identifier(), "Enter your email or phone number");
+    requirePresent(request.answer(), "Enter your security answer");
+    requirePresent(request.newPassword(), "New password is required");
+    if (request.newPassword().length() < 6) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
+    }
+    Map<String, Object> user = jdbc.sql("""
+        SELECT id, security_answer_hash
+        FROM users
+        WHERE (:isEmail IS TRUE AND LOWER(email) = :identifier)
+           OR (:isEmail IS FALSE AND phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = :phoneDigits)
+        LIMIT 1
+        """)
+        .param("isEmail", request.identifier().contains("@"))
+        .param("identifier", request.identifier().trim().toLowerCase())
+        .param("phoneDigits", request.identifier().replaceAll("\\D", ""))
+        .query(DatabaseRowMapper::toMap)
+        .optional()
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Incorrect answer"));
+    String hash = stringOrNull(user.get("securityAnswerHash"));
+    if (hash == null || !passwordEncoder.matches(normalizeAnswer(request.answer()), hash)) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Incorrect answer");
+    }
+    jdbc.sql("UPDATE users SET password_hash = :hash, updated_at = now() WHERE id = :id")
+        .param("hash", passwordEncoder.encode(request.newPassword()))
+        .param("id", user.get("id"))
+        .update();
+    return Map.of("reset", true, "message", "Password updated. Log in with your new password.");
+  }
+
+  /** Lets a signed-in user set or change their security question. */
+  public Map<String, Object> setSecurityQuestion(String userId, ApiDtos.SetSecurityQuestionRequest request) {
+    requirePresent(request.securityQuestion(), "Choose a security question");
+    requirePresent(request.securityAnswer(), "Enter an answer");
+    jdbc.sql("UPDATE users SET security_question = :question, security_answer_hash = :hash, updated_at = now() WHERE id = :id")
+        .param("question", request.securityQuestion().trim())
+        .param("hash", passwordEncoder.encode(normalizeAnswer(request.securityAnswer())))
+        .param("id", userId)
+        .update();
+    return Map.of("saved", true, "message", "Security question saved.");
+  }
+
+  /** Answers compare case- and whitespace-insensitively so "Accra" == " accra ". */
+  private static String normalizeAnswer(String answer) {
+    return answer.trim().toLowerCase().replaceAll("\\s+", " ");
   }
 
   public AuthUser me(String userId) {

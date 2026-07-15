@@ -13,7 +13,8 @@ public final class ApiDtos {
   public record AuthResponse(String token, AuthUser user) {
   }
 
-  public record RegisterRequest(String fullName, String phone, String email, String password, String role, String language) {
+  public record RegisterRequest(String fullName, String phone, String email, String password, String role, String language,
+      String securityQuestion, String securityAnswer) {
   }
 
   public record LoginRequest(String identifier, String password) {
@@ -29,6 +30,15 @@ public final class ApiDtos {
   }
 
   public record ResetPasswordRequest(String email, String code, String newPassword) {
+  }
+
+  public record SecurityQuestionLookupRequest(String identifier) {
+  }
+
+  public record SecurityResetRequest(String identifier, String answer, String newPassword) {
+  }
+
+  public record SetSecurityQuestionRequest(String securityQuestion, String securityAnswer) {
   }
 
   public record DashboardResponse(Map<String, Object> dashboard) {

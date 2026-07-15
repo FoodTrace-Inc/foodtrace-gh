@@ -23,7 +23,7 @@ public class SecurityConfig {
   @Order(1)
   SecurityFilterChain publicSecurityFilterChain(HttpSecurity http) throws Exception {
     return http
-        .securityMatcher("/health", "/api", "/api/auth/roles", "/api/auth/register", "/api/auth/login", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/assistant/**", "/api/ussd", "/api/sms/**", "/uploads/**", "/actuator/**")
+        .securityMatcher("/health", "/api", "/api/auth/roles", "/api/auth/register", "/api/auth/login", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/security-question/lookup", "/api/auth/reset-with-security", "/api/assistant/**", "/api/ussd", "/api/sms/**", "/uploads/**", "/actuator/**")
         .cors(cors -> cors.configurationSource(corsSource()))
         .csrf(csrf -> csrf.disable())
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
