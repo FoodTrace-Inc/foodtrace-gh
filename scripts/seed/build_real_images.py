@@ -52,6 +52,7 @@ NAME_OVERRIDE_TERMS = {
     "OralRS Rehydration Sachets": ["WHO ORS sachet", "oral rehydration salts sachet packet", "rehydration salts powder packet"],
     "CoartiPlus 80/480mg Tablets": ["Coartem", "Coartem blister pack", "Coartem tablets box"],
     "CoartiPlus 20/120mg Tablets": ["Coartem", "Coartem blister pack", "Coartem tablets box"],
+    "TropiGold Orange Juice": ["Ribbon orange juice glass bottle", "orange juice bottle close-up"],
 }
 
 HEADERS = {"User-Agent": "FoodTraceGH-DemoSeeder/1.0 (contact: eugeneadade81@gmail.com)"}
