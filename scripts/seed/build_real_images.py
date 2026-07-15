@@ -27,7 +27,7 @@ BAD_TITLE_PATTERN = re.compile(
     r"lady's book|novelties and specialties|"
     r"SPAR kolonial|Hannaford supermarket|ornamental trees|popular gardening|"
     r"tidewater cities|chemist and druggist|coffee company building|"
-    r"canadian grocer|wild nature's ways",
+    r"canadian grocer|wild nature's ways|systematic-review|systematic review",
     re.I,
 )
 
@@ -49,6 +49,9 @@ NAME_OVERRIDE_TERMS = {
     "DermaCure Clotrimazole 1% Cream": ["clotrimazole cream tube", "antifungal cream tube"],
     "WoundCure Gentian Violet": ["gentian violet solution bottle", "gentian violet antiseptic"],
     "FakeORS Sachets": ["ORS sachet oral rehydration salts", "oral rehydration salts packet"],
+    "OralRS Rehydration Sachets": ["WHO ORS sachet", "oral rehydration salts sachet packet", "rehydration salts powder packet"],
+    "CoartiPlus 80/480mg Tablets": ["Coartem", "Coartem blister pack", "Coartem tablets box"],
+    "CoartiPlus 20/120mg Tablets": ["Coartem", "Coartem blister pack", "Coartem tablets box"],
 }
 
 HEADERS = {"User-Agent": "FoodTraceGH-DemoSeeder/1.0 (contact: eugeneadade81@gmail.com)"}
