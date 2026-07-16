@@ -70,11 +70,12 @@ The first real pilot should prove this loop:
 ### Backend and Data
 
 - PostgreSQL as the source of truth.
-- Redis cache for QR scan lookup.
 - Database migrations and seed data.
-- Health check endpoint.
+- Health check endpoints (`GET /health` and `GET /api/health`).
 - Environment variable configuration.
 - Basic API rate limiting and error handling.
+
+Note: Redis is **not** required by the main Spring API (health reports `redis: not_configured`). Farmer offline-sync and Expo push notifications are implemented in the main codebase; large-scale national push fan-out remains out of scope below.
 
 ### Mobile and Web
 
@@ -96,12 +97,12 @@ These are important, but they should not block the first pilot.
 - Advanced analytics, heatmaps, PDF exports, and forecasting.
 - Real public USSD shortcode.
 - Large-scale SMS broadcast.
-- Full push notification recall network.
+- National-scale push fan-out beyond Expo device tokens already registered in-app.
 - AWS S3 and Rekognition production setup.
 - Blockchain.
 - Multi-country support.
 - Livestock/animal traceability.
-- Complete drug/pharmacy production module.
+- Complete drug/pharmacy production module (Pages demo enables the UI flag; full pharmacy ops remain pilot-scoped).
 
 ## Pilot Data Boundary
 
@@ -134,9 +135,9 @@ The production MVP is ready for a real pilot when all of these pass:
 
 - Backend host: Railway
 - Backend URL: pending Railway deployment URL
-- Backend health check: `/health`
-- Production database: Railway PostgreSQL
-- Production cache: Railway Redis
+- Backend health check: `/health` (alias `/api/health`)
+- Production database: Railway/Render PostgreSQL
+- Production cache: not required for main API (Redis optional for analytics-service only)
 
 ## Later Roadmap
 

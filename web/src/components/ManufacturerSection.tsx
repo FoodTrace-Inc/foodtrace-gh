@@ -165,7 +165,7 @@ export function ManufacturerSection({ session }: Props) {
       </div>
       <p style={styles.status}>{manufacturerStatus}</p>
       {latestCreatedQr ? (
-        <article style={styles.qrCard}>
+        <article className="qr-print-label" style={styles.qrCard}>
           <div>
             <p style={styles.scanKicker}>Generated QR</p>
             <h3 style={styles.resultTitle}>{latestCreatedQr.codeString}</h3>

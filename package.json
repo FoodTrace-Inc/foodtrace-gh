@@ -15,6 +15,7 @@
     "db:seed": "node scripts/seed/seed_dev.cjs",
     "build": "npm run build:web && npm run build:backend",
     "build:backend": "mvn -q -DskipTests package -f backend/pom.xml",
+    "test:backend": "mvn -q test -f backend/pom.xml",
     "build:web": "npm run build --workspace web",
     "typecheck": "npm run typecheck --workspaces"
   },

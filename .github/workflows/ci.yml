@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  backend-build:
+  backend-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,6 +16,7 @@ jobs:
           java-version: 21
           distribution: temurin
           cache: maven
+      - run: mvn -q test -f backend/pom.xml
       - run: mvn -q -DskipTests package -f backend/pom.xml
 
   mobile-typecheck:
@@ -29,7 +30,7 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run typecheck --workspace mobile
 
-  web-build:
+  web-typecheck-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,4 +39,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --legacy-peer-deps
+      - run: npm run typecheck --workspace shared
+      - run: npm run typecheck --workspace web
       - run: npm run build --workspace web

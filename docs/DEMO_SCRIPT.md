@@ -10,12 +10,12 @@ Target length: under 5 minutes.
 
 1. Open the web app or mobile app.
 2. Show the FoodTrace GH landing page and the tagline: "Scan It. Trace It. Trust It."
-3. Scan or enter `FT-QR-1001`.
-4. Show the green safe result for Accra Foods Tomato Paste 400g.
+3. Scan or enter `FT-FD1001-2B5B7A`.
+4. Show the green safe result for ZenMalt Barley Drink.
 5. Point out manufacturer, batch number, expiry date, and recommended action.
-6. Play or mention the audio summary.
-7. Scan or enter `FT-QR-4004`.
-8. Show the red recalled result for GoldCoast Sobolo Drink 500ml.
+6. Play or mention the audio summary (device speech fallback if Google TTS is not configured).
+7. Scan or enter `FT-FD1000-932BF6`.
+8. Show the red recalled result for AquaFresh Pure Water.
 9. Show the report concern button as the consumer escalation path.
 
 ## 3. Farmer Demo - 1 Minute
@@ -31,18 +31,20 @@ Target length: under 5 minutes.
 
 1. Log in as `accra.foods@foodtrace.gh` with `Password123!`.
 2. Show Accra Foods Ltd and FDA registration `FDA/GH/2024/001`.
-3. Show the batch list and QR code for `FT-QR-1001`.
+3. Show the batch list and a generated QR (or demo code `FT-FD1001-2B5B7A`).
 4. Create or review a batch.
 5. Issue a recall and show that the status can change from active to recalled.
 6. Explain that consumer scans immediately reflect recall risk.
 
 ## 5. Drug Demo - 1 Minute
 
-1. Scan or enter `DR-QR-2002`.
-2. Show Artesunate 50mg with approved FDA status.
-3. Point out the prescription required banner.
-4. Scan or enter `DR-QR-4004`.
-5. Show Fake Chloroquine as a red banned or recalled result.
+Live GitHub Pages enables the drug module (`VITE_ENABLE_DRUG_MODULE=true`). Locally, set that flag if you want this section.
+
+1. Scan or enter `DR-DR2001-7FEA32` via the drug scan path (`GET /api/drug/scan/:code`).
+2. Show AmoxiCure 500mg Capsules with a safe/verified result.
+3. Point out expiry and manufacturer details.
+4. Scan or enter `DR-DR2000-C652FA`.
+5. Show AmoxiCure 250mg Capsules as a red recalled result.
 6. Say: "For high-risk medicine, the app tells the user not to use it and to contact a pharmacist or regulator."
 
 ## 6. FDA Dashboard - 30 Seconds
@@ -56,8 +58,8 @@ Target length: under 5 minutes.
 
 1. Explain that FoodTrace GH also supports feature phones.
 2. Show the menu idea: `*714*FOOD#`.
-3. Enter a code such as `FT-QR-1001`.
-4. Explain that SMS/USSD returns the same safety status for users without smartphones.
+3. Enter a code such as `FT-FD1001-2B5B7A`.
+4. Explain that SMS/USSD returns the same safety status for users without smartphones (Africa's Talking credentials required for live SMS delivery).
 
 ## 8. Closing - 30 Seconds
 
@@ -65,9 +67,8 @@ Target length: under 5 minutes.
 
 ## Demo Checklist
 
-- Backend health is green at `http://localhost:3000/health`.
-- Redis is connected.
-- PostgreSQL database `foodtrace_gh` is migrated and seeded.
-- Web app is open at `http://127.0.0.1:5173`.
+- Backend health is green at `http://localhost:3000/health` (or `/api/health`).
+- PostgreSQL database is migrated and seeded (Redis is not required for the main API).
+- Web app is open at `http://127.0.0.1:5173` (or the live Pages URL).
 - Mobile app has the correct API base URL for the phone or emulator.
 - Practice the full demo at least 3 times and keep it under 5 minutes.

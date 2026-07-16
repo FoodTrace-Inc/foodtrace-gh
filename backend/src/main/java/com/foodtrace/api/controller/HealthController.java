@@ -13,7 +13,7 @@ public class HealthController {
     this.jdbc = jdbc;
   }
 
-  @GetMapping("/health")
+  @GetMapping({"/health", "/api/health"})
   public Map<String, Object> health() {
     String database = "connected";
     try {
@@ -21,6 +21,7 @@ public class HealthController {
     } catch (RuntimeException error) {
       database = "disconnected";
     }
+    // redis is not used by the main API (compose leftover); kept for probe compatibility
     return Map.of("status", database.equals("connected") ? "ok" : "degraded", "database", database, "redis", "not_configured");
   }
 

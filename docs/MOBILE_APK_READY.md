@@ -79,14 +79,14 @@ npm run dev:client
 
 1. Open the app and confirm the API URL points to your PC IP.
 2. Tap **Scan Food** and grant camera permission.
-3. Scan or type `FT-QR-1001`; expect a safe food result.
-4. Scan or type `FT-QR-4004`; expect a recalled food result.
-5. Tap **Scan Drug** and type `DR-QR-2002`; expect Artesunate with prescription required.
-6. Type `DR-QR-4004`; expect Fake Chloroquine as banned/recalled.
+3. Scan or type `FT-FD1001-2B5B7A`; expect a safe food result (ZenMalt Barley Drink).
+4. Scan or type `FT-FD1000-932BF6`; expect a recalled food result (AquaFresh Pure Water).
+5. Tap **Scan Drug** (requires `VITE_ENABLE_DRUG_MODULE=true`) and type `DR-DR2001-7FEA32`; expect AmoxiCure 500mg Capsules.
+6. Type `DR-DR2000-C652FA`; expect AmoxiCure 250mg Capsules as recalled.
 
 ## Common Fixes
 
 - If scans fail with network errors, verify the phone and laptop are on the same Wi-Fi.
-- If the backend works on the laptop but not on the phone, allow Node.js through Windows Firewall.
+- If the backend works on the laptop but not on the phone, allow the backend through Windows Firewall.
 - If camera does not open, reinstall the app after confirming camera permissions in `app.json`.
-- If a result looks old, restart the backend or clear Redis scan cache.
+- If a result looks old, restart the backend (the main API does not use Redis for scan cache).

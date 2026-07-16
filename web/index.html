@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FoodTrace GH Web</title>
+    <style>
+      @media print {
+        body * {
+          visibility: hidden !important;
+        }
+        .qr-print-label,
+        .qr-print-label * {
+          visibility: visible !important;
+        }
+        .qr-print-label {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          padding: 24px;
+          box-sizing: border-box;
+        }
+        .qr-print-label img {
+          max-width: 280px;
+          height: auto;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

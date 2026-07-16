@@ -16,7 +16,7 @@ FoodTrace GH is a Ghana-focused food traceability platform for consumers, farmer
 - USSD and SMS fallback for feature-phone users.
 - Multilingual audio summaries for scan results.
 
-The medicine/pharmacy module remains available behind `VITE_ENABLE_DRUG_MODULE=true`, but it is not part of the first food-traceability production pilot.
+The medicine/pharmacy module is available behind `VITE_ENABLE_DRUG_MODULE=true`. Local/pilot defaults keep it **off** (see `.env.example`). The live GitHub Pages deploy intentionally sets it **on** so demo drug QR codes work for reviewers.
 
 ## Tech Stack
 
@@ -81,7 +81,18 @@ Default local URLs:
 - Backend: `http://localhost:3000`
 - API base: `http://localhost:3000/api`
 - Web: `http://localhost:5173` or `http://127.0.0.1:5173`
-- Health check: `http://localhost:3000/health`
+- Health check: `http://localhost:3000/health` (alias: `/api/health`)
+
+## Known integration stubs
+
+| Integration | Status | Notes |
+| --- | --- | --- |
+| Google TTS (`POST /api/audio/speech`) | Optional | Returns `{"status":"not_configured"}` unless `GOOGLE_APPLICATION_CREDENTIALS` / `GOOGLE_CLOUD_PROJECT` are set. Mobile/web can fall back to device speech. |
+| Africa's Talking SMS (`POST /api/sms`) | Optional | Endpoints accept callbacks; outbound delivery needs `AFRICASTALKING_*` env vars. |
+| Redis | Not used by main API | `/health` reports `redis: not_configured`. PostgreSQL is the source of truth; Redis appears only in compose/analytics docs. |
+| Push notifications | Implemented | Expo push registration + server send path for recalls/alerts. |
+| Farmer offline-sync | Implemented | `POST /api/food/offline-sync` (and farmer alias) applies queued farm/crop/input actions. |
+
 ## Demo Accounts
 
 All seeded accounts use the password `Password123!`. These exist on both
@@ -130,7 +141,7 @@ endpoint or the code will return `not_found`.
 
 | Area | Endpoint |
 | --- | --- |
-| Health | `GET /health` |
+| Health | `GET /health`, `GET /api/health` |
 | Auth | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
 | Food scan | `GET /api/scan/:code` |
 | Consumer reports | `POST /api/scan/:code/report` |
