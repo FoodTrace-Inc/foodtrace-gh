@@ -1,0 +1,19 @@
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+WORKDIR /app
+
+COPY analytics-service/pom.xml ./pom.xml
+RUN mvn dependency:go-offline -q
+
+COPY analytics-service/src ./src
+RUN mvn -q -DskipTests package
+
+FROM eclipse-temurin:17-jre-alpine AS runtime
+
+WORKDIR /app
+
+COPY --from=build /app/target/application.jar app.jar
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

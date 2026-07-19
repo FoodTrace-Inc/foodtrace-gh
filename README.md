@@ -22,12 +22,18 @@ The medicine/pharmacy module is available behind `VITE_ENABLE_DRUG_MODULE=true`.
 
 | Layer | Technology |
 | --- | --- |
-| Backend | Java 21, Spring Boot |
+| Backend | Java 21 / 17, Spring Boot (**microservices**: Core API + Analytics Service) |
 | Mobile | React Native, Expo |
-| Web | React, Vite |
+| Web | React, Vite, TypeScript |
 | Database | PostgreSQL |
-| SMS | Africa's Talking |
+| SMS / USSD | Africa's Talking |
 | Audio | Google Text-to-Speech, Expo Speech fallback |
+
+**Architecture & business docs (CODEQUEST):**
+
+- [docs/MICROSERVICES.md](docs/MICROSERVICES.md) — how the two Spring services split work
+- [docs/BUSINESS_MODEL.md](docs/BUSINESS_MODEL.md) — manufacturer SaaS + regulator licensing
+- [docs/architecture.md](docs/architecture.md) — regulator / analytics deep dive
 
 ## Local Setup
 
@@ -58,19 +64,28 @@ The medicine/pharmacy module is available behind `VITE_ENABLE_DRUG_MODULE=true`.
    npm run db:seed
    ```
 
-6. Start the backend.
+6. Start the **Core API** microservice.
 
    ```bash
    npm run dev:backend
    ```
 
-7. Start the mobile app.
+7. Start the **Analytics** microservice (regulator / USSD), against the same Postgres:
+
+   ```bash
+   cd analytics-service
+   mvn spring-boot:run
+   ```
+
+   For shared-DB mode set `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DRIVER`, and `SQL_INIT_MODE=never` (see [docs/MICROSERVICES.md](docs/MICROSERVICES.md)). Or run everything with `docker compose up --build`.
+
+8. Start the mobile app.
 
    ```bash
    npm run dev:mobile
    ```
 
-8. Start the web app.
+9. Start the web app.
 
    ```bash
    npm run dev:web
@@ -78,10 +93,10 @@ The medicine/pharmacy module is available behind `VITE_ENABLE_DRUG_MODULE=true`.
 
 Default local URLs:
 
-- Backend: `http://localhost:3000`
-- API base: `http://localhost:3000/api`
+- Core API: `http://localhost:3000` · API base `http://localhost:3000/api`
+- Analytics Service: `http://localhost:8081`
 - Web: `http://localhost:5173` or `http://127.0.0.1:5173`
-- Health check: `http://localhost:3000/health` (alias: `/api/health`)
+- Health: `http://localhost:3000/health` · Analytics `http://localhost:8081/api/health`
 
 ## Known integration stubs
 

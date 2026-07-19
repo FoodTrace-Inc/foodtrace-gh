@@ -24,6 +24,9 @@ foodtrace:
   uploads-dir: ${UPLOADS_DIR:uploads}
   expose-otp: ${EXPOSE_OTP:false}
   public-api-url: ${PUBLIC_API_URL:http://localhost:3000}
+  # USSD lives on analytics-service by default (microservices ownership).
+  ussd:
+    enabled: ${USSD_ENABLED:false}
   # Africa's Talking SMS/USSD — leave blank to disable; no error is thrown when absent
   africas-talking-api-key: ${AFRICASTALKING_API_KEY:}
   africas-talking-username: ${AFRICASTALKING_USERNAME:sandbox}

@@ -9,6 +9,7 @@ services:
       DATABASE_URL: postgresql://foodtrace:foodtrace@postgres:5432/foodtrace_gh
       REDIS_URL: redis://redis:6379
       PORT: 3000
+      USSD_ENABLED: "false"
     ports:
       - "3000:3000"
     depends_on:
@@ -18,6 +19,32 @@ services:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+
+  # Analytics / regulator microservice — shares Postgres with Core (Flyway owns schema).
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.analytics
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/foodtrace_gh
+      DB_USERNAME: foodtrace
+      DB_PASSWORD: foodtrace
+      DB_DRIVER: org.postgresql.Driver
+      SQL_INIT_MODE: never
+      CACHE_TYPE: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SMS_ENABLED: "false"
+      S3_ENABLED: "false"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
   postgres:
     image: postgres:15

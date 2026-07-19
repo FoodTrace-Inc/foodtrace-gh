@@ -492,5 +492,6 @@ public class CompatibilityControllers {
     }
   }
 
-  // Real USSD webhook now lives in com.foodtrace.api.controller.UssdController (POST /api/ussd).
+  // USSD webhook: owned by analytics-service (see docs/MICROSERVICES.md).
+  // Core's UssdController is off unless foodtrace.ussd.enabled=true.
 }

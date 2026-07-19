@@ -1,18 +1,21 @@
 package com.foodtrace.api.controller;
 
 import com.foodtrace.api.service.UssdService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Africa's Talking USSD webhook. AT posts application/x-www-form-urlencoded fields
- * (sessionId, serviceCode, phoneNumber, text) and expects a text/plain body starting
- * with "CON " (menu continues, more input expected) or "END " (session terminates).
- * Point the AT USSD callback at {@code <public-url>/api/ussd}.
+ * Legacy Africa's Talking USSD webhook on the Core API.
+ * <p>
+ * Disabled by default so the Analytics microservice owns {@code POST /api/ussd}
+ * (see docs/MICROSERVICES.md). Set {@code foodtrace.ussd.enabled=true} (or
+ * env {@code USSD_ENABLED=true}) only for local legacy tests.
  */
 @RestController
+@ConditionalOnProperty(prefix = "foodtrace.ussd", name = "enabled", havingValue = "true")
 public class UssdController {
   private final UssdService ussdService;
 
