@@ -9,11 +9,93 @@ body,
   overflow-x: hidden;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 img,
 svg {
   max-width: 100%;
 }
 
+/* ─── Marketing site animations ──────────────────────────────────────────── */
+@keyframes ft-ring-pulse {
+  0% { transform: scale(0.9); opacity: 0.55; }
+  70% { transform: scale(1.18); opacity: 0; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+.ft-ring {
+  animation: ft-ring-pulse 2.8s ease-out infinite;
+}
+.ft-ring--delay {
+  animation-delay: 1.1s;
+}
+
+@keyframes ft-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ft-fade-up {
+  animation: ft-fade-up 0.6s ease-out both;
+}
+
+@keyframes ft-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.ft-float {
+  animation: ft-float 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ft-ring, .ft-fade-up, .ft-float { animation: none !important; }
+}
+
+/* ─── Marketing responsive layout ────────────────────────────────────────── */
+.mkt-nav-burger { display: none; }
+
+@media (max-width: 860px) {
+  .mkt-nav-links,
+  .mkt-nav-actions { display: none !important; }
+  .mkt-nav-burger { display: inline-flex !important; }
+
+  .mkt-hero {
+    grid-template-columns: 1fr !important;
+    padding-top: 56px !important;
+    padding-bottom: 56px !important;
+    gap: 40px !important;
+  }
+  .mkt-hero-visual { order: -1; }
+
+  .mkt-grid-3 { grid-template-columns: 1fr 1fr !important; }
+  .mkt-grid-4 { grid-template-columns: 1fr 1fr !important; }
+  .mkt-detail-row { grid-template-columns: 1fr !important; gap: 28px !important; }
+  .mkt-detail-row > div { order: 0 !important; }
+  .mkt-signin { grid-template-columns: 1fr !important; }
+  .mkt-signin-brand { min-height: 0 !important; }
+  .mkt-role-strip { grid-template-columns: repeat(3, 1fr) !important; }
+  .mkt-footer-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+@media (max-width: 560px) {
+  .mkt-grid-3 { grid-template-columns: 1fr !important; }
+  .mkt-grid-4 { grid-template-columns: 1fr !important; }
+  .mkt-grid-2 { grid-template-columns: 1fr !important; }
+  .mkt-stat-band { grid-template-columns: 1fr 1fr !important; gap: 22px !important; }
+  .mkt-role-strip { grid-template-columns: 1fr 1fr !important; }
+  .mkt-footer-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ─── Signed-in app shell (existing) ─────────────────────────────────────── */
 /* Below this, the fixed two-column page layout (see styles.ts `page`) no
    longer has room to breathe and was overflowing the viewport horizontally
    instead of shrinking. Stack to one column and tighten padding instead. */

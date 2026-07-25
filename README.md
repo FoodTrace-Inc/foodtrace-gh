@@ -187,7 +187,7 @@ Group 94, KNUST, CodeQuest 2026.
 Team members:
 
 - Eugene Adade
-- Team Member 2
+- Bevan Tabiri
 - Team Member 3
 - Team Member 4
 - Team Member 5
