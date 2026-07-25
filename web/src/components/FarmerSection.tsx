@@ -10,6 +10,7 @@ import type {
 } from "@foodtrace/shared";
 import { apiBase, readJsonResponse } from "../lib/api";
 import { styles } from "../lib/styles";
+import { MetricCards } from "./MetricCards";
 
 interface Props {
   session: AuthResponse;
@@ -162,7 +163,7 @@ export function FarmerSection({ session }: Props) {
         <button type="button" style={styles.sampleButton} onClick={() => void markMarketReady()}>Mark ready</button>
         <button type="button" style={styles.sampleButton} onClick={() => void syncOfflineQueue()}>Sync offline</button>
       </div>
-      <div style={styles.foodFormGrid}>
+      <div className="app-grid-2" style={styles.foodFormGrid}>
         <input value={farmName} onChange={(e) => setFarmName(e.target.value)} style={styles.scanInput} placeholder="Farm name" />
         <input value={farmDistrict} onChange={(e) => setFarmDistrict(e.target.value)} style={styles.scanInput} placeholder="District" />
         <input value={farmRegion} onChange={(e) => setFarmRegion(e.target.value)} style={styles.scanInput} placeholder="Region" />
@@ -204,16 +205,42 @@ export function FarmerSection({ session }: Props) {
       {foodDashboard ? (
         <article style={styles.resultCard}>
           <h3 style={styles.resultTitle}>Food metrics</h3>
-          <p style={styles.resultSummary}>
-            Farms: {foodDashboard.metrics.farms} | Crop cycles: {foodDashboard.metrics.cropCycles} | Ready: {foodDashboard.metrics.readyCycles}
-          </p>
-          <p style={styles.resultSummary}>
-            Pending withdrawal: {foodDashboard.metrics.pendingWithdrawalCycles} | Overdue: {foodDashboard.metrics.overdueWithdrawalCycles}
-          </p>
-          <p style={styles.resultSummary}>Latest farm: {foodDashboard.farms[0]?.name ?? "None yet"}</p>
+          <MetricCards
+            metrics={[
+              { label: "Farms", value: foodDashboard.metrics.farms },
+              { label: "Crop cycles", value: foodDashboard.metrics.cropCycles },
+              { label: "Ready", value: foodDashboard.metrics.readyCycles },
+              { label: "Overdue", value: foodDashboard.metrics.overdueWithdrawalCycles },
+            ]}
+          />
+          <p style={{ ...styles.resultSummary, marginTop: 14 }}>Latest farm: {foodDashboard.farms[0]?.name ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest crop cycle: {foodDashboard.cropCycles[0]?.cropType ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest input: {foodDashboard.inputLogs[0]?.productName ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest input EPA status: {foodDashboard.inputLogs[0]?.epaApprovalStatus ?? "N/A"}</p>
+        </article>
+      ) : null}
+
+      {foodDashboard && foodDashboard.farms.length > 0 ? (
+        <article style={styles.resultCard}>
+          <h3 style={styles.resultTitle}>Your farms</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12, marginTop: 10 }}>
+            {foodDashboard.farms.map((farm) => (
+              <div key={farm.id} style={{ background: "linear-gradient(160deg, #e4f5c9 0%, #c3e888 100%)", borderRadius: 16, padding: 14 }}>
+                <p style={{ color: "#263c08", fontSize: 12.5, fontWeight: 700, margin: "0 0 4px" }}>{farm.name}</p>
+                <p style={{ color: "#4a6a1a", fontSize: 10.5, margin: "0 0 8px" }}>{farm.district}, {farm.region}</p>
+                {farm.cropTypes.length ? (
+                  <p style={{ color: "#2e4a0a", fontSize: 10, margin: "0 0 8px" }}>{farm.cropTypes.join(", ")}</p>
+                ) : null}
+                <span style={{
+                  background: farm.verificationStatus === "verified" ? "rgba(10,50,36,0.85)" : farm.verificationStatus === "rejected" ? "rgba(92,15,15,0.85)" : "rgba(140,90,10,0.85)",
+                  color: farm.verificationStatus === "verified" ? "#9ce8bd" : farm.verificationStatus === "rejected" ? "#ffc0c0" : "#ffe1a3",
+                  fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 999, textTransform: "capitalize",
+                }}>
+                  {farm.verificationStatus}
+                </span>
+              </div>
+            ))}
+          </div>
         </article>
       ) : null}
       {weather ? (

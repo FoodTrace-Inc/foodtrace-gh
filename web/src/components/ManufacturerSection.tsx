@@ -8,6 +8,7 @@ import type {
   ManufacturerDashboardResponse,
 } from "@foodtrace/shared";
 import { apiBase, readJsonResponse, resolveAssetUrl } from "../lib/api";
+import { MetricCards } from "./MetricCards";
 import { styles } from "../lib/styles";
 
 interface Props {
@@ -137,7 +138,7 @@ export function ManufacturerSection({ session }: Props) {
         <button type="button" style={styles.sampleButton} onClick={() => void createManufacturerBatch()}>Create batch</button>
         <button type="button" style={styles.sampleButton} onClick={() => void createManufacturerRecall()}>Issue recall</button>
       </div>
-      <div style={styles.foodFormGrid}>
+      <div className="app-grid-2" style={styles.foodFormGrid}>
         <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={styles.scanInput} placeholder="Company name" />
         <input value={fdaRegNumber} onChange={(e) => setFdaRegNumber(e.target.value)} style={styles.scanInput} placeholder="FDA registration number" />
         <input value={manufacturerSector} onChange={(e) => setManufacturerSector(e.target.value)} style={styles.scanInput} placeholder="Sector" />
@@ -186,11 +187,15 @@ export function ManufacturerSection({ session }: Props) {
       {manufacturerDashboard ? (
         <article style={styles.resultCard}>
           <h3 style={styles.resultTitle}>Manufacturer metrics</h3>
-          <p style={styles.resultSummary}>
-            Batches: {manufacturerDashboard.metrics.batches} | QR codes: {manufacturerDashboard.metrics.qrCodes} | Recalls: {manufacturerDashboard.metrics.recalls}
-          </p>
-          <p style={styles.resultSummary}>Active recalls: {manufacturerDashboard.metrics.activeRecalls}</p>
-          <p style={styles.resultSummary}>Profile: {manufacturerDashboard.profile?.companyName ?? "No profile yet"}</p>
+          <MetricCards
+            metrics={[
+              { label: "Batches", value: manufacturerDashboard.metrics.batches },
+              { label: "QR codes", value: manufacturerDashboard.metrics.qrCodes },
+              { label: "Recalls", value: manufacturerDashboard.metrics.recalls },
+              { label: "Active recalls", value: manufacturerDashboard.metrics.activeRecalls },
+            ]}
+          />
+          <p style={{ ...styles.resultSummary, marginTop: 14 }}>Profile: {manufacturerDashboard.profile?.companyName ?? "No profile yet"}</p>
           <p style={styles.resultSummary}>Latest batch: {manufacturerDashboard.batches[0]?.batchNumber ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest QR: {manufacturerDashboard.batches[0]?.qrCode ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest recall: {manufacturerDashboard.recalls[0]?.reason ?? "None yet"}</p>
@@ -226,6 +231,33 @@ export function ManufacturerSection({ session }: Props) {
           </article>
         );
       })() : null}
+
+      {manufacturerDashboard && manufacturerDashboard.batches.length > 0 ? (
+        <article style={styles.resultCard}>
+          <h3 style={styles.resultTitle}>Your batches</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginTop: 10 }}>
+            {manufacturerDashboard.batches.map((b) => {
+              const gradient = BATCH_STATUS_GRADIENT[b.recallStatus] ?? BATCH_STATUS_GRADIENT.active;
+              return (
+                <div key={b.id} style={{ background: gradient.bg, borderRadius: 16, padding: 13 }}>
+                  <p style={{ color: gradient.text, fontSize: 12.5, fontWeight: 700, margin: "0 0 4px" }}>{b.qrCode || b.batchNumber}</p>
+                  <p style={{ color: gradient.sub, fontSize: 10.5, margin: "0 0 8px" }}>{b.productName || "Unnamed product"}</p>
+                  <span style={{ background: gradient.pillBg, color: gradient.pillFg, fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 999, textTransform: "capitalize" }}>
+                    {b.recallStatus.replace("_", " ")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </article>
+      ) : null}
     </section>
   );
 }
+
+const BATCH_STATUS_GRADIENT: Record<string, { bg: string; text: string; sub: string; pillBg: string; pillFg: string }> = {
+  active: { bg: "linear-gradient(160deg, #d4f5e8 0%, #8fe0c0 100%)", text: "#0a3324", sub: "#1a5c42", pillBg: "rgba(10,50,36,0.85)", pillFg: "#9ce8bd" },
+  under_investigation: { bg: "linear-gradient(160deg, #fff3b0 0%, #ffdd6b 100%)", text: "#4a3400", sub: "#6b5210", pillBg: "rgba(140,90,10,0.85)", pillFg: "#ffe1a3" },
+  recalled: { bg: "linear-gradient(160deg, #ffd6d6 0%, #ff9d9d 100%)", text: "#5c0f0f", sub: "#8a2c2c", pillBg: "rgba(92,15,15,0.85)", pillFg: "#ffc0c0" },
+  expired: { bg: "linear-gradient(160deg, #e4e4e4 0%, #c2c2c2 100%)", text: "#2c2c2c", sub: "#4a4a4a", pillBg: "rgba(40,40,40,0.85)", pillFg: "#d6d6d6" },
+};

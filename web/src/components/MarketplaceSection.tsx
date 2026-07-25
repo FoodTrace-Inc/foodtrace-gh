@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AuthResponse } from "@foodtrace/shared";
 import { apiBase } from "../lib/api";
+import { usePalette } from "../theme/ThemeContext";
 
 type Post = {
   id: string;
@@ -32,11 +33,19 @@ const FILTERS = [
 ];
 const SELLER_ROLES = ["manufacturer", "farmer", "pharmacist"];
 
-function badgeStyle(status: string): { bg: string; fg: string } {
-  if (status === "recalled") return { bg: "#2a0f0f", fg: "#f0999a" };
-  if (status === "unverified") return { bg: "#241a08", fg: "#efb64f" };
-  if (status === "epa_cleared") return { bg: "#0f2438", fg: "#8fc0f0" };
-  return { bg: "#0f2c1f", fg: "#77c7a2" };
+// Vibrant per-domain card backdrop, independent of light/dark mode — these
+// are meant to pop the way a food-delivery app's category cards do.
+const DOMAIN_GRADIENT: Record<string, { bg: string; text: string; sub: string }> = {
+  food: { bg: "linear-gradient(160deg, #ffd9c2 0%, #ffb98a 100%)", text: "#4a2408", sub: "#7a4a20" },
+  drug: { bg: "linear-gradient(160deg, #d6e8ff 0%, #a9c9ff 100%)", text: "#10285c", sub: "#2a4a8a" },
+  farm: { bg: "linear-gradient(160deg, #e4f5c9 0%, #c3e888 100%)", text: "#263c08", sub: "#4a6a1a" },
+};
+
+function statusPill(status: string, pending: boolean): { bg: string; fg: string; label: string } {
+  if (pending) return { bg: "rgba(140,90,10,0.85)", fg: "#ffe1a3", label: "Pending" };
+  if (status === "recalled") return { bg: "rgba(150,20,20,0.85)", fg: "#ffc0c0", label: "Recalled" };
+  if (status === "unverified") return { bg: "rgba(140,90,10,0.85)", fg: "#ffe1a3", label: "Unverified" };
+  return { bg: "rgba(20,60,40,0.85)", fg: "#9ce8bd", label: "Verified" };
 }
 
 export function MarketplaceSection({ session }: { session: AuthResponse }) {
@@ -45,6 +54,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
   const isSeller = SELLER_ROLES.includes(role);
   const isRegulator = role === "regulator";
 
+  const palette = usePalette();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,6 +62,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
   const [openComments, setOpenComments] = useState<Record<string, Comment[]>>({});
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [showCompose, setShowCompose] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const auth = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -142,11 +153,13 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
   }
 
   return (
-    <section style={{ background: "#11161b", borderRadius: 18, padding: 20, marginTop: 22, border: "1px solid rgba(119,199,162,0.16)" }}>
+    <section style={{ background: palette.cardBg, borderRadius: 22, padding: 20, border: `1px solid ${palette.border}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h2 style={{ margin: 0, color: "#f4f4ef", fontSize: 20 }}>Marketplace</h2>
+        <h2 style={{ margin: 0, color: palette.textPrimary, fontSize: 20 }}>Marketplace</h2>
         {isSeller ? (
-          <button onClick={() => setShowCompose((v) => !v)} style={btn(true)}>{showCompose ? "Close" : "+ Showcase a product"}</button>
+          <button onClick={() => setShowCompose((v) => !v)} style={{ background: palette.accent, color: palette.onAccent, border: "none", borderRadius: 999, padding: "9px 16px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+            {showCompose ? "Close" : "+ Showcase a product"}
+          </button>
         ) : null}
       </div>
 
@@ -156,63 +169,89 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "6px 0 16px" }}>
         {FILTERS.map((f) => (
-          <button key={f.key} onClick={() => setFilter(f.key)} style={chip(filter === f.key)}>{f.label}</button>
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            style={{
+              background: filter === f.key ? palette.textPrimary : "transparent",
+              color: filter === f.key ? palette.pageBg : palette.textSecondary,
+              border: filter === f.key ? "none" : `1px solid ${palette.border}`,
+              borderRadius: 999, padding: "6px 14px", fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            {f.label}
+          </button>
         ))}
       </div>
 
       {loading && posts.length === 0 ? (
-        <p style={{ color: "#a9c7b8" }}>Loading feed…</p>
+        <p style={{ color: palette.textSecondary }}>Loading feed…</p>
       ) : error && posts.length === 0 ? (
         <div><p style={{ color: "#f0999a" }}>{error}</p><button onClick={() => void loadFeed()} style={btn(true)}>Try again</button></div>
       ) : posts.length === 0 ? (
-        <p style={{ color: "#a9c7b8" }}>No products posted yet.</p>
+        <p style={{ color: palette.textSecondary }}>No products posted yet.</p>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
+        <div className="marketplace-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
           {posts.map((p) => {
             const pending = p.status === "pending";
-            const b = pending ? { bg: "#241a08", fg: "#efb64f" } : badgeStyle(p.safetyStatus);
-            const label = pending ? "Pending approval" : p.safetyLabel;
-            const comments = openComments[p.id];
+            const pill = statusPill(p.safetyStatus, pending);
+            const g = DOMAIN_GRADIENT[p.domain] ?? DOMAIN_GRADIENT.food;
+            const isOpen = expandedId === p.id;
             return (
-              <article key={p.id} style={{ background: "#0d1216", borderRadius: 14, padding: 16, border: "1px solid rgba(119,199,162,0.12)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={avatar}>{initials(p.sellerName)}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: "#f4f4ef", fontWeight: 600 }}>{p.sellerName} <span style={roleTag}>{p.sellerRole}</span></div>
-                    <div style={{ color: "#7d8a84", fontSize: 12 }}>{p.location ? `${p.location} · ` : ""}{p.domain}</div>
-                  </div>
-                  <span style={{ background: b.bg, color: b.fg, border: `1px solid ${b.fg}`, borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600 }}>{label}</span>
+              <article
+                key={p.id}
+                onClick={() => setExpandedId(isOpen ? null : p.id)}
+                style={{ background: g.bg, borderRadius: 20, padding: 14, cursor: "pointer", gridColumn: isOpen ? "1 / -1" : undefined }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <span style={{ background: pill.bg, color: pill.fg, fontSize: 9.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{pill.label}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); void toggleSave(p); }}
+                    aria-label="Save"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: g.text, fontSize: 15, padding: 0 }}
+                  >
+                    {p.savedByViewer ? "★" : "☆"}
+                  </button>
                 </div>
                 {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.title} style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: 10, marginBottom: 10, display: "block" }} />
-                ) : null}
-                {p.title ? <div style={{ color: "#f4f4ef", fontWeight: 600 }}>{p.title}</div> : null}
-                {p.caption ? <div style={{ color: "#d8e2dc", fontSize: 14, marginTop: 4 }}>{p.caption}</div> : null}
-                {p.hashtags?.length ? <div style={{ color: "#77c7a2", fontSize: 13, marginTop: 6 }}>{p.hashtags.map((h) => `#${h}`).join("  ")}</div> : null}
-                {p.qrCodeString ? <div style={{ color: "#8aa79a", fontSize: 12, marginTop: 8 }}>Verify code: <b style={{ color: "#c4f1db" }}>{p.qrCodeString}</b></div> : null}
+                  <img src={p.imageUrl} alt={p.title} style={{ width: "100%", height: 84, objectFit: "cover", borderRadius: 14, margin: "8px 0 10px", display: "block" }} />
+                ) : (
+                  <div style={{ width: "100%", height: 84, borderRadius: 14, margin: "8px 0 10px", background: "rgba(255,255,255,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                    {p.domain === "drug" ? "💊" : p.domain === "farm" ? "🌿" : "🥤"}
+                  </div>
+                )}
+                <p style={{ color: g.text, fontSize: 12.5, fontWeight: 700, margin: "0 0 2px" }}>{p.title}</p>
+                <p style={{ color: g.sub, fontSize: 10.5, margin: 0 }}>{p.sellerName} · {p.location || p.domain}</p>
 
-                <div style={{ display: "flex", gap: 18, marginTop: 12, borderTop: "1px solid rgba(119,199,162,0.1)", paddingTop: 10 }}>
-                  <button onClick={() => void toggleLike(p)} style={act(p.likedByViewer ? "#d4537e" : "#a9c7b8")}>{p.likedByViewer ? "♥" : "♡"} {p.likeCount}</button>
-                  <button onClick={() => void toggleComments(p)} style={act("#a9c7b8")}>💬 {p.commentCount}</button>
-                  <button onClick={() => sharePost(p)} style={act("#25D366")}>➦ Share</button>
-                  <button onClick={() => void toggleSave(p)} style={act(p.savedByViewer ? "#efb64f" : "#a9c7b8")}>{p.savedByViewer ? "★ Saved" : "☆ Save"}</button>
-                </div>
+                {isOpen ? (
+                  <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+                    {p.caption ? <p style={{ color: g.text, fontSize: 13, margin: "0 0 8px" }}>{p.caption}</p> : null}
+                    {p.hashtags?.length ? <p style={{ color: g.sub, fontSize: 12, margin: "0 0 8px" }}>{p.hashtags.map((h) => `#${h}`).join("  ")}</p> : null}
+                    {p.qrCodeString ? <p style={{ color: g.sub, fontSize: 11.5, margin: "0 0 10px" }}>Verify code: <b>{p.qrCodeString}</b></p> : null}
 
-                {pending && isRegulator ? (
-                  <button onClick={() => void approve(p)} style={{ ...btn(true), marginTop: 10, width: "100%" }}>✓ Approve this post</button>
-                ) : pending ? (
-                  <div style={{ color: "#efb64f", fontSize: 12, marginTop: 8 }}>Awaiting regulator approval before it goes public.</div>
-                ) : null}
-
-                {comments ? (
-                  <div style={{ marginTop: 12, borderTop: "1px solid rgba(119,199,162,0.1)", paddingTop: 10, display: "grid", gap: 8 }}>
-                    {comments.length === 0 ? <div style={{ color: "#7d8a84", fontSize: 13 }}>No comments yet — be the first.</div> :
-                      comments.map((c) => <div key={c.id} style={{ color: "#cdd8d2", fontSize: 13 }}><b style={{ color: "#f4f4ef" }}>{c.authorName}</b> {c.body}</div>)}
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input value={draft[p.id] || ""} onChange={(e) => setDraft((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                        placeholder="Add a comment…" style={{ flex: 1, ...input }} />
-                      <button onClick={() => void submitComment(p)} style={btn(true)}>Send</button>
+                    <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
+                      <button onClick={() => void toggleLike(p)} style={act(p.likedByViewer ? "#d4537e" : g.sub)}>{p.likedByViewer ? "♥" : "♡"} {p.likeCount}</button>
+                      <button onClick={() => void toggleComments(p)} style={act(g.sub)}>💬 {p.commentCount}</button>
+                      <button onClick={() => sharePost(p)} style={act("#1a7a4a")}>➦ Share</button>
                     </div>
+
+                    {pending && isRegulator ? (
+                      <button onClick={() => void approve(p)} style={{ ...btn(true), width: "100%", marginBottom: 10 }}>✓ Approve this post</button>
+                    ) : pending ? (
+                      <p style={{ color: "#8a5a10", fontSize: 12, margin: "0 0 10px" }}>Awaiting regulator approval before it goes public.</p>
+                    ) : null}
+
+                    {openComments[p.id] ? (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {openComments[p.id].length === 0 ? <div style={{ color: g.sub, fontSize: 13 }}>No comments yet — be the first.</div> :
+                          openComments[p.id].map((c) => <div key={c.id} style={{ color: g.text, fontSize: 13 }}><b>{c.authorName}</b> {c.body}</div>)}
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input value={draft[p.id] || ""} onChange={(e) => setDraft((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            placeholder="Add a comment…" style={{ flex: 1, ...input }} />
+                          <button onClick={() => void submitComment(p)} style={btn(true)}>Send</button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </article>
@@ -284,11 +323,6 @@ function ComposeForm({ token, role, onPosted }: { token: string; role: string; o
   );
 }
 
-function initials(name: string) {
-  const p = (name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2);
-  return p.map((x) => x[0]?.toUpperCase()).join("") || "FT";
-}
-
 // Resize + compress an uploaded image to a small JPEG data URI so it can be
 // stored directly on the post (no file server / S3 needed).
 function fileToDataUrl(file: File, maxW = 800, quality = 0.6): Promise<string> {
@@ -314,14 +348,9 @@ function fileToDataUrl(file: File, maxW = 800, quality = 0.6): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
-const avatar = { width: 40, height: 40, borderRadius: "50%", background: "#1d9e75", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 14 } as const;
-const roleTag = { background: "rgba(119,199,162,0.16)", color: "#77c7a2", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999, marginLeft: 6 } as const;
 const input = { background: "#192027", color: "#f4f4ef", border: "1px solid rgba(119,199,162,0.2)", borderRadius: 8, padding: "9px 12px", fontSize: 14 } as const;
 function btn(primary: boolean) {
   return { background: primary ? "#77c7a2" : "transparent", color: primary ? "#05080b" : "#c4f1db", border: primary ? "none" : "1px solid #c4f1db", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer" } as const;
-}
-function chip(on: boolean) {
-  return { background: on ? "#77c7a2" : "transparent", color: on ? "#05080b" : "#a9c7b8", border: on ? "none" : "1px solid rgba(119,199,162,0.3)", borderRadius: 999, padding: "6px 13px", fontSize: 12, cursor: "pointer" } as const;
 }
 function act(color: string) {
   return { background: "transparent", border: "none", color, fontSize: 14, cursor: "pointer", padding: 0 } as const;

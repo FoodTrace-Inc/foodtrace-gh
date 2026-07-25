@@ -36,28 +36,6 @@ export const styles: Record<string, CSSProperties> = {
     lineHeight: 1.6,
     opacity: 0.88,
   },
-  roleGrid: {
-    marginTop: 32,
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  rolePill: {
-    padding: "12px 16px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.18)",
-    background: "transparent",
-    color: "#f4f4ef",
-    cursor: "pointer",
-  },
-  roleActive: {
-    padding: "12px 16px",
-    borderRadius: 999,
-    border: "1px solid #c4f1db",
-    background: "#c4f1db",
-    color: "#12392d",
-    cursor: "pointer",
-  },
   card: {
     padding: 24,
     borderRadius: 28,

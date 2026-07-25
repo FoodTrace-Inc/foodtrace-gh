@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FoodTrace GH Web</title>
+<script>
+  // GitHub Pages has no server-side routing, so a direct link to a route
+  // like /dashboard 404s. This re-encodes the path into a query string and
+  // redirects to index.html, which App.tsx decodes back on load.
+  var segmentsToKeep = 1;
+  var l = window.location;
+  var path = l.pathname.split('/').slice(0, 1 + segmentsToKeep).join('/');
+  var rest = l.pathname.slice(path.length);
+  l.replace(
+    l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+    path + '/?redirect=' + encodeURIComponent(rest + l.search) + l.hash
+  );
+</script>
+</head>
+<body></body>
+</html>

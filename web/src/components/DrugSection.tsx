@@ -11,6 +11,8 @@ import type {
 } from "@foodtrace/shared";
 import { apiBase, readJsonResponse } from "../lib/api";
 import { styles } from "../lib/styles";
+import { SafetyRing, statusToRingStatus } from "./SafetyRing";
+import { MetricCards } from "./MetricCards";
 
 interface Props {
   session: AuthResponse | null;
@@ -169,7 +171,7 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
             <button type="button" style={styles.sampleButton} onClick={() => void createDrugBatch()}>Create batch</button>
             <button type="button" style={styles.sampleButton} onClick={() => void createDrugRecall()}>Issue recall</button>
           </div>
-          <div style={styles.foodFormGrid}>
+          <div className="app-grid-2" style={styles.foodFormGrid}>
             <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} style={styles.scanInput} placeholder="Business name" />
             <input value={gpcNumber} onChange={(e) => setGpcNumber(e.target.value)} style={styles.scanInput} placeholder="Pharmacy council number" />
             <input value={pharmacyDistrict} onChange={(e) => setPharmacyDistrict(e.target.value)} style={styles.scanInput} placeholder="District" />
@@ -217,22 +219,35 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
       {isPharmacist ? <p style={styles.status}>{pharmacyStatus}</p> : null}
       {drugScanResult ? (
         <article style={styles.resultCard}>
-          <h3 style={styles.resultTitle}>{drugScanResult.title}</h3>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+            <SafetyRing status={statusToRingStatus(drugScanResult.status)} />
+          </div>
+          <h3 style={{ ...styles.resultTitle, textAlign: "center" }}>{drugScanResult.title}</h3>
           <p style={styles.resultSummary}>{drugScanResult.summary}</p>
           <p style={styles.resultSummary}>Drug: {drugScanResult.drugName ?? "N/A"}</p>
           <p style={styles.resultSummary}>Batch: {drugScanResult.batchNumber ?? "N/A"}</p>
           <p style={styles.resultSummary}>Manufacturer: {drugScanResult.manufacturerName ?? "N/A"}</p>
           <p style={styles.resultSummary}>Expiry: {drugScanResult.expiryDate ?? "N/A"}</p>
           <p style={styles.resultSummary}>{drugScanResult.recommendedAction}</p>
+          <p style={{ fontSize: 11, lineHeight: 1.5, color: "#748089", marginTop: 10 }}>
+            Product safety information is sourced from the Ghana FDA public register. FoodTrace GH is not
+            affiliated with or endorsed by the Ghana FDA. Always consult a qualified health professional
+            before making decisions about medicines.
+          </p>
         </article>
       ) : null}
       {isPharmacist && pharmacyDashboard ? (
         <article style={styles.resultCard}>
           <h3 style={styles.resultTitle}>Pharmacy metrics</h3>
-          <p style={styles.resultSummary}>
-            Drugs: {pharmacyDashboard.metrics.drugs} | Batches: {pharmacyDashboard.metrics.batches} | QR codes: {pharmacyDashboard.metrics.qrCodes} | Recalls: {pharmacyDashboard.metrics.recalls}
-          </p>
-          <p style={styles.resultSummary}>Pharmacy: {pharmacyDashboard.pharmacy?.businessName ?? "No pharmacy yet"}</p>
+          <MetricCards
+            metrics={[
+              { label: "Drugs", value: pharmacyDashboard.metrics.drugs },
+              { label: "Batches", value: pharmacyDashboard.metrics.batches },
+              { label: "QR codes", value: pharmacyDashboard.metrics.qrCodes },
+              { label: "Recalls", value: pharmacyDashboard.metrics.recalls },
+            ]}
+          />
+          <p style={{ ...styles.resultSummary, marginTop: 14 }}>Pharmacy: {pharmacyDashboard.pharmacy?.businessName ?? "No pharmacy yet"}</p>
           <p style={styles.resultSummary}>Latest batch: {pharmacyDashboard.batches[0]?.batchNumber ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest QR: {pharmacyDashboard.batches[0]?.qrCode ?? "None yet"}</p>
           <p style={styles.resultSummary}>Latest recall: {pharmacyDashboard.recalls[0]?.reason ?? "None yet"}</p>

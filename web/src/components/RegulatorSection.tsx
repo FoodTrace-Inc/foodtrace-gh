@@ -85,7 +85,7 @@ export function RegulatorSection({ session }: Props) {
         <button type="button" style={styles.sampleButton} onClick={() => void reviewRegulatorReport()}>Review report</button>
         <button type="button" style={styles.sampleButton} onClick={() => void createRegulatorRecall()}>Issue recall</button>
       </div>
-      <div style={styles.foodFormGrid}>
+      <div className="app-grid-2" style={styles.foodFormGrid}>
         <input value={reportId} onChange={(e) => setReportId(e.target.value)} style={styles.scanInput} placeholder="Report ID" />
         <select value={reportStatus} onChange={(e) => setReportStatus(e.target.value as typeof reportStatus)} style={styles.scanInput}>
           <option value="reviewing">reviewing</option>
@@ -170,11 +170,20 @@ export function RegulatorSection({ session }: Props) {
       {regulatorDashboard ? (
         <article style={styles.resultCard}>
           <h3 style={styles.resultTitle}>Violation alerts</h3>
-          {regulatorDashboard.alerts.slice(0, 4).map((alert) => (
-            <p key={alert.id} style={styles.resultSummary}>
-              [{alert.source}] {alert.title}: {alert.description}
-            </p>
-          ))}
+          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+            {regulatorDashboard.alerts.slice(0, 4).map((alert) => {
+              const color = alert.severity === "high" ? "#e0475c" : alert.severity === "medium" ? "#efb64f" : "#77c7a2";
+              return (
+                <div key={alert.id} style={{ background: "#10161a", borderLeft: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div>
+                    <p style={{ margin: "0 0 2px", color: "#f4f4ef", fontSize: 12.5, fontWeight: 600 }}>{alert.title}</p>
+                    <p style={{ margin: 0, color: "#93b9ac", fontSize: 10.5 }}>{alert.source} · {alert.description}</p>
+                  </div>
+                  <span style={{ background: `${color}26`, color, fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 999, flexShrink: 0, textTransform: "capitalize" }}>{alert.severity}</span>
+                </div>
+              );
+            })}
+          </div>
         </article>
       ) : null}
     </section>

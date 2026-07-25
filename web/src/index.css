@@ -1,0 +1,36 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/* Below this, the fixed two-column page layout (see styles.ts `page`) no
+   longer has room to breathe and was overflowing the viewport horizontally
+   instead of shrinking. Stack to one column and tighten padding instead. */
+@media (max-width: 860px) {
+  .app-page {
+    grid-template-columns: 1fr !important;
+    padding: 20px !important;
+    gap: 18px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-page {
+    padding: 14px !important;
+  }
+
+  .app-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { AuthResponse, ProductScanResult, SubmitConsumerReportResponse } from "@foodtrace/shared";
 import { apiBase, readJsonResponse, getFriendlyErrorMessage, showDemoMode } from "../lib/api";
-import { styles, scanBadgeStyle } from "../lib/styles";
+import { styles } from "../lib/styles";
 import { sampleCodes } from "../lib/constants";
+import { SafetyRing, statusToRingStatus } from "./SafetyRing";
 
 interface Props {
   session: AuthResponse | null;
@@ -77,22 +78,29 @@ export function ConsumerScanSection({ session, scanCode, setScanCode, scanResult
       <p style={styles.status}>{scanStatus}</p>
       {scanResult ? (
         <article style={styles.resultCard}>
-          <div style={scanBadgeStyle(scanResult.status)}>{scanResult.status.toUpperCase()}</div>
-          <h3 style={styles.resultTitle}>{scanResult.title}</h3>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+            <SafetyRing status={statusToRingStatus(scanResult.status)} />
+          </div>
+          <h3 style={{ ...styles.resultTitle, textAlign: "center" }}>{scanResult.title}</h3>
           <p style={styles.resultSummary}>{scanResult.summary}</p>
-          <dl style={styles.resultGrid}>
+          <dl className="app-grid-2" style={styles.resultGrid}>
             <div><dt>Batch</dt><dd>{scanResult.batchNumber ?? "N/A"}</dd></div>
             <div><dt>Manufacturer</dt><dd>{scanResult.manufacturerName ?? "N/A"}</dd></div>
             <div><dt>Packaging</dt><dd>{scanResult.packagingDate ?? "N/A"}</dd></div>
             <div><dt>Expiry</dt><dd>{scanResult.expiryDate ?? "N/A"}</dd></div>
           </dl>
           <p style={styles.action}>{scanResult.recommendedAction}</p>
+          <p style={{ fontSize: 11, lineHeight: 1.5, color: "#748089", marginTop: 10 }}>
+            Product safety information is sourced from the Ghana FDA public register. FoodTrace GH is not
+            affiliated with or endorsed by the Ghana FDA. Always consult a qualified health professional
+            before making decisions about medicines.
+          </p>
         </article>
       ) : null}
       <article style={styles.resultCard}>
         <h3 style={styles.resultTitle}>Report concern</h3>
         <p style={styles.resultSummary}>Add a description and attach a photo so the consumer report is ready for review.</p>
-        <div style={styles.foodFormGrid}>
+        <div className="app-grid-2" style={styles.foodFormGrid}>
           <textarea
             value={reportDescription}
             onChange={(e) => setReportDescription(e.target.value)}

@@ -25,6 +25,7 @@ import {
 import * as Speech from "expo-speech";
 import { Audio } from "expo-av";
 import type { DrugScanResult, ProductScanResult, SpeechSummaryResponse } from "@foodtrace/shared";
+import { SafetyRing, statusToRingStatus } from "../components/SafetyRing";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -96,34 +97,6 @@ function backgroundForStatus(status: ProductScanResult["status"]): string {
   }
 }
 
-/** Returns a human-readable label for each scan status. */
-function labelForStatus(status: ProductScanResult["status"]): string {
-  switch (status) {
-    case "safe":
-      return "✓  SAFE";
-    case "caution":
-      return "⚠  CAUTION";
-    case "recalled":
-      return "✕  RECALLED";
-    default:
-      return status.toUpperCase();
-  }
-}
-
-/** Big symbol shown inside the circular status icon. */
-function iconForStatus(status: ProductScanResult["status"]): string {
-  switch (status) {
-    case "safe":
-      return "✓";
-    case "caution":
-      return "!";
-    case "recalled":
-      return "✕";
-    default:
-      return "?";
-  }
-}
-
 /**
  * Builds the spoken summary sentence.
  * Prefers the backend-crafted `audioSummary` field; falls back to
@@ -160,8 +133,6 @@ export function SafetyResultScreen({
   onAskAI,
 }: SafetyResultScreenProps) {
   const bgColor = backgroundForStatus(result.status);
-  const statusLabel = labelForStatus(result.status);
-  const statusIcon = iconForStatus(result.status);
 
   // ── Entrance animation for the status icon ────────────────────────────────
   const iconScale = useRef(new Animated.Value(0.6)).current;
@@ -257,15 +228,10 @@ export function SafetyResultScreen({
       style={{ backgroundColor: bgColor }}
       contentContainerStyle={[styles.container, { backgroundColor: bgColor }]}
     >
-      {/* ── Animated status icon ── */}
-      <Animated.View style={[styles.iconCircle, { opacity: iconOpacity, transform: [{ scale: iconScale }] }]}>
-        <Text style={styles.iconText}>{statusIcon}</Text>
+      {/* ── Animated safety ring ── */}
+      <Animated.View style={{ opacity: iconOpacity, transform: [{ scale: iconScale }], marginBottom: 10 }}>
+        <SafetyRing status={statusToRingStatus(result.status)} />
       </Animated.View>
-
-      {/* ── Status badge ── */}
-      <View style={styles.statusBadge}>
-        <Text style={styles.statusLabel}>{statusLabel}</Text>
-      </View>
 
       {/* ── Product title & summary ── */}
       <Text style={styles.title}>{result.title}</Text>
@@ -292,6 +258,12 @@ export function SafetyResultScreen({
             <Text style={styles.actionText}>{result.recommendedAction}</Text>
           </View>
         ) : null}
+
+        <Text style={styles.disclaimerText}>
+          Product safety information is sourced from the Ghana Food and Drugs Authority (FDA) public
+          register. FoodTrace GH is not affiliated with or endorsed by the Ghana FDA. Always consult a
+          qualified health professional before making decisions about medicines.
+        </Text>
       </View>
 
       {/* ── Controls ── */}
@@ -342,38 +314,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 60,
     gap: 16,
-  },
-  iconCircle: {
-    alignSelf: "center",
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  iconText: {
-    color: "#ffffff",
-    fontSize: 50,
-    fontWeight: "800",
-    lineHeight: 56,
-  },
-  statusBadge: {
-    alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 999,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    marginBottom: 8,
-  },
-  statusLabel: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: 2,
   },
   title: {
     color: "#ffffff",
@@ -440,6 +380,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: "500",
+  },
+  disclaimerText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 14,
   },
   controls: {
     marginTop: 8,
