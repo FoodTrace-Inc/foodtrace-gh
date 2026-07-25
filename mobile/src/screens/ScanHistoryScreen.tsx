@@ -23,6 +23,7 @@ import {
 import type { ProductScanResult } from "@foodtrace/shared";
 import { Icon, type IconName } from "../components/Icon";
 import { usePalette } from "../theme/ThemeContext";
+import { ProofStatusBadge, statusFor } from "../components/ProofStatusBadge";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -48,17 +49,6 @@ type ScanHistoryScreenProps = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
-  safe: { bg: "rgba(24,162,166,0.14)", fg: "#0f6f6f", label: "SAFE" },
-  caution: { bg: "rgba(237,181,76,0.18)", fg: "#8a6414", label: "CAUTION" },
-  recalled: { bg: "rgba(224,71,92,0.15)", fg: "#a3283a", label: "RECALLED" },
-  not_found: { bg: "rgba(113,107,99,0.16)", fg: "#716b63", label: "NOT_FOUND" },
-};
-
-function statusStyle(status: string) {
-  return STATUS_STYLE[status] ?? STATUS_STYLE.not_found;
-}
 
 /** Returns a short, human-friendly relative timestamp. */
 function relativeTime(iso: string): string {
@@ -136,7 +126,6 @@ export function ScanHistoryScreen({
           {/* ── Entry list ── */}
           {history.map((entry) => {
             const isExpanded = expandedId === entry.id;
-            const st = statusStyle(entry.status);
 
             return (
               <Pressable
@@ -148,9 +137,7 @@ export function ScanHistoryScreen({
               >
                 {/* Row: badge + title + timestamp */}
                 <View style={styles.entryRow}>
-                  <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-                    <Text style={[styles.statusBadgeText, { color: st.fg }]}>{st.label}</Text>
-                  </View>
+                  <ProofStatusBadge status={statusFor(entry.status)} />
 
                   <View style={styles.entryMeta}>
                     <Text style={[styles.entryTitle, { color: p.textPrimary }]} numberOfLines={1}>

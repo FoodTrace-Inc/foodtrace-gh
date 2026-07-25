@@ -26,6 +26,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Icon } from "../components/Icon";
+import { FilterPill } from "../components/FilterPill";
 
 type MarketplacePost = {
   id: string;
@@ -329,9 +330,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
 
       <View style={s.filterRow}>
         {FILTERS.map((f) => (
-          <Pressable key={f.key} style={[s.filter, filter === f.key && s.filterOn]} onPress={() => setFilter(f.key)}>
-            <Text style={[s.filterText, filter === f.key && s.filterTextOn]}>{f.label}</Text>
-          </Pressable>
+          <FilterPill key={f.key} label={f.label} active={filter === f.key} onPress={() => setFilter(f.key)} />
         ))}
       </View>
 

@@ -62,6 +62,8 @@ import type { AppNotification } from "./src/screens";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { Logo } from "./src/components/Logo";
 import { Icon, type IconName } from "./src/components/Icon";
+import { BottomNav, type BottomNavTab } from "./src/components/BottomNav";
+import { ProofActionCard } from "./src/components/ProofActionCard";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { ThemeProvider, useTheme, usePalette } from "./src/theme/ThemeContext";
 import { SubscriptionPlansScreen, SELLER_PLANS, CONSUMER_PLANS, type PlanDef } from "./src/screens/SubscriptionPlansScreen";
@@ -175,6 +177,14 @@ const SECURITY_QUESTIONS = [
 
 type Mode = "login" | "register" | "forgot";
 type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market" | "plans" | "payment" | "paymentResult" | "subscription" | "legal";
+
+const CONSUMER_NAV_TABS: readonly BottomNavTab<"home" | "market" | "scanner" | "history" | "account">[] = [
+  { key: "home", icon: "home-outline", iconActive: "home", label: "Home" },
+  { key: "market", icon: "storefront-outline", iconActive: "storefront", label: "Market" },
+  { key: "scanner", icon: "scan-outline", iconActive: "scan", label: "Scan" },
+  { key: "history", icon: "time-outline", iconActive: "time", label: "History" },
+  { key: "account", icon: "person-outline", iconActive: "person", label: "Account" },
+] as const;
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type HistoryEntry = {
   id: string; kind: "food" | "drug"; codeString: string;
@@ -1319,18 +1329,11 @@ function AppContent() {
                     </Pressable>
                   ))}
                 </View>
-                <Pressable style={[s.outlineBtn, { borderColor: palette.border }]} onPress={() => setConsumerTab("subscription")}>
-                  <Icon name="card-outline" size={15} color={palette.textPrimary} />
-                  <Text style={[s.outlineBtnText, { color: palette.textPrimary }]}>Subscription</Text>
-                </Pressable>
-                <Pressable style={[s.outlineBtn, { borderColor: palette.border, marginTop: 8 }]} onPress={() => setConsumerTab("legal")}>
-                  <Icon name="document-text-outline" size={15} color={palette.textPrimary} />
-                  <Text style={[s.outlineBtnText, { color: palette.textPrimary }]}>About, terms and privacy</Text>
-                </Pressable>
-                <Pressable style={[s.outlineBtn, { borderColor: palette.border, marginTop: 8 }]} onPress={signOut}>
-                  <Icon name="log-out-outline" size={15} color="#e0475c" />
-                  <Text style={[s.outlineBtnText, { color: "#e0475c" }]}>Sign out</Text>
-                </Pressable>
+                <View style={{ marginTop: 8 }}>
+                  <ProofActionCard icon="card-outline" label="Subscription" onPress={() => setConsumerTab("subscription")} />
+                  <ProofActionCard icon="document-text-outline" label="About, terms and privacy" onPress={() => setConsumerTab("legal")} />
+                  <ProofActionCard icon="log-out-outline" label="Sign out" onPress={signOut} tint="#e0475c" />
+                </View>
               </View>
 
               {/* AI assistant */}
@@ -1439,25 +1442,13 @@ function AppContent() {
         </View>
 
         {/* Bottom nav */}
-        <View style={[s.bottomNav, { backgroundColor: palette.cardBg, borderTopColor: palette.border }]}>
-          {([
-            { tab: "home" as ConsumerTab, icon: "home-outline" as IconName, iconActive: "home" as IconName, label: "Home" },
-            { tab: "market" as ConsumerTab, icon: "storefront-outline" as IconName, iconActive: "storefront" as IconName, label: "Market" },
-            { tab: "scanner" as ConsumerTab, icon: "scan-outline" as IconName, iconActive: "scan" as IconName, label: "Scan" },
-            { tab: "history" as ConsumerTab, icon: "time-outline" as IconName, iconActive: "time" as IconName, label: "History" },
-            { tab: "account" as ConsumerTab, icon: "person-outline" as IconName, iconActive: "person" as IconName, label: "Account" },
-          ] as const).map(({ tab, icon, iconActive, label }) => {
-            const isActive = tab === "home"
-              ? (consumerTab === "home" || consumerTab === "result" || consumerTab === "report")
-              : consumerTab === tab;
-            return (
-              <Pressable key={tab} style={s.navItem} onPress={() => setConsumerTab(tab)}>
-                <Icon name={isActive ? iconActive : icon} size={22} color={isActive ? palette.accent : palette.textSecondary} />
-                <Text style={[s.navLabel, { color: isActive ? palette.accent : palette.textSecondary }]}>{label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <BottomNav
+          tabs={CONSUMER_NAV_TABS}
+          active={
+            consumerTab === "result" || consumerTab === "report" ? "home" : (consumerTab as (typeof CONSUMER_NAV_TABS)[number]["key"])
+          }
+          onChange={(tab) => setConsumerTab(tab)}
+        />
 
         <NotificationsModal visible={showNotifications} items={notifications} onClose={() => setShowNotifications(false)} />
       </SafeAreaView>

@@ -27,6 +27,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { DrugScanResult, ProductScanResult } from "@foodtrace/shared";
 import { Icon } from "../components/Icon";
+import { ScannerFrame } from "../components/ScannerFrame";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -281,13 +282,7 @@ export function QRScannerScreen({
               }
             />
             {/* Cyan viewfinder frame + amber scan line, per ProofLoop spec */}
-            <View pointerEvents="none" style={styles.viewfinder}>
-              <View style={[styles.corner, styles.cornerTL]} />
-              <View style={[styles.corner, styles.cornerTR]} />
-              <View style={[styles.corner, styles.cornerBL]} />
-              <View style={[styles.corner, styles.cornerBR]} />
-              {!scannerPaused && !loading ? <View style={styles.scanLine} /> : null}
-            </View>
+            <ScannerFrame active={!scannerPaused && !loading} />
           </>
         ) : (
           <View style={styles.permissionBox}>
