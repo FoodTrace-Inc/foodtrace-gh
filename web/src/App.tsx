@@ -9,6 +9,9 @@ import { MarketplaceScreen } from "./screens/MarketplaceScreen";
 import { AssistantScreen } from "./screens/AssistantScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { PricingScreen } from "./screens/PricingScreen";
+import { AboutScreen } from "./screens/AboutScreen";
+import { TermsScreen } from "./screens/TermsScreen";
+import { PrivacyScreen } from "./screens/PrivacyScreen";
 
 function App() {
   const [session, setSession] = useState<AuthResponse | null>(null);
@@ -39,6 +42,9 @@ function App() {
               <Route path="/pricing" element={<PricingScreen />} />
             </Route>
           ) : null}
+          <Route path="/about" element={<AboutScreen />} />
+          <Route path="/terms" element={<TermsScreen />} />
+          <Route path="/privacy" element={<PrivacyScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

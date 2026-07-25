@@ -74,6 +74,12 @@ export function ProfileScreen() {
       >
         Log out
       </button>
+
+      <div style={{ display: "flex", gap: 16, fontSize: 12, justifyContent: "center" }}>
+        <Link to="/about" style={{ color: "#93b9ac", textDecoration: "none" }}>About</Link>
+        <Link to="/terms" style={{ color: "#93b9ac", textDecoration: "none" }}>Terms</Link>
+        <Link to="/privacy" style={{ color: "#93b9ac", textDecoration: "none" }}>Privacy</Link>
+      </div>
     </div>
   );
 }

@@ -65,6 +65,7 @@ import { SubscriptionPlansScreen, SELLER_PLANS, CONSUMER_PLANS, type PlanDef } f
 import { PaymentScreen } from "./src/screens/PaymentScreen";
 import { PaymentResultScreen } from "./src/screens/PaymentResultScreen";
 import { SubscriptionManagementScreen } from "./src/screens/SubscriptionManagementScreen";
+import { LegalScreen } from "./src/screens/LegalScreen";
 
 // â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -170,7 +171,7 @@ const SECURITY_QUESTIONS = [
 ];
 
 type Mode = "login" | "register" | "forgot";
-type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market" | "plans" | "payment" | "paymentResult" | "subscription";
+type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market" | "plans" | "payment" | "paymentResult" | "subscription" | "legal";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type HistoryEntry = {
   id: string; kind: "food" | "drug"; codeString: string;
@@ -1263,6 +1264,8 @@ function AppContent() {
               onUpgrade={() => setConsumerTab("plans")}
               onBack={() => setConsumerTab("account")}
             />
+          ) : consumerTab === "legal" ? (
+            <LegalScreen onBack={() => setConsumerTab("account")} />
           ) : consumerTab === "account" ? (
             <ScrollView contentContainerStyle={s.scrollPad} keyboardShouldPersistTaps="handled">
               {/* User card */}
@@ -1280,6 +1283,9 @@ function AppContent() {
                 </View>
                 <Pressable style={s.outlineBtn} onPress={() => setConsumerTab("subscription")}>
                   <Text style={s.outlineBtnText}>Subscription</Text>
+                </Pressable>
+                <Pressable style={[s.outlineBtn, { marginTop: 8 }]} onPress={() => setConsumerTab("legal")}>
+                  <Text style={s.outlineBtnText}>About, terms and privacy</Text>
                 </Pressable>
                 <Pressable style={[s.outlineBtn, { marginTop: 8 }]} onPress={signOut}>
                   <Text style={s.outlineBtnText}>Sign out</Text>
