@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import type { AuthResponse } from "@foodtrace/shared";
 import { SessionProvider } from "../session/SessionContext";
-import { usePalette } from "../theme/ThemeContext";
+import { usePalette, useTheme } from "../theme/ThemeContext";
 import { LogoMark } from "../components/Logo";
 import { ThemeToggle } from "../components/ThemeToggle";
 
@@ -35,7 +35,7 @@ export function AppShell({ session, onSignOut }: Props) {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: p.pageBg }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: p.pageBg }} className="app-shell">
       <aside
         style={{
           width: 220,
@@ -49,7 +49,7 @@ export function AppShell({ session, onSignOut }: Props) {
         }}
         className="app-sidebar"
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px 20px" }} className="app-brand-row">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <LogoMark size={26} />
             <span style={{ color: p.textPrimary, fontWeight: 700, fontSize: 14 }}>FoodTrace GH</span>
@@ -57,29 +57,31 @@ export function AppShell({ session, onSignOut }: Props) {
           <ThemeToggle size={40} />
         </div>
 
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            style={({ isActive }) => ({
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "10px 12px",
-              borderRadius: 10,
-              fontSize: 13.5,
-              textDecoration: "none",
-              color: isActive ? p.onAccent : p.textSecondary,
-              background: isActive ? p.accent : "transparent",
-              fontWeight: isActive ? 600 : 400,
-            })}
-          >
-            <span aria-hidden style={{ width: 16, textAlign: "center" }}>{item.icon}</span>
-            {item.label}
-          </NavLink>
-        ))}
+        <nav className="app-nav" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                borderRadius: 10,
+                fontSize: 13.5,
+                textDecoration: "none",
+                color: isActive ? p.onAccent : p.textSecondary,
+                background: isActive ? p.accent : "transparent",
+                fontWeight: isActive ? 600 : 400,
+              })}
+            >
+              <span aria-hidden style={{ width: 16, textAlign: "center" }}>{item.icon}</span>
+              <span className="app-nav-label">{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
 
-        <div style={{ marginTop: "auto", paddingTop: 16, borderTop: `1px solid ${p.border}` }}>
+        <div className="app-account" style={{ marginTop: "auto", paddingTop: 16, borderTop: `1px solid ${p.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px" }}>
             <div style={{ width: 32, height: 32, borderRadius: 999, background: p.accent, color: p.onAccent, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>
               {avatarLabel}

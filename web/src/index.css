@@ -116,3 +116,84 @@ svg {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* The signed-in shell (sidebar + main) had no mobile layout at all — on a
+   phone the fixed 220px sidebar plus main content overflowed the viewport
+   with no way to scroll to the clipped part. Collapse to a top bar with a
+   horizontally scrollable nav strip instead. */
+@media (max-width: 780px) {
+  .app-shell {
+    flex-direction: column !important;
+  }
+  .app-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 14px !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--app-shell-border, rgba(128, 128, 128, 0.2));
+    gap: 10px !important;
+  }
+  .app-brand-row {
+    flex: 1 1 auto;
+    padding: 0 !important;
+    min-width: 0;
+  }
+  .app-nav {
+    order: 3;
+    flex: 1 1 100%;
+    flex-direction: row !important;
+    overflow-x: auto;
+    gap: 6px !important;
+  }
+  .app-nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 10px !important;
+  }
+  .app-nav-label {
+    display: none;
+  }
+  .app-account {
+    order: 2;
+    flex: 0 0 auto;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+  }
+  .app-account > div:first-child {
+    padding: 0 !important;
+  }
+  .app-account p {
+    display: none;
+  }
+  .app-account button {
+    width: auto !important;
+    margin-top: 0 !important;
+    padding: 8px 12px !important;
+  }
+  .app-main {
+    padding: 16px !important;
+  }
+}
+
+/* Every screen under AppShell renders a single grid wrapper div with a
+   maxWidth but no explicit width — as a grid container it sizes to its
+   content's natural (max-content) width instead of shrinking to fit,
+   which overflowed the phone viewport and got silently clipped by
+   overflow-x: hidden rather than wrapping. Forcing width:100% makes it
+   fill (and shrink with) its flex parent instead. */
+.app-main > div {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Grid items default to min-width:auto, so a heading/text block one level
+   down refuses to shrink below its own content's natural width — the
+   actual cause of the clipped "Welcome back, Ama" text. */
+.app-main > div > * {
+  min-width: 0;
+}
+
