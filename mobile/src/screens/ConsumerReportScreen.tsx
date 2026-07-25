@@ -149,7 +149,7 @@ export function ConsumerReportScreen({
     }
 
     setSubmissionStatus("submitting");
-    setStatusMessage("Submitting your report…");
+    setStatusMessage("Submitting your report...");
 
     try {
       const response = await fetch(
@@ -178,7 +178,7 @@ export function ConsumerReportScreen({
         );
       }
 
-      // Success — reset the photo URL; keep description/district for
+      // Success - reset the photo URL; keep description/district for
       // convenience in case the user wants to follow up on the same product.
       setPhotoUrl("");
       setStatusMessage(
@@ -334,7 +334,7 @@ export function ConsumerReportScreen({
           >
             <Text style={styles.submitButtonText}>
               {submissionStatus === "submitting"
-                ? "Submitting…"
+                ? "Submitting..."
                 : submissionStatus === "success"
                 ? "✓  Report submitted"
                 : "Submit report"}

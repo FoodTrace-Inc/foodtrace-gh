@@ -248,7 +248,7 @@ function AppContent() {
   // launch intro
   const [showIntro, setShowIntro] = useState(true);
 
-  // first-run onboarding — shown once, before the first auth screen
+  // first-run onboarding - shown once, before the first auth screen
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
@@ -288,11 +288,7 @@ function AppContent() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(false);
   const [consumerHistory, setConsumerHistory] = useState<HistoryEntry[]>([]);
-  const [scanLanguage, setScanLanguage] = useState<"en" | "tw" | "fr">("en");
-  // Audio/TTS backend only supports English and Twi today — French falls back
-  // to English audio until that's added, but still selects as the app's text
-  // language wherever i18n exists.
-  const audioLanguage: "en" | "tw" = scanLanguage === "tw" ? "tw" : "en";
+  const [scanLanguage, setScanLanguage] = useState<"en" | "tw">("en");
   const [lastScanResult, setLastScanResult] = useState<ProductScanResult | DrugScanResult | null>(null);
   const [drugScanCode, setDrugScanCode] = useState("DR-QR-1001");
   const [drugScanResult, setDrugScanResult] = useState<DrugScanResult | null>(null);
@@ -437,7 +433,7 @@ function AppContent() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
           body: JSON.stringify({ token: pushToken }),
         });
-      } catch { /* push registration is best-effort — app works fine without it */ }
+      } catch { /* push registration is best-effort - app works fine without it */ }
     })();
   }, [session?.token, apiBase]);
 
@@ -494,7 +490,7 @@ function AppContent() {
   // ── helpers ────────────────────────────────────────────────────────────────
 
   function getFriendlyError(error: unknown) {
-    // A failed fetch (no response at all) throws TypeError — almost always a
+    // A failed fetch (no response at all) throws TypeError - almost always a
     // connectivity problem on the device side.
     if (error instanceof TypeError) return `Could not reach the server at ${apiBase}. Check the backend URL or your connection.`;
     const status = (error as { status?: number })?.status;
@@ -515,7 +511,7 @@ function AppContent() {
     return /error|fail|could not|server|wrong|denied|unauthori/i.test(msg);
   }
 
-  // Retries once after a short delay — handles Render cold start
+  // Retries once after a short delay - handles Render cold start
   async function fetchWithRetry(url: string, options?: RequestInit, retries = 1): Promise<Response> {
     try {
       const res = await fetch(url, options);
@@ -617,7 +613,7 @@ function AppContent() {
       if (!identifier.trim()) { setAuthStatus("Please enter your phone or email."); return; }
       if (!password.trim()) { setAuthStatus("Please enter your password."); return; }
     }
-    setAuthStatus("Please wait…");
+    setAuthStatus("Please wait...");
     try {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
       const payload = mode === "login"
@@ -643,7 +639,7 @@ function AppContent() {
 
   async function lookupSecurityQuestion() {
     if (!forgotEmail.trim()) { setAuthStatus("Enter your email or phone number."); return; }
-    setAuthStatus("Please wait…");
+    setAuthStatus("Please wait...");
     try {
       const data = await readJsonResponse<{ question?: string }>(await fetch(`${apiBase}/auth/security-question/lookup`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: forgotEmail.trim() }),
@@ -658,7 +654,7 @@ function AppContent() {
   async function submitPasswordReset() {
     if (!securityAnswerReset.trim()) { setAuthStatus("Enter your security answer."); return; }
     if (newPassword.trim().length < 6) { setAuthStatus("New password must be at least 6 characters."); return; }
-    setAuthStatus("Please wait…");
+    setAuthStatus("Please wait...");
     try {
       const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/reset-with-security`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -760,7 +756,7 @@ function AppContent() {
   async function scanDrugProduct(code = drugScanCode) {
     const normalized = code.trim().toUpperCase();
     if (!normalized) { setDrugScanStatus("Enter a drug QR code first."); return; }
-    setDrugScanStatus("Looking up drug…");
+    setDrugScanStatus("Looking up drug...");
     try {
       const response = await fetch(`${apiBase}/drug/scan/${encodeURIComponent(normalized)}`, {
         headers: session?.token ? { Authorization: `Bearer ${session.token}` } : undefined,
@@ -800,7 +796,7 @@ function AppContent() {
 
   async function loadFoodDashboard() {
     if (!session?.token) return;
-    setFoodStatus("Loading…");
+    setFoodStatus("Loading...");
     try {
       const response = await fetchWithRetry(`${apiBase}/food/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await readJsonResponse<{ dashboard: FoodDashboardResponse }>(response);
@@ -819,7 +815,7 @@ function AppContent() {
       const response = await fetchWithRetry(`${apiBase}/food/weather${qs}`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await readJsonResponse<WeatherResponse>(response);
       setWeather(data);
-    } catch { /* weather is a nice-to-have — dashboard still works without it */ }
+    } catch { /* weather is a nice-to-have - dashboard still works without it */ }
   }
 
   async function searchPesticides(query: string) {
@@ -843,7 +839,7 @@ function AppContent() {
 
   async function createFarm() {
     if (!session?.token) return;
-    setFoodStatus("Creating farm…");
+    setFoodStatus("Creating farm...");
     try {
       const payload: CreateFarmRequest = { name: farmName, district: farmDistrict, region: farmRegion, cropTypes: farmCrops.split(",").map((s) => s.trim()).filter(Boolean) };
       await readJsonResponse(await fetch(`${apiBase}/food/farms`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -853,7 +849,7 @@ function AppContent() {
 
   async function createCropCycle() {
     if (!session?.token) return;
-    setFoodStatus("Creating cycle…");
+    setFoodStatus("Creating cycle...");
     try {
       const payload: CreateCropCycleRequest = { farmId: cycleFarmId, cropType: cycleCropType, plantingDate: cyclePlantingDate };
       await readJsonResponse(await fetch(`${apiBase}/food/crop-cycles`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -863,7 +859,7 @@ function AppContent() {
 
   async function createInputLog() {
     if (!session?.token) return;
-    setFoodStatus("Saving input log…");
+    setFoodStatus("Saving input log...");
     try {
       const payload: CreateInputLogRequest = { cropCycleId: inputCycleId, inputType, productName: inputProductName, applicationDate: inputApplicationDate, withdrawalPeriodDays: Number(inputWithdrawalDays), epaApprovalStatus: inputEpaStatus as CreateInputLogRequest["epaApprovalStatus"] };
       await readJsonResponse(await fetch(`${apiBase}/food/input-logs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -893,7 +889,7 @@ function AppContent() {
 
   async function loadManufacturerDashboard() {
     if (!session?.token) return;
-    setManufacturerStatus("Loading…");
+    setManufacturerStatus("Loading...");
     try {
       const data = await readJsonResponse<{ dashboard: ManufacturerDashboardResponse }>(await fetchWithRetry(`${apiBase}/manufacturer/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setManufacturerDashboard(data.dashboard);
@@ -904,7 +900,7 @@ function AppContent() {
 
   async function createManufacturerProfile() {
     if (!session?.token) return;
-    setManufacturerStatus("Creating profile…");
+    setManufacturerStatus("Creating profile...");
     try {
       const payload: CreateManufacturerProfileRequest = { companyName, fdaRegistrationNumber: fdaRegNumber || null, sector: manufacturerSector, subscriptionTier };
       await readJsonResponse(await fetch(`${apiBase}/manufacturer/profile`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -921,7 +917,7 @@ function AppContent() {
 
   async function createManufacturerBatch() {
     if (!session?.token) return;
-    setManufacturerStatus("Creating batch…");
+    setManufacturerStatus("Creating batch...");
     try {
       const payload: CreateProductBatchRequest = { batchNumber, ingredientSources: [ingredientSources], processingSteps: processingSteps.split(",").map((s) => s.trim()).filter(Boolean), qualityChecks: [qualityChecks], packagingDate, expiryDate, imageUrl: batchImage };
       const data = await readJsonResponse<CreateProductBatchResponse>(await fetch(`${apiBase}/manufacturer/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -933,7 +929,7 @@ function AppContent() {
 
   async function createManufacturerRecall() {
     if (!session?.token) return;
-    setManufacturerStatus("Issuing recall…");
+    setManufacturerStatus("Issuing recall...");
     try {
       const payload: CreateRecallRequest = { batchId: recallBatchId, recallType, reason: recallReason, scopeDistricts: recallScopeDistricts.split(",").map((s) => s.trim()).filter(Boolean) };
       await readJsonResponse(await fetch(`${apiBase}/manufacturer/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -945,7 +941,7 @@ function AppContent() {
 
   async function loadRegulatorDashboard() {
     if (!session?.token) return;
-    setRegulatorStatus("Loading…");
+    setRegulatorStatus("Loading...");
     try {
       const data = await readJsonResponse<{ dashboard: RegulatorDashboardResponse }>(await fetchWithRetry(`${apiBase}/regulator/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setRegulatorDashboard(data.dashboard);
@@ -959,7 +955,7 @@ function AppContent() {
     if (!session?.token) return;
     if (!reportId.trim()) { setRegulatorStatus("There is no report to review yet."); return; }
     if (!["reviewing", "resolved", "dismissed"].includes(reportStatus)) { setRegulatorStatus("Status must be reviewing, resolved, or dismissed."); return; }
-    setRegulatorStatus("Updating report…");
+    setRegulatorStatus("Updating report...");
     try {
       await readJsonResponse(await fetch(`${apiBase}/regulator/reports`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ reportId: reportId.trim(), status: reportStatus }) }));
       setRegulatorStatus("Report updated.");
@@ -969,7 +965,7 @@ function AppContent() {
 
   async function createRegulatorRecall() {
     if (!session?.token) return;
-    setRegulatorStatus("Issuing recall…");
+    setRegulatorStatus("Issuing recall...");
     try {
       const payload: RegulatorRecallRequest = { batchId: regulatorRecallBatchId, reason: regulatorRecallReason, scopeDistricts: regulatorRecallDistricts.split(",").map((s) => s.trim()).filter(Boolean), domain: regulatorRecallDomain };
       await readJsonResponse(await fetch(`${apiBase}/regulator/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -981,7 +977,7 @@ function AppContent() {
 
   async function loadPharmacyDashboard() {
     if (!session?.token) return;
-    setPharmacyStatus("Loading…");
+    setPharmacyStatus("Loading...");
     try {
       const data = await readJsonResponse<{ dashboard: DrugDashboardResponse }>(await fetchWithRetry(`${apiBase}/drug/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setPharmacyDashboard(data.dashboard);
@@ -991,7 +987,7 @@ function AppContent() {
 
   async function registerPharmacy() {
     if (!session?.token) return;
-    setPharmacyStatus("Registering…");
+    setPharmacyStatus("Registering...");
     try {
       const payload: RegisterPharmacyRequest = { businessName, ghanaPharmacyCouncilNumber: gpcNumber, district: pharmacyDistrict, region: pharmacyRegion };
       await readJsonResponse(await fetch(`${apiBase}/drug/register`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1001,7 +997,7 @@ function AppContent() {
 
   async function createDrugRecord() {
     if (!session?.token) return;
-    setPharmacyStatus("Creating drug record…");
+    setPharmacyStatus("Creating drug record...");
     try {
       const payload: CreateDrugRecordRequest = { name: drugName, genericName: drugGenericName || null, manufacturerName: drugManufacturer || null, fdaDrugRegistrationNumber: drugFdaNumber || null, drugClass: drugClass || null, dosageForm: drugDosageForm || null, strength: drugStrength || null, requiresPrescription: drugRequiresPrescription, isControlled: drugIsControlled, fdaApprovalStatus: drugApprovalStatus, storageConditions: drugStorage || null, sideEffectsSummary: drugSideEffects || null };
       await readJsonResponse(await fetch(`${apiBase}/drug/drugs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1020,7 +1016,7 @@ function AppContent() {
     if (!session?.token) return;
     const firstDrugId = pharmacyDashboard?.drugs[0]?.id ?? "";
     if (!firstDrugId) { setPharmacyStatus("Create a drug record first."); return; }
-    setPharmacyStatus("Creating batch…");
+    setPharmacyStatus("Creating batch...");
     try {
       const payload: CreateDrugBatchRequest = { drugId: firstDrugId, batchNumber: drugBatchNumber, manufactureDate: drugManufactureDate, expiryDate: drugExpiryDate, quantityReceived: Number(drugQuantityReceived), quantityRemaining: Number(drugQuantityRemaining), supplierName: drugSupplierName || null, imageUrl: drugBatchImage };
       const data = await readJsonResponse<CreateDrugBatchResponse>(await fetch(`${apiBase}/drug/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1032,7 +1028,7 @@ function AppContent() {
 
   async function createDrugRecall() {
     if (!session?.token) return;
-    setPharmacyStatus("Creating recall…");
+    setPharmacyStatus("Creating recall...");
     try {
       const payload: CreateDrugRecallRequest = { batchId: drugRecallBatchId, reason: drugRecallReason };
       await readJsonResponse(await fetch(`${apiBase}/drug/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1133,7 +1129,7 @@ function AppContent() {
                 <Pressable style={[s.input, themedInput]} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion); setSecurityQuestion(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
                   <Text style={{ color: palette.textPrimary }}>{securityQuestion}</Text>
                 </Pressable>
-                <Text style={s.hint}>Tap the question to change it — you'll answer it to recover your account.</Text>
+                <Text style={s.hint}>Tap the question to change it - you'll answer it to recover your account.</Text>
                 <TextInput placeholder="Security answer" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswer} onChangeText={setSecurityAnswer} autoCapitalize="none" />
                 <Text style={s.hint}>Each account needs a unique phone number or email. To test a different role, use a different number.</Text>
                 <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submit()}>
@@ -1174,8 +1170,8 @@ function AppContent() {
               </>
             )}
 
-            {authStatus === "Please wait…" ? (
-              <Text style={s.statusLoading}>Please wait…</Text>
+            {authStatus === "Please wait..." ? (
+              <Text style={s.statusLoading}>Please wait...</Text>
             ) : authStatus ? (
               <View style={isErrorMsg(authStatus) ? s.errorBox : s.infoBox}>
                 <Text style={isErrorMsg(authStatus) ? s.errorText : s.infoText}>{authStatus}</Text>
@@ -1209,7 +1205,7 @@ function AppContent() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER: LOGGED-IN — CONSUMER (bottom nav layout)
+  // RENDER: LOGGED-IN - CONSUMER (bottom nav layout)
   // ─────────────────────────────────────────────────────────────────────────
 
   if (isConsumer) {
@@ -1240,11 +1236,11 @@ function AppContent() {
               onCompose={() => setConsumerTab("scanner")}
             />
           ) : consumerTab === "scanner" ? (
-            <QRScannerScreen apiBase={apiBase} token={session.token} scanLanguage={audioLanguage} onScanResult={handleScanResult} />
+            <QRScannerScreen apiBase={apiBase} token={session.token} scanLanguage={scanLanguage} onScanResult={handleScanResult} />
           ) : consumerTab === "result" && lastScanResult ? (
             <SafetyResultScreen
               result={lastScanResult}
-              scanLanguage={audioLanguage}
+              scanLanguage={scanLanguage}
               apiBase={apiBase}
               onBack={() => setConsumerTab("scanner")}
               onViewHistory={() => setConsumerTab("history")}
@@ -1318,7 +1314,6 @@ function AppContent() {
                   {([
                     { key: "en" as const, label: "English" },
                     { key: "tw" as const, label: "Twi" },
-                    { key: "fr" as const, label: "French" },
                   ]).map((lang) => (
                     <Pressable
                       key={lang.key}
@@ -1359,11 +1354,11 @@ function AppContent() {
                       </View>
                     ))
                   )}
-                  {aiLoading ? <Text style={s.statusLoading}>Thinking…</Text> : null}
+                  {aiLoading ? <Text style={s.statusLoading}>Thinking...</Text> : null}
                 </View>
 
                 <View style={s.chatInputRow}>
-                  <TextInput style={s.chatInput} placeholder="Ask a question…" placeholderTextColor="#748089" value={aiInput} onChangeText={setAiInput} multiline />
+                  <TextInput style={s.chatInput} placeholder="Ask a question..." placeholderTextColor="#748089" value={aiInput} onChangeText={setAiInput} multiline />
                   <Pressable style={[s.sendBtn, (!aiInput.trim() || aiLoading) && s.sendBtnOff]} onPress={() => void sendAiMessage()} disabled={!aiInput.trim() || aiLoading}>
                     <Text style={s.sendBtnText}>Send</Text>
                   </Pressable>
@@ -1392,7 +1387,7 @@ function AppContent() {
 
               <View style={s.bentoRow}>
                 <View style={[s.bentoBig, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
-                  <Text style={[s.bentoBigNumber, { color: palette.signalCyan }]}>{consumerHistory.length === 0 ? "—" : `${Math.round((consumerHistory.filter((h) => h.status !== "recalled").length / consumerHistory.length) * 100)}%`}</Text>
+                  <Text style={[s.bentoBigNumber, { color: palette.signalCyan }]}>{consumerHistory.length === 0 ? "-" : `${Math.round((consumerHistory.filter((h) => h.status !== "recalled").length / consumerHistory.length) * 100)}%`}</Text>
                   <Text style={[s.bentoBigLabel, { color: palette.textSecondary }]}>Safe scans</Text>
                 </View>
                 <View style={[s.bentoBig, { backgroundColor: palette.cardBg, borderColor: palette.border, flex: 1 }]}>
@@ -1456,7 +1451,7 @@ function AppContent() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER: LOGGED-IN — OTHER ROLES (farmer / manufacturer / regulator / pharmacist)
+  // RENDER: LOGGED-IN - OTHER ROLES (farmer / manufacturer / regulator / pharmacist)
   // ─────────────────────────────────────────────────────────────────────────
 
   const portalTitle = roleLabels[currentRole ?? ""] ?? "Portal";
@@ -1525,7 +1520,7 @@ function AppContent() {
       ) : portalView === "result" && lastScanResult ? (
         <SafetyResultScreen
           result={lastScanResult}
-          scanLanguage={audioLanguage}
+          scanLanguage={scanLanguage}
           apiBase={apiBase}
           onBack={() => setPortalView("market")}
           onViewHistory={() => setPortalView("market")}
@@ -1543,7 +1538,7 @@ function AppContent() {
         {isFarmer ? (
           <>
             <View style={s.card}>
-              <Text style={[s.cardKicker, { color: "#77c7a2" }]}>FARMER · DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#77c7a2" }]}>FARMER - DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadFoodDashboard()}>
                 <Text style={s.primaryBtnText}>Load Dashboard</Text>
               </Pressable>
@@ -1569,7 +1564,7 @@ function AppContent() {
             {weather ? (
               <View style={[s.card, { overflow: "hidden" }]}>
                 <LinearGradient colors={["#173a2c", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                <Text style={[s.cardKicker, { color: "#77c7a2" }]}>{weather.region.toUpperCase()} · WEATHER</Text>
+                <Text style={[s.cardKicker, { color: "#77c7a2" }]}>{weather.region.toUpperCase()} - WEATHER</Text>
                 <View style={s.weatherNow}>
                   <View>
                     <Text style={s.weatherTemp}>{Math.round(weather.current.temperatureC)}°C</Text>
@@ -1618,7 +1613,7 @@ function AppContent() {
                     {segments.map(([label, count, color]) => (
                       <View key={label} style={s.pipelineLegendItem}>
                         <View style={[s.pipelineDot, { backgroundColor: color }]} />
-                        <Text style={s.pipelineLegendText}>{label} · {count}</Text>
+                        <Text style={s.pipelineLegendText}>{label} - {count}</Text>
                       </View>
                     ))}
                   </View>
@@ -1664,7 +1659,7 @@ function AppContent() {
                   />
                   <Text style={[s.pesticideBannerText, { flex: 1 }]}>
                     {matchedPesticide.epaStatus === "banned" ? `Banned by EPA Ghana${matchedPesticide.banReason ? `: ${matchedPesticide.banReason}` : ""}`
-                      : matchedPesticide.epaStatus === "restricted" ? "Restricted-use pesticide — trained applicators only"
+                      : matchedPesticide.epaStatus === "restricted" ? "Restricted-use pesticide - trained applicators only"
                       : matchedPesticide.epaStatus === "approved" ? "EPA Ghana registered pesticide"
                       : "EPA status not yet verified"}
                   </Text>
@@ -1692,13 +1687,13 @@ function AppContent() {
           <>
             <View style={[s.card, { overflow: "hidden" }]}>
               <LinearGradient colors={["#3d2e10", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Text style={[s.cardKicker, { color: "#E0A83B" }]}>MANUFACTURER · DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#E0A83B" }]}>MANUFACTURER - DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadManufacturerDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {manufacturerStatus ? <Text style={[s.statusMsg, isErrorMsg(manufacturerStatus) ? s.statusErr : s.statusOk]}>{manufacturerStatus}</Text> : null}
               {manufacturerDashboard ? (
                 <View style={s.metricGrid}>
                   {[
-                    ["Profile", manufacturerDashboard.profile?.companyName ?? "—"],
+                    ["Profile", manufacturerDashboard.profile?.companyName ?? "-"],
                     ["Batches", manufacturerDashboard.metrics.batches],
                     ["QR codes", manufacturerDashboard.metrics.qrCodes],
                     ["Active recalls", manufacturerDashboard.metrics.activeRecalls],
@@ -1735,7 +1730,7 @@ function AppContent() {
                     {segments.map(([label, count, color]) => (
                       <View key={label} style={s.pipelineLegendItem}>
                         <View style={[s.pipelineDot, { backgroundColor: color }]} />
-                        <Text style={s.pipelineLegendText}>{label} · {count}</Text>
+                        <Text style={s.pipelineLegendText}>{label} - {count}</Text>
                       </View>
                     ))}
                   </View>
@@ -1777,7 +1772,7 @@ function AppContent() {
           <>
             <View style={[s.card, { overflow: "hidden" }]}>
               <LinearGradient colors={["#3d1c1c", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Text style={[s.cardKicker, { color: "#E27D7D" }]}>REGULATOR · DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#E27D7D" }]}>REGULATOR - DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadRegulatorDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {regulatorStatus ? <Text style={[s.statusMsg, isErrorMsg(regulatorStatus) ? s.statusErr : s.statusOk]}>{regulatorStatus}</Text> : null}
               {regulatorDashboard ? (
@@ -1824,7 +1819,7 @@ function AppContent() {
                         {segments.map(([label, count, color]) => (
                           <View key={label} style={s.pipelineLegendItem}>
                             <View style={[s.pipelineDot, { backgroundColor: color }]} />
-                            <Text style={s.pipelineLegendText}>{label} · {count}</Text>
+                            <Text style={s.pipelineLegendText}>{label} - {count}</Text>
                           </View>
                         ))}
                       </View>
@@ -1868,13 +1863,13 @@ function AppContent() {
           <>
             <View style={[s.card, { overflow: "hidden" }]}>
               <LinearGradient colors={["#12303d", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>PHARMACY · DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>PHARMACY - DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadPharmacyDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {pharmacyStatus ? <Text style={[s.statusMsg, isErrorMsg(pharmacyStatus) ? s.statusErr : s.statusOk]}>{pharmacyStatus}</Text> : null}
               {pharmacyDashboard ? (
                 <View style={s.metricGrid}>
                   {[
-                    ["Pharmacy", pharmacyDashboard.pharmacy?.businessName ?? "—"],
+                    ["Pharmacy", pharmacyDashboard.pharmacy?.businessName ?? "-"],
                     ["Drugs", pharmacyDashboard.metrics.drugs],
                     ["Batches", pharmacyDashboard.metrics.batches],
                     ["QR codes", pharmacyDashboard.metrics.qrCodes],
@@ -1899,7 +1894,7 @@ function AppContent() {
               return (
                 <View style={[s.card, { overflow: "hidden" }]}>
                   <LinearGradient colors={["#12303d", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                  <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>INVENTORY · EXPIRY WATCH</Text>
+                  <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>INVENTORY - EXPIRY WATCH</Text>
                   {rows.map((b) => {
                     const urgent = b.daysLeft <= 7;
                     const soon = b.daysLeft <= 30;

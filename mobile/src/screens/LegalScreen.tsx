@@ -79,7 +79,7 @@ function TermsBody({ color, sub }: { color: string; sub: string }) {
       </P>
       <H color={color}>No warranty</H>
       <P color={sub}>
-        FoodTrace GH is provided "as is." Scan results may not be complete or error-free — always use
+        FoodTrace GH is provided "as is." Scan results may not be complete or error-free - always use
         independent judgment, especially for medicines.
       </P>
     </>
@@ -91,7 +91,7 @@ function PrivacyBody({ color, sub }: { color: string; sub: string }) {
     <>
       <P color={sub}>
         We collect your account details (name, phone/email, role), your scan and report activity, and
-        — for sellers — the products and batches you list. Paystack handles your card/Mobile Money
+        - for sellers - the products and batches you list. Paystack handles your card/Mobile Money
         details directly; we never see your card number or PIN.
       </P>
       <H color={color}>Third parties</H>

@@ -12,7 +12,7 @@ interface Props {
 
 /**
  * A single tappable row used in the Account screen and similar settings
- * lists — icon + label + chevron, ProofLoop card styling.
+ * lists - icon + label + chevron, ProofLoop card styling.
  */
 export function ProofActionCard({ icon, label, onPress, tint }: Props) {
   const p = usePalette();

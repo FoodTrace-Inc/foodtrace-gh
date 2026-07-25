@@ -36,7 +36,7 @@ export function PaymentScreen({ apiBase, token, userEmail, plan, onSuccess, onFa
       return;
     }
     setBusy(true);
-    setStatus("Starting payment…");
+    setStatus("Starting payment...");
     try {
       const initRes = await fetch(`${apiBase}/payments/initialize`, {
         method: "POST",
@@ -47,13 +47,13 @@ export function PaymentScreen({ apiBase, token, userEmail, plan, onSuccess, onFa
       if (!initRes.ok) throw new Error(initData.error || initData.message || "Could not start payment.");
 
       const { authorizationUrl, reference } = initData;
-      setStatus("Opening Paystack…");
+      setStatus("Opening Paystack...");
       const result = await WebBrowser.openAuthSessionAsync(authorizationUrl, undefined);
 
       // The user may close the browser before finishing, or Paystack may
-      // redirect back — either way, verify against our backend, which is
+      // redirect back - either way, verify against our backend, which is
       // the source of truth, rather than trusting the browser result type.
-      setStatus("Verifying payment…");
+      setStatus("Verifying payment...");
       const verifyRes = await fetch(`${apiBase}/payments/verify/${reference}`);
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verifyData.error || "Could not verify payment.");

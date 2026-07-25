@@ -216,7 +216,7 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
       {status ? <Text style={s.error}>{status}</Text> : null}
 
       <Pressable style={[s.postBtn, submitting && s.postBtnOff]} onPress={() => void submit()} disabled={submitting}>
-        <Text style={s.postBtnText}>{submitting ? "Posting…" : "Post to marketplace"}</Text>
+        <Text style={s.postBtnText}>{submitting ? "Posting..." : "Post to marketplace"}</Text>
       </Pressable>
     </ScrollView>
   );

@@ -3,7 +3,7 @@
  *
  * Animated launch intro for FoodTrace GH. Plays every time the app opens:
  * a glowing ring expands, the shield/check logo rotates-and-settles into place
- * with a spring, then the wordmark + tagline fade up — before the whole screen
+ * with a spring, then the wordmark + tagline fade up - before the whole screen
  * fades out to reveal the app.
  *
  * Pure React Native Animated (native driver), dark-green theme.

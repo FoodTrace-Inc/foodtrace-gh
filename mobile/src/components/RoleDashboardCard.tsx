@@ -10,7 +10,7 @@ interface Props {
 
 /**
  * Standard section card used inside the four role dashboards (Farm/Batch/
- * Drug Proof Hub, Safety Command Center) — same visual language as
+ * Drug Proof Hub, Safety Command Center) - same visual language as
  * ProofCard, kept separate so dashboard sections read as distinct blocks.
  */
 export function RoleDashboardCard({ kicker, title, children }: Props) {

@@ -1,14 +1,14 @@
 /**
  * MarketplaceFeedScreen.tsx
  *
- * The FoodTrace GH marketplace social feed — ProofLoop styling: dark screen,
+ * The FoodTrace GH marketplace social feed - ProofLoop styling: dark screen,
  * gradient "proof-backed goods" cards, cyan verification pills. Sellers
  * (manufacturer / farmer / pharmacist) post products; everyone browses,
  * likes, saves, comments, and taps "Scan to verify" to open the live safety
  * result for a post's QR code.
  *
  * Every post carries a safety badge (FDA Approved / EPA Cleared / Recalled)
- * that the backend resolves from the real scan/recall system — it cannot be
+ * that the backend resolves from the real scan/recall system - it cannot be
  * faked by the seller.
  */
 
@@ -68,7 +68,7 @@ const FILTERS: { key: string; label: string; domain: string | null }[] = [
 
 const SELLER_ROLES = ["manufacturer", "farmer", "pharmacist"];
 
-// Domain-colored gradient bands for posts without a real photo — mirrors
+// Domain-colored gradient bands for posts without a real photo - mirrors
 // the web marketplace's vibrant per-domain card treatment.
 const DOMAIN_GRADIENT: Record<string, [string, string]> = {
   food: ["#edb54c", "#18a2a6"],
@@ -85,7 +85,7 @@ function badgeColors(status: string): { bg: string; fg: string } {
   if (status === "recalled") return { bg: "#e0475c", fg: "#3a0d12" };
   if (status === "unverified") return { bg: "#edb54c", fg: "#4a3400" };
   if (status === "epa_cleared") return { bg: "#1b6d8f", fg: "#eaf6fa" };
-  return { bg: "#fff9ec", fg: "#0f6f6f" }; // fda_approved / default — cream pill, cyan text
+  return { bg: "#fff9ec", fg: "#0f6f6f" }; // fda_approved / default - cream pill, cyan text
 }
 
 export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerifyCode, onCompose }: Props) {
@@ -171,7 +171,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
 
   async function sharePost(post: MarketplacePost) {
     const lines = [
-      `${post.title} — ${post.safetyLabel} on FoodTrace GH`,
+      `${post.title} - ${post.safetyLabel} on FoodTrace GH`,
       post.caption || "",
       post.qrCodeString ? `Verify this product, code: ${post.qrCodeString}` : "",
       "Scan before you buy. Stay safe with FoodTrace GH.",
@@ -226,7 +226,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
               <Text style={s.sellerName} numberOfLines={1}>{post.sellerName}</Text>
               <View style={s.roleChip}><Text style={s.roleChipText}>{String(post.sellerRole).toUpperCase()}</Text></View>
             </View>
-            <Text style={s.metaText}>{post.location ? `${post.location} · ` : ""}{post.domain}</Text>
+            <Text style={s.metaText}>{post.location ? `${post.location} - ` : ""}{post.domain}</Text>
           </View>
         </View>
 
@@ -291,7 +291,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
         {comments ? (
           <View style={s.comments}>
             {comments.length === 0 ? (
-              <Text style={s.noComments}>No comments yet — be the first.</Text>
+              <Text style={s.noComments}>No comments yet - be the first.</Text>
             ) : (
               comments.map((c) => (
                 <View key={c.id} style={s.commentRow}>
@@ -335,7 +335,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
       </View>
 
       {loading && posts.length === 0 ? (
-        <View style={s.center}><ActivityIndicator color="#18a2a6" /><Text style={s.centerText}>Loading feed…</Text></View>
+        <View style={s.center}><ActivityIndicator color="#18a2a6" /><Text style={s.centerText}>Loading feed...</Text></View>
       ) : error && posts.length === 0 ? (
         <View style={s.center}>
           <Text style={s.errorText}>{error}</Text>

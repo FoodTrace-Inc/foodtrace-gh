@@ -94,7 +94,7 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
 /**
  * Parses a raw QR code string or URL into a { kind, codeString } target.
  * Handles both bare codes (FT-QR-1001) and full scan URLs returned by some
- * QR generators (https://example.com/scan/FT-QR-1001?batchId=…).
+ * QR generators (https://example.com/scan/FT-QR-1001?batchId=...).
  */
 function parseScannerTarget(raw: string): ParsedTarget | null {
   const trimmed = raw.trim();
@@ -220,7 +220,7 @@ export function QRScannerScreen({
     setLoading(true);
     setErrorMessage(null);
     setStatusMessage(
-      `Checking ${target.kind === "drug" ? "drug" : "food"} code ${target.codeString}…`
+      `Checking ${target.kind === "drug" ? "drug" : "food"} code ${target.codeString}...`
     );
 
     try {
@@ -229,7 +229,7 @@ export function QRScannerScreen({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Scan failed";
       setErrorMessage(msg);
-      setStatusMessage("Scan failed — please try again.");
+      setStatusMessage("Scan failed - please try again.");
       // Resume camera after a short delay so the user can retry.
       scheduleResume(2500);
     } finally {
@@ -288,7 +288,7 @@ export function QRScannerScreen({
           <View style={styles.permissionBox}>
             <Text style={styles.permissionText}>
               {cameraPermission === null
-                ? "Requesting camera access…"
+                ? "Requesting camera access..."
                 : "Camera access is required to scan QR codes."}
             </Text>
             <Pressable
@@ -309,12 +309,12 @@ export function QRScannerScreen({
             {scannerPaused
               ? "Scanner paused"
               : loading
-              ? "Checking code…"
-              : "Live — ready to scan"}
+              ? "Checking code..."
+              : "Live - ready to scan"}
           </Text>
           <Text style={styles.overlayBody}>
             {scannerPaused
-              ? "Scan registered. Resuming shortly…"
+              ? "Scan registered. Resuming shortly..."
               : "Align the QR code within the frame."}
           </Text>
         </View>
@@ -367,7 +367,7 @@ export function QRScannerScreen({
           disabled={loading}
         >
           <Text style={styles.primaryButtonText}>
-            {loading ? "Checking…" : "Scan this code"}
+            {loading ? "Checking..." : "Scan this code"}
           </Text>
         </Pressable>
 

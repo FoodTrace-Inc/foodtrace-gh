@@ -11,13 +11,13 @@ interface Slide {
   desc: string;
 }
 
-// Mirrors web's FEATURES/STEPS content (lib/brand.ts) — same six-feature
+// Mirrors web's FEATURES/STEPS content (lib/brand.ts) - same six-feature
 // story, condensed for a phone-sized swipeable intro instead of a scrolling
 // marketing page.
 const SLIDES: Slide[] = [
-  { icon: "scan-outline", title: "Instant QR verification", desc: "Point, scan and get a clear Safe / Caution / Recalled verdict in seconds — no account required to check a product." },
+  { icon: "scan-outline", title: "Instant QR verification", desc: "Point, scan and get a clear Safe / Caution / Recalled verdict in seconds - no account required to check a product." },
   { icon: "git-network-outline", title: "Farm-to-shelf traceability", desc: "Every batch carries its full story: origin farm, inputs applied, processing steps and quality checks." },
-  { icon: "alert-circle-outline", title: "Recall & expiry alerts", desc: "When a product is recalled or nearing expiry, everyone who scanned it is notified — instantly." },
+  { icon: "alert-circle-outline", title: "Recall & expiry alerts", desc: "When a product is recalled or nearing expiry, everyone who scanned it is notified - instantly." },
   { icon: "storefront-outline", title: "Trusted marketplace", desc: "Farmers and manufacturers list verified stock; buyers scan the QR right from the feed before they commit." },
   { icon: "sparkles-outline", title: "AI safety assistant", desc: "Ask about a pesticide, a drug or a recall in plain English or Twi and get a grounded, sourced answer." },
 ];

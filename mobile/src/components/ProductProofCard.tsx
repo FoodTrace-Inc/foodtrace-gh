@@ -17,7 +17,7 @@ interface Props {
   onPress?: () => void;
 }
 
-/** Compact product summary card — seller marketplace listings, search results. */
+/** Compact product summary card - seller marketplace listings, search results. */
 export function ProductProofCard({ name, sellerName, domain, status, onPress }: Props) {
   const gradient = DOMAIN_GRADIENT[domain] ?? DOMAIN_GRADIENT.food;
 

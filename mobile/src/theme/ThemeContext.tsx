@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored === "light" || stored === "dark") setTheme(stored);
       } catch {
-        // ignore — default to light (ProofLoop's cream home screen)
+        // ignore - default to light (ProofLoop's cream home screen)
       }
     })();
   }, []);
@@ -44,7 +44,7 @@ export function useTheme() {
 /**
  * ProofLoop design system palette. Two named modes exist (light/dark) so the
  * existing theme toggle keeps working, but per the ProofLoop spec these
- * aren't a generic light/dark mode — "light" is the everyday cream
+ * aren't a generic light/dark mode - "light" is the everyday cream
  * Proof Hub look, "dark" is the focused scanner/proof-card look. Individual
  * screens (scanner, proof card) may force the dark palette's colors
  * regardless of the current mode, since those surfaces are always dark by

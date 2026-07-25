@@ -1,4 +1,4 @@
-// Signature scan-result visual — a ring of dots (same design language as
+// Signature scan-result visual - a ring of dots (same design language as
 // the web SafetyRing) built from plain Views so it needs no native SVG
 // dependency. Each dot is absolutely positioned via trig math.
 import React from "react";

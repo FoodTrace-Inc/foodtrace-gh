@@ -55,7 +55,7 @@ export function SubscriptionManagementScreen({ apiBase, token, userId, onUpgrade
   useEffect(() => { void load(); }, []);
 
   async function cancel() {
-    setStatus("Cancelling…");
+    setStatus("Cancelling...");
     try {
       const res = await fetch(`${apiBase}/payments/subscription/cancel`, {
         method: "POST",
@@ -129,7 +129,7 @@ export function SubscriptionManagementScreen({ apiBase, token, userId, onUpgrade
           <View key={h.reference} style={[styles.historyRow, { borderColor: p.border }]}>
             <View>
               <Text style={{ color: p.textPrimary, fontWeight: "600", textTransform: "capitalize" }}>{h.planType} plan</Text>
-              <Text style={{ color: p.textSecondary, fontSize: 11 }}>{new Date(h.createdAt).toLocaleDateString()} · {h.channel ?? "—"}</Text>
+              <Text style={{ color: p.textSecondary, fontSize: 11 }}>{new Date(h.createdAt).toLocaleDateString()} - {h.channel ?? "-"}</Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
               <Text style={{ color: p.textPrimary, fontWeight: "700" }}>GHS {h.amount}</Text>
