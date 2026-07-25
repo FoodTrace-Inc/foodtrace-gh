@@ -20,5 +20,8 @@ public record AppProperties(
     String awsAccessKeyId,
     String awsSecretAccessKey,
     String awsRegion,
-    String awsBucketName) {
+    String awsBucketName,
+    // Paystack payments — set PAYSTACK_PUBLIC_KEY / PAYSTACK_SECRET_KEY to enable
+    String paystackPublicKey,
+    String paystackSecretKey) {
 }

@@ -39,6 +39,10 @@ foodtrace:
   aws-secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
   aws-region: ${AWS_REGION:eu-west-1}
   aws-bucket-name: ${AWS_BUCKET_NAME:}
+  # Paystack — leave blank to disable; payment endpoints return a clear
+  # "not configured" error rather than throwing when absent
+  paystack-public-key: ${PAYSTACK_PUBLIC_KEY:}
+  paystack-secret-key: ${PAYSTACK_SECRET_KEY:}
 
 management:
   endpoints:
