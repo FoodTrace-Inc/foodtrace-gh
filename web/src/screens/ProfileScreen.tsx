@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useSession } from "../session/SessionContext";
+import { apiBase } from "../lib/api";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -9,9 +12,26 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+interface SubscriptionStatus {
+  plan: string;
+  status: string;
+  expiryDate: string;
+  daysLeft: number;
+}
+
 export function ProfileScreen() {
   const { session, signOut } = useSession();
   const { user } = session;
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
+
+  useEffect(() => {
+    fetch(`${apiBase}/payments/subscription/${user.id}`)
+      .then((r) => r.json())
+      .then(setSubscription)
+      .catch(() => {});
+  }, [user.id]);
+
+  const isActive = subscription?.status === "active";
 
   return (
     <div style={{ display: "grid", gap: 20, maxWidth: 480 }}>
@@ -27,6 +47,24 @@ export function ProfileScreen() {
         <Row label="Role" value={user.role} />
         <Row label="Language" value={user.language} />
         <Row label="Verified" value={user.isVerified ? "Yes" : "No"} />
+      </div>
+
+      <div style={{ background: "linear-gradient(135deg, #14251d 0%, #0b0f13 60%)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: 24 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "#f4f4ef", textTransform: "uppercase", letterSpacing: 1 }}>Subscription</p>
+        <Row label="Plan" value={subscription?.plan && subscription.plan !== "none" ? subscription.plan : "None"} />
+        <Row label="Status" value={subscription?.status ?? "None"} />
+        {subscription && subscription.plan !== "none" ? (
+          <>
+            <Row label="Days remaining" value={String(subscription.daysLeft)} />
+            <Row label="Next payment" value={subscription.expiryDate} />
+          </>
+        ) : null}
+        <Link
+          to="/pricing"
+          style={{ display: "inline-block", marginTop: 14, padding: "10px 16px", borderRadius: 12, background: "#77c7a2", color: "#062014", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
+        >
+          {isActive ? "Upgrade plan" : "Choose a plan"}
+        </Link>
       </div>
 
       <button

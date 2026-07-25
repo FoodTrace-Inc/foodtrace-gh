@@ -46,7 +46,35 @@ public class PaymentService {
     this.notificationService = notificationService;
   }
 
+  /** Mobile flow: server drives Paystack's hosted checkout (authorization_url), opened in an in-app browser. */
   public Map<String, Object> initialize(CurrentUser user, Map<String, Object> body) {
+    PendingPayment pending = createPendingPayment(user, body);
+    JsonNode data = paystackClient.initializeTransaction(pending.email(), pending.price(), pending.reference(),
+        Map.of("userId", user.id(), "planType", pending.planType()));
+
+    return Map.of(
+        "authorizationUrl", data.path("authorization_url").asText(),
+        "reference", data.path("reference").asText(pending.reference()));
+  }
+
+  /**
+   * Web flow: the browser drives Paystack's inline popup (PaystackPop.setup)
+   * directly with the public key — we never touch Paystack's API here,
+   * just reserve our own ledger row + reference so /verify has something to
+   * reconcile against once the popup reports success.
+   */
+  public Map<String, Object> initializeInline(CurrentUser user, Map<String, Object> body) {
+    PendingPayment pending = createPendingPayment(user, body);
+    return Map.of(
+        "reference", pending.reference(),
+        "email", pending.email(),
+        "amountGhs", pending.price(),
+        "amountKobo", pending.price().multiply(BigDecimal.valueOf(100)).longValueExact());
+  }
+
+  private record PendingPayment(String reference, String email, BigDecimal price, String planType) {}
+
+  private PendingPayment createPendingPayment(CurrentUser user, Map<String, Object> body) {
     String planType = String.valueOf(body.get("planType"));
     BigDecimal price = PLAN_PRICES.get(planType);
     if (price == null) {
@@ -70,12 +98,7 @@ public class PaymentService {
         .param("planType", planType)
         .update();
 
-    JsonNode data = paystackClient.initializeTransaction(email, price, reference,
-        Map.of("userId", user.id(), "planType", planType));
-
-    return Map.of(
-        "authorizationUrl", data.path("authorization_url").asText(),
-        "reference", data.path("reference").asText(reference));
+    return new PendingPayment(reference, email, price, planType);
   }
 
   public Map<String, Object> verify(String reference) {

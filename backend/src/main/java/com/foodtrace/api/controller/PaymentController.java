@@ -27,6 +27,12 @@ public class PaymentController {
     return paymentService.initialize(currentUser(authentication), body);
   }
 
+  /** Web's Paystack inline popup flow — see PaymentService.initializeInline for why this differs from /initialize. */
+  @PostMapping("/initialize-inline")
+  public Map<String, Object> initializeInline(@RequestBody Map<String, Object> body, Authentication authentication) {
+    return paymentService.initializeInline(currentUser(authentication), body);
+  }
+
   @GetMapping("/verify/{reference}")
   public Map<String, Object> verify(@PathVariable String reference) {
     return paymentService.verify(reference);

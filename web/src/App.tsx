@@ -8,6 +8,7 @@ import { DashboardScreen } from "./screens/DashboardScreen";
 import { MarketplaceScreen } from "./screens/MarketplaceScreen";
 import { AssistantScreen } from "./screens/AssistantScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { PricingScreen } from "./screens/PricingScreen";
 
 function App() {
   const [session, setSession] = useState<AuthResponse | null>(null);
@@ -35,6 +36,7 @@ function App() {
               <Route path="/marketplace" element={<MarketplaceScreen />} />
               <Route path="/assistant" element={<AssistantScreen />} />
               <Route path="/profile" element={<ProfileScreen />} />
+              <Route path="/pricing" element={<PricingScreen />} />
             </Route>
           ) : null}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -13,6 +13,7 @@ const NAV_ITEMS: { to: string; label: string; icon: string }[] = [
   { to: "/dashboard", label: "Dashboard", icon: "⌘" },
   { to: "/marketplace", label: "Marketplace", icon: "▦" },
   { to: "/assistant", label: "Assistant", icon: "⚙" },
+  { to: "/pricing", label: "Pricing", icon: "$" },
   { to: "/profile", label: "Profile", icon: "○" },
 ];
 

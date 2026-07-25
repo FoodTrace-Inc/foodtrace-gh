@@ -33,6 +33,10 @@ jobs:
           GITHUB_PAGES: "true"
           VITE_API_BASE_URL: https://foodtrace-gh.onrender.com/api
           VITE_ENABLE_DRUG_MODULE: "true"
+          # Paystack's *public* key is safe to expose client-side by design —
+          # still sourced from a repo secret so it's not hardcoded here.
+          # Set the VITE_PAYSTACK_PUBLIC_KEY secret in the repo settings to enable.
+          VITE_PAYSTACK_PUBLIC_KEY: ${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}
         run: npm run build --workspace web
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -11,6 +11,7 @@ export const apiBase = resolveApiBase();
 export const showDemoMode = (import.meta as any).env?.VITE_SHOW_DEMO_MODE === "true";
 export const enableDrugModule = (import.meta as any).env?.VITE_ENABLE_DRUG_MODULE === "true";
 export const apiRoot = apiBase.replace(/\/api\/?$/, "");
+export const paystackPublicKey = ((import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY ?? "").trim();
 
 export async function readJsonResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
