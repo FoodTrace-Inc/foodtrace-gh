@@ -59,7 +59,8 @@
         {
           "color": "#77c7a2"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "splash": {
       "image": "./assets/splash.png",

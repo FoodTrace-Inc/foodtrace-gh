@@ -61,6 +61,10 @@ import {
 import type { AppNotification } from "./src/screens";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { ThemeProvider, useTheme, usePalette } from "./src/theme/ThemeContext";
+import { SubscriptionPlansScreen, SELLER_PLANS, CONSUMER_PLANS, type PlanDef } from "./src/screens/SubscriptionPlansScreen";
+import { PaymentScreen } from "./src/screens/PaymentScreen";
+import { PaymentResultScreen } from "./src/screens/PaymentResultScreen";
+import { SubscriptionManagementScreen } from "./src/screens/SubscriptionManagementScreen";
 
 // â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -166,7 +170,7 @@ const SECURITY_QUESTIONS = [
 ];
 
 type Mode = "login" | "register" | "forgot";
-type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market";
+type ConsumerTab = "home" | "scanner" | "result" | "report" | "history" | "account" | "market" | "plans" | "payment" | "paymentResult" | "subscription";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type HistoryEntry = {
   id: string; kind: "food" | "drug"; codeString: string;
@@ -241,6 +245,8 @@ function AppContent() {
 
   // consumer
   const [consumerTab, setConsumerTab] = useState<ConsumerTab>("home");
+  const [selectedPlan, setSelectedPlan] = useState<PlanDef | null>(null);
+  const [paymentResult, setPaymentResult] = useState<{ success: boolean; planName?: string; expiryDate?: string; reason?: string } | null>(null);
   // seller/regulator portal: dashboard vs marketplace
   const [portalView, setPortalView] = useState<"portal" | "market" | "compose" | "result">("portal");
   const [scanCode, setScanCode] = useState("FT-QR-1001");
@@ -1217,6 +1223,46 @@ function AppContent() {
               onClear={() => void persistHistory([])}
               onBack={() => setConsumerTab("home")}
             />
+          ) : consumerTab === "plans" ? (
+            <SubscriptionPlansScreen
+              plans={CONSUMER_PLANS}
+              onSelectPlan={(key) => { setSelectedPlan(CONSUMER_PLANS.find((pl) => pl.key === key) ?? null); setConsumerTab("payment"); }}
+              onBack={() => setConsumerTab("subscription")}
+            />
+          ) : consumerTab === "payment" && selectedPlan ? (
+            <PaymentScreen
+              apiBase={apiBase}
+              token={session.token}
+              userEmail={session.user.email ?? ""}
+              plan={selectedPlan}
+              onSuccess={(result) => { setPaymentResult({ success: true, planName: result.plan, expiryDate: result.expiryDate }); setConsumerTab("paymentResult"); }}
+              onFailure={(reason) => { setPaymentResult({ success: false, reason }); setConsumerTab("paymentResult"); }}
+              onBack={() => setConsumerTab("plans")}
+            />
+          ) : consumerTab === "paymentResult" && paymentResult ? (
+            paymentResult.success ? (
+              <PaymentResultScreen
+                success
+                planName={paymentResult.planName ?? ""}
+                expiryDate={paymentResult.expiryDate ?? ""}
+                onContinue={() => setConsumerTab("home")}
+              />
+            ) : (
+              <PaymentResultScreen
+                success={false}
+                reason={paymentResult.reason ?? "Something went wrong."}
+                onRetry={() => setConsumerTab("payment")}
+                onChooseMethod={() => setConsumerTab("plans")}
+              />
+            )
+          ) : consumerTab === "subscription" ? (
+            <SubscriptionManagementScreen
+              apiBase={apiBase}
+              token={session.token}
+              userId={session.user.id}
+              onUpgrade={() => setConsumerTab("plans")}
+              onBack={() => setConsumerTab("account")}
+            />
           ) : consumerTab === "account" ? (
             <ScrollView contentContainerStyle={s.scrollPad} keyboardShouldPersistTaps="handled">
               {/* User card */}
@@ -1232,7 +1278,10 @@ function AppContent() {
                     <Text style={[s.chipText, scanLanguage === "tw" && s.chipTextActive]}>Twi</Text>
                   </Pressable>
                 </View>
-                <Pressable style={s.outlineBtn} onPress={signOut}>
+                <Pressable style={s.outlineBtn} onPress={() => setConsumerTab("subscription")}>
+                  <Text style={s.outlineBtnText}>Subscription</Text>
+                </Pressable>
+                <Pressable style={[s.outlineBtn, { marginTop: 8 }]} onPress={signOut}>
                   <Text style={s.outlineBtnText}>Sign out</Text>
                 </Pressable>
               </View>
