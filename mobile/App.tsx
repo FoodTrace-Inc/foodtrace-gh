@@ -60,6 +60,7 @@ import {
 } from "./src/screens";
 import type { AppNotification } from "./src/screens";
 import { PasswordInput } from "./src/components/PasswordInput";
+import { Logo } from "./src/components/Logo";
 import { ThemeProvider, useTheme, usePalette } from "./src/theme/ThemeContext";
 import { SubscriptionPlansScreen, SELLER_PLANS, CONSUMER_PLANS, type PlanDef } from "./src/screens/SubscriptionPlansScreen";
 import { PaymentScreen } from "./src/screens/PaymentScreen";
@@ -1178,7 +1179,7 @@ function AppContent() {
 
         {/* Top header */}
         <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
-          <Text style={s.topBarLogo}>FOODTRACE GH</Text>
+          <Logo size={22} fontSize={15} />
           <View style={s.topBarRight}>
             <Text style={s.topBarUser} numberOfLines={1}>{session.user.fullName || "Account"}</Text>
             <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
@@ -1437,7 +1438,7 @@ function AppContent() {
     <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
       <StatusBar barStyle="light-content" backgroundColor="#071a10" />
       <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
-        <Text style={s.topBarLogo}>FOODTRACE GH</Text>
+        <Logo size={22} fontSize={15} />
         <View style={s.topBarRight}>
           <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
             <Text style={s.bellIcon}>ðŸ””</Text>
@@ -2016,7 +2017,6 @@ const s = StyleSheet.create({
 
   // logged-in layout
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, backgroundColor: "#071a10", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
-  topBarLogo: { color: "#77c7a2", fontWeight: "800", fontSize: 16, letterSpacing: 1 },
   topBarUser: { color: "#93b9ac", fontSize: 13, maxWidth: 140 },
   signOutBtn: { backgroundColor: "#182028", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
   topBarRight: { flexDirection: "row", alignItems: "center", gap: 10 },

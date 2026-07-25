@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Image, StyleSheet, Text, View } from "react-native";
 
 export function SplashIntro({ onFinish }: { onFinish: () => void }) {
   const logoScale = useRef(new Animated.Value(0.3)).current;
@@ -64,12 +64,12 @@ export function SplashIntro({ onFinish }: { onFinish: () => void }) {
         <Animated.View style={[styles.ring, { opacity: ring2Opacity, transform: [{ scale: ring2Scale }] }]} />
         <Animated.View style={[styles.ring, { opacity: ringOpacity, transform: [{ scale: ringScale }] }]} />
         <Animated.View style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }, { rotate: spin }] }]}>
-          <Text style={styles.check}>✓</Text>
+          <Image source={require("../../assets/foodtrace-logo.png")} style={styles.logoImage} resizeMode="contain" />
         </Animated.View>
       </View>
 
       <Animated.View style={{ alignItems: "center", opacity: textOpacity, transform: [{ translateY: textShift }] }}>
-        <Text style={styles.title}>FOODTRACE GH</Text>
+        <Text style={styles.title}>FoodTrace <Text style={{ opacity: 0.65 }}>GH</Text></Text>
         <Text style={styles.tag}>Scan. Verify. Stay safe.</Text>
       </Animated.View>
     </Animated.View>
@@ -99,12 +99,12 @@ const styles = StyleSheet.create({
   logo: {
     width: 104,
     height: 104,
-    borderRadius: 52,
-    backgroundColor: "#77c7a2",
+    borderRadius: 24,
+    backgroundColor: "rgba(119,199,162,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  check: { color: "#05080b", fontSize: 58, fontWeight: "900", marginTop: -4 },
-  title: { color: "#eafff5", fontSize: 26, fontWeight: "800", letterSpacing: 3 },
+  logoImage: { width: 72, height: 72 },
+  title: { color: "#eafff5", fontSize: 26, fontWeight: "800", letterSpacing: 1 },
   tag: { color: "#77c7a2", fontSize: 13, marginTop: 8, letterSpacing: 1 },
 });
