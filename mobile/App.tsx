@@ -61,6 +61,7 @@ import {
 import type { AppNotification } from "./src/screens";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { Logo } from "./src/components/Logo";
+import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { ThemeProvider, useTheme, usePalette } from "./src/theme/ThemeContext";
 import { SubscriptionPlansScreen, SELLER_PLANS, CONSUMER_PLANS, type PlanDef } from "./src/screens/SubscriptionPlansScreen";
 import { PaymentScreen } from "./src/screens/PaymentScreen";
@@ -235,6 +236,26 @@ function AppContent() {
 
   // launch intro
   const [showIntro, setShowIntro] = useState(true);
+
+  // first-run onboarding — shown once, before the first auth screen
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem("ft-onboarding-seen");
+        setShowOnboarding(seen !== "true");
+      } catch {
+        setShowOnboarding(true);
+      } finally {
+        setOnboardingChecked(true);
+      }
+    })();
+  }, []);
+  function finishOnboarding() {
+    setShowOnboarding(false);
+    AsyncStorage.setItem("ft-onboarding-seen", "true").catch(() => {});
+  }
 
   // notifications
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -1034,6 +1055,10 @@ function AppContent() {
 
   if (showIntro) {
     return <SplashIntro onFinish={() => setShowIntro(false)} />;
+  }
+
+  if (!session && onboardingChecked && showOnboarding) {
+    return <OnboardingScreen onDone={finishOnboarding} />;
   }
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
