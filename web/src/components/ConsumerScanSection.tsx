@@ -82,12 +82,19 @@ export function ConsumerScanSection({ session, scanCode, setScanCode, scanResult
             <SafetyRing status={statusToRingStatus(scanResult.status)} />
           </div>
           <h3 style={{ ...styles.resultTitle, textAlign: "center" }}>{scanResult.title}</h3>
+          {scanResult.imageUrl ? (
+            <img
+              src={scanResult.imageUrl}
+              alt={scanResult.title}
+              style={{ display: "block", width: "100%", maxWidth: 320, maxHeight: 220, objectFit: "cover", borderRadius: 14, margin: "0 auto 14px" }}
+            />
+          ) : null}
           <p style={styles.resultSummary}>{scanResult.summary}</p>
           <dl className="app-grid-2" style={styles.resultGrid}>
-            <div><dt>Batch</dt><dd>{scanResult.batchNumber ?? "N/A"}</dd></div>
-            <div><dt>Manufacturer</dt><dd>{scanResult.manufacturerName ?? "N/A"}</dd></div>
-            <div><dt>Packaging</dt><dd>{scanResult.packagingDate ?? "N/A"}</dd></div>
-            <div><dt>Expiry</dt><dd>{scanResult.expiryDate ?? "N/A"}</dd></div>
+            <div><dt style={{ color: "#93b9ac" }}>Batch</dt><dd style={{ color: "#f4f4ef" }}>{scanResult.batchNumber ?? "N/A"}</dd></div>
+            <div><dt style={{ color: "#93b9ac" }}>Manufacturer</dt><dd style={{ color: "#f4f4ef" }}>{scanResult.manufacturerName ?? "N/A"}</dd></div>
+            <div><dt style={{ color: "#93b9ac" }}>Packaging</dt><dd style={{ color: "#f4f4ef" }}>{scanResult.packagingDate ?? "N/A"}</dd></div>
+            <div><dt style={{ color: "#93b9ac" }}>Expiry</dt><dd style={{ color: "#f4f4ef" }}>{scanResult.expiryDate ?? "N/A"}</dd></div>
           </dl>
           <p style={styles.action}>{scanResult.recommendedAction}</p>
           <p style={{ fontSize: 11, lineHeight: 1.5, color: "#748089", marginTop: 10 }}>

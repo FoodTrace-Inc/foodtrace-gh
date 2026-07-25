@@ -344,6 +344,7 @@ export const styles: Record<string, CSSProperties> = {
   resultTitle: {
     margin: "0 0 8px",
     fontSize: 28,
+    color: "#f4f4ef",
   },
   resultSummary: {
     margin: 0,

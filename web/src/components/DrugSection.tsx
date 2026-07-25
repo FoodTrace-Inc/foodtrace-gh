@@ -223,6 +223,13 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
             <SafetyRing status={statusToRingStatus(drugScanResult.status)} />
           </div>
           <h3 style={{ ...styles.resultTitle, textAlign: "center" }}>{drugScanResult.title}</h3>
+          {drugScanResult.imageUrl ? (
+            <img
+              src={drugScanResult.imageUrl}
+              alt={drugScanResult.title}
+              style={{ display: "block", width: "100%", maxWidth: 320, maxHeight: 220, objectFit: "cover", borderRadius: 14, margin: "0 auto 14px" }}
+            />
+          ) : null}
           <p style={styles.resultSummary}>{drugScanResult.summary}</p>
           <p style={styles.resultSummary}>Drug: {drugScanResult.drugName ?? "N/A"}</p>
           <p style={styles.resultSummary}>Batch: {drugScanResult.batchNumber ?? "N/A"}</p>

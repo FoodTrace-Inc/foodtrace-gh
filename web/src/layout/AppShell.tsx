@@ -108,7 +108,7 @@ export function AppShell({ session, onSignOut }: Props) {
         </div>
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, padding: "28px 32px" }} className="app-main">
+      <main style={{ flex: 1, minWidth: 0, padding: "28px 32px", color: p.textPrimary }} className="app-main">
         <SessionProvider value={{ session, signOut: handleSignOut }}>
           <Outlet />
         </SessionProvider>
