@@ -1,11 +1,12 @@
 import React, { useRef, useState } from "react";
 import { Dimensions, FlatList, Pressable, StyleSheet, Text, View, type NativeSyntheticEvent, type NativeScrollEvent } from "react-native";
 import { Logo } from "../components/Logo";
+import { Icon, type IconName } from "../components/Icon";
 
 const { width } = Dimensions.get("window");
 
 interface Slide {
-  icon: string;
+  icon: IconName;
   title: string;
   desc: string;
 }
@@ -14,11 +15,11 @@ interface Slide {
 // story, condensed for a phone-sized swipeable intro instead of a scrolling
 // marketing page.
 const SLIDES: Slide[] = [
-  { icon: "⊡", title: "Instant QR verification", desc: "Point, scan and get a clear Safe / Caution / Recalled verdict in seconds — no account required to check a product." },
-  { icon: "⟿", title: "Farm-to-shelf traceability", desc: "Every batch carries its full story: origin farm, inputs applied, processing steps and quality checks." },
-  { icon: "◔", title: "Recall & expiry alerts", desc: "When a product is recalled or nearing expiry, everyone who scanned it is notified — instantly." },
-  { icon: "▤", title: "Trusted marketplace", desc: "Farmers and manufacturers list verified stock; buyers scan the QR right from the feed before they commit." },
-  { icon: "✦", title: "AI safety assistant", desc: "Ask about a pesticide, a drug or a recall in plain English or Twi and get a grounded, sourced answer." },
+  { icon: "scan-outline", title: "Instant QR verification", desc: "Point, scan and get a clear Safe / Caution / Recalled verdict in seconds — no account required to check a product." },
+  { icon: "git-network-outline", title: "Farm-to-shelf traceability", desc: "Every batch carries its full story: origin farm, inputs applied, processing steps and quality checks." },
+  { icon: "alert-circle-outline", title: "Recall & expiry alerts", desc: "When a product is recalled or nearing expiry, everyone who scanned it is notified — instantly." },
+  { icon: "storefront-outline", title: "Trusted marketplace", desc: "Farmers and manufacturers list verified stock; buyers scan the QR right from the feed before they commit." },
+  { icon: "sparkles-outline", title: "AI safety assistant", desc: "Ask about a pesticide, a drug or a recall in plain English or Twi and get a grounded, sourced answer." },
 ];
 
 export function OnboardingScreen({ onDone }: { onDone: () => void }) {
@@ -56,7 +57,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
             <View style={styles.iconRing}>
-              <Text style={styles.icon}>{item.icon}</Text>
+              <Icon name={item.icon} size={30} color="#18a2a6" />
             </View>
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.desc}>{item.desc}</Text>

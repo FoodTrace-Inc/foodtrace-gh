@@ -278,7 +278,11 @@ function AppContent() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(false);
   const [consumerHistory, setConsumerHistory] = useState<HistoryEntry[]>([]);
-  const [scanLanguage, setScanLanguage] = useState<"en" | "tw">("en");
+  const [scanLanguage, setScanLanguage] = useState<"en" | "tw" | "fr">("en");
+  // Audio/TTS backend only supports English and Twi today — French falls back
+  // to English audio until that's added, but still selects as the app's text
+  // language wherever i18n exists.
+  const audioLanguage: "en" | "tw" = scanLanguage === "tw" ? "tw" : "en";
   const [lastScanResult, setLastScanResult] = useState<ProductScanResult | DrugScanResult | null>(null);
   const [drugScanCode, setDrugScanCode] = useState("DR-QR-1001");
   const [drugScanResult, setDrugScanResult] = useState<DrugScanResult | null>(null);
@@ -1226,11 +1230,11 @@ function AppContent() {
               onCompose={() => setConsumerTab("scanner")}
             />
           ) : consumerTab === "scanner" ? (
-            <QRScannerScreen apiBase={apiBase} token={session.token} scanLanguage={scanLanguage} onScanResult={handleScanResult} />
+            <QRScannerScreen apiBase={apiBase} token={session.token} scanLanguage={audioLanguage} onScanResult={handleScanResult} />
           ) : consumerTab === "result" && lastScanResult ? (
             <SafetyResultScreen
               result={lastScanResult}
-              scanLanguage={scanLanguage}
+              scanLanguage={audioLanguage}
               apiBase={apiBase}
               onBack={() => setConsumerTab("scanner")}
               onViewHistory={() => setConsumerTab("history")}
@@ -1296,34 +1300,44 @@ function AppContent() {
           ) : consumerTab === "account" ? (
             <ScrollView contentContainerStyle={s.scrollPad} keyboardShouldPersistTaps="handled">
               {/* User card */}
-              <View style={s.card}>
-                <Text style={s.cardKicker}>ACCOUNT</Text>
-                <Text style={s.cardTitle}>{session.user.fullName || "FoodTrace User"}</Text>
-                <Text style={s.cardSub}>Role: {session.user.role}</Text>
+              <View style={[s.card, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
+                <Text style={[s.cardKicker, { color: palette.signalCyan }]}>ACCOUNT</Text>
+                <Text style={[s.cardTitle, { color: palette.textPrimary }]}>{session.user.fullName || "FoodTrace User"}</Text>
+                <Text style={[s.cardSub, { color: palette.textSecondary }]}>Role: {session.user.role}</Text>
                 <View style={s.langRow}>
-                  <Pressable style={[s.chip, scanLanguage === "en" && s.chipActive]} onPress={() => setScanLanguage("en")}>
-                    <Text style={[s.chipText, scanLanguage === "en" && s.chipTextActive]}>English</Text>
-                  </Pressable>
-                  <Pressable style={[s.chip, scanLanguage === "tw" && s.chipActive]} onPress={() => setScanLanguage("tw")}>
-                    <Text style={[s.chipText, scanLanguage === "tw" && s.chipTextActive]}>Twi</Text>
-                  </Pressable>
+                  {([
+                    { key: "en" as const, label: "English" },
+                    { key: "tw" as const, label: "Twi" },
+                    { key: "fr" as const, label: "French" },
+                  ]).map((lang) => (
+                    <Pressable
+                      key={lang.key}
+                      style={[s.chip, { backgroundColor: palette.fieldBg }, scanLanguage === lang.key && { backgroundColor: palette.signalCyan }]}
+                      onPress={() => setScanLanguage(lang.key)}
+                    >
+                      <Text style={[s.chipText, { color: palette.textSecondary }, scanLanguage === lang.key && { color: "#062014", fontWeight: "700" }]}>{lang.label}</Text>
+                    </Pressable>
+                  ))}
                 </View>
-                <Pressable style={s.outlineBtn} onPress={() => setConsumerTab("subscription")}>
-                  <Text style={s.outlineBtnText}>Subscription</Text>
+                <Pressable style={[s.outlineBtn, { borderColor: palette.border }]} onPress={() => setConsumerTab("subscription")}>
+                  <Icon name="card-outline" size={15} color={palette.textPrimary} />
+                  <Text style={[s.outlineBtnText, { color: palette.textPrimary }]}>Subscription</Text>
                 </Pressable>
-                <Pressable style={[s.outlineBtn, { marginTop: 8 }]} onPress={() => setConsumerTab("legal")}>
-                  <Text style={s.outlineBtnText}>About, terms and privacy</Text>
+                <Pressable style={[s.outlineBtn, { borderColor: palette.border, marginTop: 8 }]} onPress={() => setConsumerTab("legal")}>
+                  <Icon name="document-text-outline" size={15} color={palette.textPrimary} />
+                  <Text style={[s.outlineBtnText, { color: palette.textPrimary }]}>About, terms and privacy</Text>
                 </Pressable>
-                <Pressable style={[s.outlineBtn, { marginTop: 8 }]} onPress={signOut}>
-                  <Text style={s.outlineBtnText}>Sign out</Text>
+                <Pressable style={[s.outlineBtn, { borderColor: palette.border, marginTop: 8 }]} onPress={signOut}>
+                  <Icon name="log-out-outline" size={15} color="#e0475c" />
+                  <Text style={[s.outlineBtnText, { color: "#e0475c" }]}>Sign out</Text>
                 </Pressable>
               </View>
 
               {/* AI assistant */}
-              <View style={s.card}>
-                <Text style={s.cardKicker}>AI HELPER</Text>
-                <Text style={s.cardTitle}>Food & Drug Assistant</Text>
-                <Text style={s.cardSub}>Ask about food safety, medicine storage, recalls, or how to use FoodTrace.</Text>
+              <View style={[s.card, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
+                <Text style={[s.cardKicker, { color: palette.signalCyan }]}>AI HELPER</Text>
+                <Text style={[s.cardTitle, { color: palette.textPrimary }]}>Food & Drug Assistant</Text>
+                <Text style={[s.cardSub, { color: palette.textSecondary }]}>Ask about food safety, medicine storage, recalls, or how to use FoodTrace.</Text>
 
                 <View style={s.chatBox}>
                   {aiMessages.length === 0 ? (
@@ -1455,34 +1469,43 @@ function AppContent() {
   // ─────────────────────────────────────────────────────────────────────────
 
   const portalTitle = roleLabels[currentRole ?? ""] ?? "Portal";
-  const portalGradient: [string, string] = isFarmer
-    ? ["#1a4a34", "#0a2418"]
+  const portalHubName = isFarmer
+    ? "Farm Proof Hub"
     : isManufacturer
-    ? ["#4a3712", "#241b0a"]
+    ? "Batch Proof Hub"
     : isPharmacist
-    ? ["#123a4a", "#0a2130"]
+    ? "Drug Proof Hub"
     : isRegulator
-    ? ["#4a1e1e", "#2a1010"]
-    : ["#0d3428", "#081e18"];
+    ? "Safety Command Center"
+    : `${portalTitle} Proof Hub`;
+  const portalGradient: [string, string] = isFarmer
+    ? ["#181716", "#1b6d8f"]
+    : isManufacturer
+    ? ["#181716", "#edb54c"]
+    : isPharmacist
+    ? ["#181716", "#18a2a6"]
+    : isRegulator
+    ? ["#181716", "#a3283a"]
+    : ["#181716", "#18a2a6"];
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#071a10" />
+      <StatusBar barStyle={palette.pageBg === "#fff9ec" ? "dark-content" : "light-content"} backgroundColor={palette.topBarBg} />
       <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
-        <Logo size={22} fontSize={15} />
+        <Logo size={22} fontSize={15} color={palette.textPrimary} />
         <View style={s.topBarRight}>
           <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
             <Icon name="notifications-outline" size={20} color={palette.textPrimary} />
             {unread > 0 ? <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text></View> : null}
           </Pressable>
-          <Pressable onPress={signOut} style={s.signOutBtn}>
-            <Text style={s.signOutText}>Sign out</Text>
+          <Pressable onPress={signOut} style={[s.signOutBtn, { backgroundColor: palette.cardBg }]}>
+            <Text style={[s.signOutText, { color: palette.textSecondary }]}>Sign out</Text>
           </Pressable>
         </View>
       </View>
 
       {portalView !== "compose" && portalView !== "result" ? (
-        <View style={s.portalTabs}>
+        <View style={[s.portalTabs, { backgroundColor: palette.pageBg }]}>
           <Pressable style={[s.portalTab, portalView === "portal" && s.portalTabOn]} onPress={() => setPortalView("portal")}>
             <Text style={[s.portalTabText, portalView === "portal" && s.portalTabTextOn]}>My Portal</Text>
           </Pressable>
@@ -1511,7 +1534,7 @@ function AppContent() {
       ) : portalView === "result" && lastScanResult ? (
         <SafetyResultScreen
           result={lastScanResult}
-          scanLanguage={scanLanguage}
+          scanLanguage={audioLanguage}
           apiBase={apiBase}
           onBack={() => setPortalView("market")}
           onViewHistory={() => setPortalView("market")}
@@ -1521,8 +1544,8 @@ function AppContent() {
       <ScrollView contentContainerStyle={s.scrollPad} keyboardShouldPersistTaps="handled">
         <View style={[s.portalHero, { overflow: "hidden" }]}>
           <LinearGradient colors={portalGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-          <Text style={s.heroKicker}>{portalTitle.toUpperCase()} PORTAL</Text>
-          <Text style={s.heroTitle}>{session.user.fullName || portalTitle}</Text>
+          <Text style={[s.heroKicker, { color: "#fff9ec" }]}>{portalHubName.toUpperCase()}</Text>
+          <Text style={[s.heroTitle, { color: "#fff9ec" }]}>{session.user.fullName || portalTitle}</Text>
         </View>
 
         {/* FARMER */}
@@ -1642,11 +1665,16 @@ function AppContent() {
                 </View>
               ) : null}
               {matchedPesticide ? (
-                <View style={[s.pesticideBanner, epaBannerColor(matchedPesticide.epaStatus)]}>
-                  <Text style={s.pesticideBannerText}>
-                    {matchedPesticide.epaStatus === "banned" ? `⚠  Banned by EPA Ghana${matchedPesticide.banReason ? `: ${matchedPesticide.banReason}` : ""}`
-                      : matchedPesticide.epaStatus === "restricted" ? "⚠  Restricted-use pesticide — trained applicators only"
-                      : matchedPesticide.epaStatus === "approved" ? "✓ EPA Ghana registered pesticide"
+                <View style={[s.pesticideBanner, epaBannerColor(matchedPesticide.epaStatus), { flexDirection: "row", alignItems: "center", gap: 8 }]}>
+                  <Icon
+                    name={matchedPesticide.epaStatus === "approved" ? "checkmark-circle-outline" : "warning-outline"}
+                    size={16}
+                    color={s.pesticideBannerText.color}
+                  />
+                  <Text style={[s.pesticideBannerText, { flex: 1 }]}>
+                    {matchedPesticide.epaStatus === "banned" ? `Banned by EPA Ghana${matchedPesticide.banReason ? `: ${matchedPesticide.banReason}` : ""}`
+                      : matchedPesticide.epaStatus === "restricted" ? "Restricted-use pesticide — trained applicators only"
+                      : matchedPesticide.epaStatus === "approved" ? "EPA Ghana registered pesticide"
                       : "EPA status not yet verified"}
                   </Text>
                 </View>
@@ -2068,110 +2096,110 @@ const s = StyleSheet.create({
   navActive: { color: "#77c7a2" },
 
   // cards
-  card: { backgroundColor: "#10161b", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
-  cardKicker: { color: "#93b9ac", fontSize: 11, fontWeight: "700", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 },
-  cardTitle: { color: "#f4f4ef", fontSize: 20, fontWeight: "700", marginBottom: 4 },
-  cardSub: { color: "#748089", fontSize: 13, marginBottom: 12 },
+  card: { backgroundColor: "#ffffff", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(24,23,22,0.08)" },
+  cardKicker: { color: "#716b63", fontSize: 11, fontWeight: "700", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 },
+  cardTitle: { color: "#181716", fontSize: 20, fontWeight: "700", marginBottom: 4 },
+  cardSub: { color: "#716b63", fontSize: 13, marginBottom: 12 },
 
   // home hero
-  homeHero: { backgroundColor: "#0d3428", borderRadius: 20, padding: 20, marginBottom: 4 },
-  homeKicker: { color: "#93b9ac", fontSize: 11, letterSpacing: 3, fontWeight: "700", marginBottom: 6 },
-  homeTitle: { color: "#f4f4ef", fontSize: 24, fontWeight: "800", marginBottom: 8 },
+  homeHero: { backgroundColor: "#181716", borderRadius: 20, padding: 20, marginBottom: 4 },
+  homeKicker: { color: "#716b63", fontSize: 11, letterSpacing: 3, fontWeight: "700", marginBottom: 6 },
+  homeTitle: { color: "#181716", fontSize: 24, fontWeight: "800", marginBottom: 8 },
   homeBody: { color: "#b6cfc3", lineHeight: 22 },
 
-  homeGreeting: { color: "#f4f4ef", fontSize: 20, fontWeight: "700", marginBottom: 14 },
+  homeGreeting: { color: "#181716", fontSize: 20, fontWeight: "700", marginBottom: 14 },
 
-  scanHero: { height: 168, borderRadius: 22, backgroundColor: "#10241A", alignItems: "center", justifyContent: "center", marginBottom: 14, position: "relative", overflow: "hidden" },
-  scanCorner: { position: "absolute", width: 22, height: 22, borderColor: "#77c7a2" },
+  scanHero: { height: 168, borderRadius: 22, backgroundColor: "#181716", alignItems: "center", justifyContent: "center", marginBottom: 14, position: "relative", overflow: "hidden" },
+  scanCorner: { position: "absolute", width: 22, height: 22, borderColor: "#18a2a6" },
   scanCornerTL: { top: 14, left: 14, borderTopWidth: 2.5, borderLeftWidth: 2.5, borderTopLeftRadius: 6 },
   scanCornerTR: { top: 14, right: 14, borderTopWidth: 2.5, borderRightWidth: 2.5, borderTopRightRadius: 6 },
   scanCornerBL: { bottom: 14, left: 14, borderBottomWidth: 2.5, borderLeftWidth: 2.5, borderBottomLeftRadius: 6 },
   scanCornerBR: { bottom: 14, right: 14, borderBottomWidth: 2.5, borderRightWidth: 2.5, borderBottomRightRadius: 6 },
-  scanIconRing: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#173B29", alignItems: "center", justifyContent: "center" },
-  scanIconText: { fontSize: 22, color: "#97ECC6" },
-  scanHeroTitle: { color: "#f4f4ef", fontSize: 14, fontWeight: "700", marginTop: 10 },
-  scanHeroSub: { color: "#7C9C8C", fontSize: 12, marginTop: 2 },
+  scanIconRing: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(24,162,166,0.14)", alignItems: "center", justifyContent: "center" },
+  scanIconText: { fontSize: 22, color: "#18a2a6" },
+  scanHeroTitle: { color: "#181716", fontSize: 14, fontWeight: "700", marginTop: 10 },
+  scanHeroSub: { color: "#716b63", fontSize: 12, marginTop: 2 },
 
   bentoRow: { flexDirection: "row", gap: 10, marginBottom: 18 },
-  bentoBig: { flex: 1, backgroundColor: "#151A15", borderRadius: 18, padding: 16, borderWidth: 0.5, borderColor: "#26302A", justifyContent: "center" },
-  bentoBigNumber: { color: "#f4f4ef", fontSize: 28, fontWeight: "800" },
-  bentoBigLabel: { color: "#7C9C8C", fontSize: 11, marginTop: 4 },
+  bentoBig: { flex: 1, backgroundColor: "#ffffff", borderRadius: 18, padding: 16, borderWidth: 0.5, borderColor: "rgba(24,23,22,0.08)", justifyContent: "center" },
+  bentoBigNumber: { color: "#181716", fontSize: 28, fontWeight: "800" },
+  bentoBigLabel: { color: "#716b63", fontSize: 11, marginTop: 4 },
   bentoStack: { flex: 1, gap: 10 },
-  bentoMiniGood: { flex: 1, backgroundColor: "#173B29", borderRadius: 14, padding: 10, justifyContent: "center" },
-  bentoMiniNumberGood: { color: "#97ECC6", fontSize: 17, fontWeight: "800" },
-  bentoMiniLabelGood: { color: "#7C9C8C", fontSize: 10, marginTop: 1 },
-  bentoMiniBad: { flex: 1, backgroundColor: "#3A1414", borderRadius: 14, padding: 10, justifyContent: "center" },
-  bentoMiniNumberBad: { color: "#F0997B", fontSize: 17, fontWeight: "800" },
-  bentoMiniLabelBad: { color: "#C7897A", fontSize: 10, marginTop: 1 },
+  bentoMiniGood: { flex: 1, backgroundColor: "rgba(24,162,166,0.14)", borderRadius: 14, padding: 10, justifyContent: "center" },
+  bentoMiniNumberGood: { color: "#18a2a6", fontSize: 17, fontWeight: "800" },
+  bentoMiniLabelGood: { color: "#716b63", fontSize: 10, marginTop: 1 },
+  bentoMiniBad: { flex: 1, backgroundColor: "rgba(224,71,92,0.12)", borderRadius: 14, padding: 10, justifyContent: "center" },
+  bentoMiniNumberBad: { color: "#a3283a", fontSize: 17, fontWeight: "800" },
+  bentoMiniLabelBad: { color: "#a3283a", fontSize: 10, marginTop: 1 },
 
   homeSectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
-  homeSectionTitle: { color: "#f4f4ef", fontSize: 15, fontWeight: "700" },
-  homeSectionLink: { color: "#7C9C8C", fontSize: 12 },
+  homeSectionTitle: { color: "#181716", fontSize: 15, fontWeight: "700" },
+  homeSectionLink: { color: "#716b63", fontSize: 12 },
 
-  recentTile: { width: 96, backgroundColor: "#151A15", borderRadius: 16, padding: 10, borderWidth: 0.5, borderColor: "#26302A" },
+  recentTile: { width: 96, backgroundColor: "#ffffff", borderRadius: 16, padding: 10, borderWidth: 0.5, borderColor: "rgba(24,23,22,0.08)" },
   recentTileIconWrap: { width: "100%", height: 54, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  recentTileIconWrapGood: { backgroundColor: "#173B29" },
-  recentTileIconWrapBad: { backgroundColor: "#3A1414" },
-  recentTileIcon: { fontSize: 18, color: "#f4f4ef", fontWeight: "800" },
-  recentTileTitle: { color: "#f4f4ef", fontSize: 11, fontWeight: "600", marginTop: 6 },
-  recentTileStatusGood: { color: "#97ECC6", fontSize: 9, marginTop: 2 },
-  recentTileStatusBad: { color: "#F0997B", fontSize: 9, marginTop: 2 },
+  recentTileIconWrapGood: { backgroundColor: "rgba(24,162,166,0.14)" },
+  recentTileIconWrapBad: { backgroundColor: "rgba(224,71,92,0.12)" },
+  recentTileIcon: { fontSize: 18, color: "#181716", fontWeight: "800" },
+  recentTileTitle: { color: "#181716", fontSize: 11, fontWeight: "600", marginTop: 6 },
+  recentTileStatusGood: { color: "#18a2a6", fontSize: 9, marginTop: 2 },
+  recentTileStatusBad: { color: "#a3283a", fontSize: 9, marginTop: 2 },
 
   // portal hero
-  portalHero: { backgroundColor: "#0d3428", borderRadius: 20, padding: 20, marginBottom: 4 },
+  portalHero: { backgroundColor: "#181716", borderRadius: 20, padding: 20, marginBottom: 4 },
   portalTabs: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
   portalTab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: 10, borderWidth: 0.5, borderColor: "rgba(119,199,162,0.3)" },
-  portalTabOn: { backgroundColor: "#77c7a2", borderColor: "#77c7a2" },
-  portalTabText: { color: "#a9b8b1", fontSize: 13, fontWeight: "600" },
-  portalTabTextOn: { color: "#05080b" },
+  portalTabOn: { backgroundColor: "#18a2a6", borderColor: "#18a2a6" },
+  portalTabText: { color: "#716b63", fontSize: 13, fontWeight: "600" },
+  portalTabTextOn: { color: "#ffffff" },
 
   // metrics
   metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
-  metricItem: { backgroundColor: "#151A15", borderRadius: 16, padding: 14, minWidth: 96, flex: 1, alignItems: "flex-start", borderWidth: 0.5, borderColor: "#26302A" },
-  metricVal: { color: "#f4f4ef", fontWeight: "800", fontSize: 22, marginBottom: 3 },
-  metricLabel: { color: "#7C9C8C", fontSize: 11 },
+  metricItem: { backgroundColor: "#ffffff", borderRadius: 16, padding: 14, minWidth: 96, flex: 1, alignItems: "flex-start", borderWidth: 0.5, borderColor: "rgba(24,23,22,0.08)" },
+  metricVal: { color: "#181716", fontWeight: "800", fontSize: 22, marginBottom: 3 },
+  metricLabel: { color: "#716b63", fontSize: 11 },
   weatherNow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14 },
-  weatherTemp: { color: "#f4f4ef", fontWeight: "800", fontSize: 34 },
-  weatherCondition: { color: "#77c7a2", fontSize: 13, marginTop: 2 },
+  weatherTemp: { color: "#181716", fontWeight: "800", fontSize: 34 },
+  weatherCondition: { color: "#18a2a6", fontSize: 13, marginTop: 2 },
   weatherStatsCol: { alignItems: "flex-end" },
-  weatherStat: { color: "#7C9C8C", fontSize: 12, marginBottom: 3 },
+  weatherStat: { color: "#716b63", fontSize: 12, marginBottom: 3 },
   weatherForecastRow: { marginTop: 16 },
-  weatherDayTile: { backgroundColor: "#151A15", borderRadius: 14, padding: 12, marginRight: 8, minWidth: 76, alignItems: "center", borderWidth: 0.5, borderColor: "#26302A" },
-  weatherDayLabel: { color: "#7C9C8C", fontSize: 11, marginBottom: 6 },
-  weatherDayTemp: { color: "#f4f4ef", fontSize: 13, fontWeight: "700" },
+  weatherDayTile: { backgroundColor: "#ffffff", borderRadius: 14, padding: 12, marginRight: 8, minWidth: 76, alignItems: "center", borderWidth: 0.5, borderColor: "rgba(24,23,22,0.08)" },
+  weatherDayLabel: { color: "#716b63", fontSize: 11, marginBottom: 6 },
+  weatherDayTemp: { color: "#181716", fontSize: 13, fontWeight: "700" },
   weatherDayRain: { color: "#5CA8E0", fontSize: 10, marginTop: 4 },
-  pipelineBar: { flexDirection: "row", height: 10, borderRadius: 6, overflow: "hidden", marginTop: 14, backgroundColor: "#26302A" },
+  pipelineBar: { flexDirection: "row", height: 10, borderRadius: 6, overflow: "hidden", marginTop: 14, backgroundColor: "rgba(24,23,22,0.08)" },
   pipelineSegment: { height: "100%" },
   pipelineLegendRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12 },
   pipelineLegendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   pipelineDot: { width: 8, height: 8, borderRadius: 4 },
-  pipelineLegendText: { color: "#B9C4BC", fontSize: 12 },
-  pipelineTotal: { color: "#7C9C8C", fontSize: 12, marginTop: 10 },
+  pipelineLegendText: { color: "#716b63", fontSize: 12 },
+  pipelineTotal: { color: "#716b63", fontSize: 12, marginTop: 10 },
   districtChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  districtChip: { backgroundColor: "#151A15", borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14, borderWidth: 0.5, borderColor: "#26302A" },
+  districtChip: { backgroundColor: "#ffffff", borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14, borderWidth: 0.5, borderColor: "rgba(24,23,22,0.08)" },
   districtChipText: { color: "#E27D7D", fontSize: 12, fontWeight: "600" },
   expiryRow: { marginTop: 14 },
   expiryRowHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  expiryBatchNumber: { color: "#f4f4ef", fontSize: 13, fontWeight: "600", flex: 1, marginRight: 8 },
+  expiryBatchNumber: { color: "#181716", fontSize: 13, fontWeight: "600", flex: 1, marginRight: 8 },
   expiryDaysText: { fontSize: 12, fontWeight: "700" },
-  expiryTrack: { height: 6, borderRadius: 4, backgroundColor: "#26302A", overflow: "hidden" },
+  expiryTrack: { height: 6, borderRadius: 4, backgroundColor: "rgba(24,23,22,0.08)", overflow: "hidden" },
   expiryFill: { height: "100%", borderRadius: 4 },
-  pesticideSuggestBox: { backgroundColor: "#151A15", borderRadius: 12, borderWidth: 0.5, borderColor: "#26302A", marginBottom: 10, overflow: "hidden" },
-  pesticideSuggestRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 0.5, borderBottomColor: "#26302A" },
-  pesticideSuggestName: { color: "#f4f4ef", fontSize: 13 },
+  pesticideSuggestBox: { backgroundColor: "#ffffff", borderRadius: 12, borderWidth: 0.5, borderColor: "rgba(24,23,22,0.08)", marginBottom: 10, overflow: "hidden" },
+  pesticideSuggestRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 0.5, borderBottomColor: "rgba(24,23,22,0.08)" },
+  pesticideSuggestName: { color: "#181716", fontSize: 13 },
   pesticideSuggestStatus: { fontSize: 11, fontWeight: "700" },
   pesticideBanner: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 10 },
-  pesticideBannerText: { color: "#f4f4ef", fontSize: 12, lineHeight: 17 },
+  pesticideBannerText: { color: "#181716", fontSize: 12, lineHeight: 17 },
   statusMsg: { marginTop: 10, fontSize: 13 },
-  statusOk: { color: "#77c7a2" },
+  statusOk: { color: "#18a2a6" },
   statusErr: { color: "#f87171" },
 
   // chips / lang toggle
   langRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: "#182028", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
-  chipActive: { backgroundColor: "#c4f1db", borderColor: "#77c7a2" },
-  chipText: { color: "#93b9ac", fontWeight: "600", fontSize: 13 },
-  chipTextActive: { color: "#062014" },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "rgba(24,23,22,0.08)" },
+  chipActive: { backgroundColor: "#18a2a6", borderColor: "#18a2a6" },
+  chipText: { color: "#716b63", fontWeight: "600", fontSize: 13 },
+  chipTextActive: { color: "#ffffff" },
 
   // status badge (inline)
   statusBadge: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginTop: 8 },

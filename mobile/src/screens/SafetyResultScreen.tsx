@@ -26,6 +26,7 @@ import * as Speech from "expo-speech";
 import { Audio } from "expo-av";
 import type { DrugScanResult, ProductScanResult, SpeechSummaryResponse } from "@foodtrace/shared";
 import { SafetyRing, statusToRingStatus } from "../components/SafetyRing";
+import { Icon } from "../components/Icon";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -269,8 +270,9 @@ export function SafetyResultScreen({
       {/* ── Controls ── */}
       <View style={styles.controls}>
         {/* Replay the audio summary on demand */}
-        <Pressable style={styles.secondaryButton} onPress={() => void playSummary()}>
-          <Text style={styles.secondaryButtonText}>🔊  Play audio again</Text>
+        <Pressable style={[styles.secondaryButton, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]} onPress={() => void playSummary()}>
+          <Icon name="volume-high-outline" size={16} color={styles.secondaryButtonText.color} />
+          <Text style={styles.secondaryButtonText}>Play audio again</Text>
         </Pressable>
 
         {onAskAI ? (

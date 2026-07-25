@@ -14,6 +14,7 @@
  */
 
 import React, { useState } from "react";
+import { Icon } from "../components/Icon";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -205,7 +206,7 @@ export function ConsumerReportScreen({
   if (!token) {
     return (
       <View style={styles.gateContainer}>
-        <Text style={styles.gateIcon}>🔒</Text>
+        <View style={styles.gateIcon}><Icon name="lock-closed-outline" size={40} color="#716b63" /></View>
         <Text style={styles.gateTitle}>Login required</Text>
         <Text style={styles.gateBody}>
           You must be logged in as a consumer to submit a report.
@@ -220,7 +221,7 @@ export function ConsumerReportScreen({
   if (!scannedCode) {
     return (
       <View style={styles.gateContainer}>
-        <Text style={styles.gateIcon}>📷</Text>
+        <View style={styles.gateIcon}><Icon name="camera-outline" size={40} color="#716b63" /></View>
         <Text style={styles.gateTitle}>Scan a product first</Text>
         <Text style={styles.gateBody}>
           You need to scan a product QR code before you can report a concern
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   gateIcon: {
-    fontSize: 48,
+    marginBottom: 4,
   },
   gateTitle: {
     color: "#f4f4ef",

@@ -3,13 +3,14 @@
 // dependency. Each dot is absolutely positioned via trig math.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Icon, type IconName } from "./Icon";
 
 type Status = "safe" | "caution" | "recalled";
 
-const PALETTE: Record<Status, { color: string; icon: string; label: string }> = {
-  safe: { color: "#77c7a2", icon: "✓", label: "Verified safe" },
-  caution: { color: "#efb64f", icon: "!", label: "Caution" },
-  recalled: { color: "#e0475c", icon: "✕", label: "Recalled" },
+const PALETTE: Record<Status, { color: string; icon: IconName; label: string }> = {
+  safe: { color: "#18a2a6", icon: "checkmark-circle", label: "Verified safe" },
+  caution: { color: "#edb54c", icon: "alert-circle", label: "Caution" },
+  recalled: { color: "#e0475c", icon: "close-circle", label: "Recalled" },
 };
 
 export function statusToRingStatus(status: string): Status {
@@ -53,7 +54,7 @@ export function SafetyRing({ status, size = 176 }: { status: Status; size?: numb
         />
       ))}
       <View style={styles.center} pointerEvents="none">
-        <Text style={[styles.icon, { color, fontSize: size * 0.26 }]}>{icon}</Text>
+        <Icon name={icon} size={size * 0.26} color={color} />
         <Text style={[styles.label, { fontSize: size * 0.085 }]}>{label}</Text>
       </View>
     </View>

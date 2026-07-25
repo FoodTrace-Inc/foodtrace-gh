@@ -26,6 +26,7 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { DrugScanResult, ProductScanResult } from "@foodtrace/shared";
+import { Icon } from "../components/Icon";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -260,7 +261,7 @@ export function QRScannerScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.kicker}>QR Scanner</Text>
+      <Text style={styles.kicker}>Live Scanner</Text>
       <Text style={styles.title}>Point at a FoodTrace GH label.</Text>
       <Text style={styles.body}>
         The camera reads food and drug QR codes automatically. Use the text
@@ -270,14 +271,24 @@ export function QRScannerScreen({
       {/* ── Camera viewport ── */}
       <View style={styles.cameraFrame}>
         {cameraPermission?.granted ? (
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-            onBarcodeScanned={
-              scannerPaused || loading ? undefined : handleBarcodeScanned
-            }
-          />
+          <>
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+              onBarcodeScanned={
+                scannerPaused || loading ? undefined : handleBarcodeScanned
+              }
+            />
+            {/* Cyan viewfinder frame + amber scan line, per ProofLoop spec */}
+            <View pointerEvents="none" style={styles.viewfinder}>
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
+              {!scannerPaused && !loading ? <View style={styles.scanLine} /> : null}
+            </View>
+          </>
         ) : (
           <View style={styles.permissionBox}>
             <Text style={styles.permissionText}>
@@ -297,7 +308,7 @@ export function QRScannerScreen({
         {/* Overlay status strip */}
         <View style={styles.overlay}>
           {loading ? (
-            <ActivityIndicator color="#77c7a2" size="small" style={{ marginBottom: 4 }} />
+            <ActivityIndicator color="#18a2a6" size="small" style={{ marginBottom: 4 }} />
           ) : null}
           <Text style={styles.overlayTitle}>
             {scannerPaused
@@ -320,6 +331,7 @@ export function QRScannerScreen({
           style={styles.chip}
           onPress={() => setScannerPaused((p) => !p)}
         >
+          <Icon name={scannerPaused ? "play-outline" : "pause-outline"} size={15} color="#fff9ec" />
           <Text style={styles.chipText}>
             {scannerPaused ? "Resume scanner" : "Pause scanner"}
           </Text>
@@ -328,6 +340,7 @@ export function QRScannerScreen({
           style={styles.chip}
           onPress={() => void requestCameraPermission()}
         >
+          <Icon name="refresh-outline" size={15} color="#fff9ec" />
           <Text style={styles.chipText}>Refresh permission</Text>
         </Pressable>
       </View>
@@ -397,65 +410,77 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: "#05080b",
+    backgroundColor: "#111417",
     gap: 12,
   },
   kicker: {
-    color: "#93b9ac",
+    color: "#18a2a6",
     textTransform: "uppercase",
     letterSpacing: 2,
+    fontWeight: "700",
     marginBottom: 4,
   },
   title: {
-    color: "#f4f4ef",
+    color: "#fff9ec",
     fontSize: 24,
     fontWeight: "700",
     marginBottom: 4,
   },
   body: {
-    color: "#b4c3be",
+    color: "#a39d94",
     lineHeight: 20,
     marginBottom: 4,
   },
   cameraFrame: {
     borderRadius: 24,
     overflow: "hidden",
-    backgroundColor: "#05080b",
+    backgroundColor: "#0d0f11",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.08)",
     minHeight: 300,
   },
   camera: {
     width: "100%",
     height: 300,
   },
+  viewfinder: {
+    ...StyleSheet.absoluteFillObject,
+    margin: 36,
+    justifyContent: "center",
+  },
+  corner: { position: "absolute", width: 26, height: 26, borderColor: "#18a2a6" },
+  cornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 8 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 8 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 8 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 8 },
+  scanLine: { height: 2, backgroundColor: "#edb54c", borderRadius: 1 },
   permissionBox: {
     minHeight: 300,
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
-    backgroundColor: "#0b0f13",
+    backgroundColor: "#0d0f11",
   },
   permissionText: {
-    color: "#d0dbd7",
+    color: "#c7c1b8",
     textAlign: "center",
     lineHeight: 20,
   },
   overlay: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "rgba(5,8,11,0.9)",
+    backgroundColor: "rgba(17,20,23,0.92)",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
   overlayTitle: {
-    color: "#f4f4ef",
+    color: "#fff9ec",
     fontWeight: "700",
     marginBottom: 2,
   },
   overlayBody: {
-    color: "#b4c3be",
+    color: "#a39d94",
     fontSize: 13,
     lineHeight: 18,
   },
@@ -465,53 +490,55 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: "#182028",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: "#181716",
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 999,
   },
   chipText: {
-    color: "#d5ddd9",
+    color: "#fff9ec",
     fontSize: 13,
+    fontWeight: "600",
   },
   statusText: {
-    color: "#a8c1b6",
+    color: "#a39d94",
     fontSize: 13,
   },
   errorText: {
-    color: "#f7a0a0",
+    color: "#e0475c",
     fontSize: 13,
     fontWeight: "600",
   },
   fallbackCard: {
-    backgroundColor: "#10161b",
+    backgroundColor: "#181716",
     borderRadius: 20,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
     gap: 10,
   },
   fallbackTitle: {
-    color: "#f4f4ef",
+    color: "#fff9ec",
     fontWeight: "700",
     fontSize: 16,
   },
   fallbackBody: {
-    color: "#748089",
+    color: "#a39d94",
     fontSize: 13,
     lineHeight: 18,
   },
   input: {
-    backgroundColor: "#0b0f13",
+    backgroundColor: "#0d0f11",
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: "#f4f4ef",
+    color: "#fff9ec",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
   primaryButton: {
-    backgroundColor: "#77c7a2",
+    backgroundColor: "#18a2a6",
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: "center",
@@ -524,14 +551,14 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   secondaryButton: {
-    backgroundColor: "#182028",
+    backgroundColor: "#181716",
     borderRadius: 14,
     paddingVertical: 11,
     paddingHorizontal: 18,
     alignItems: "center",
   },
   secondaryButtonText: {
-    color: "#d5ddd9",
+    color: "#fff9ec",
     fontWeight: "600",
   },
   sampleRow: {
@@ -540,7 +567,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sampleChip: {
-    backgroundColor: "#0b0f13",
+    backgroundColor: "#0d0f11",
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 999,
@@ -548,14 +575,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
   },
   drugChip: {
-    borderColor: "rgba(230,81,0,0.35)",
+    borderColor: "rgba(27,109,143,0.5)",
   },
   sampleChipText: {
-    color: "#a8c1b6",
+    color: "#a39d94",
     fontSize: 12,
   },
   footerNote: {
-    color: "#748089",
+    color: "#a39d94",
     fontSize: 12,
     textAlign: "center",
   },

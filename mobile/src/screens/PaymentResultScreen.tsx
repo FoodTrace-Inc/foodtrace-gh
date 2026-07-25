@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { usePalette } from "../theme/ThemeContext";
+import { Icon } from "../components/Icon";
 
 interface SuccessProps {
   success: true;
@@ -24,8 +25,8 @@ export function PaymentResultScreen(props: Props) {
   if (props.success) {
     return (
       <View style={[styles.wrap, { backgroundColor: p.pageBg }]}>
-        <View style={[styles.iconCircle, { backgroundColor: "rgba(119,199,162,0.15)" }]}>
-          <Text style={[styles.icon, { color: p.accent }]}>✓</Text>
+        <View style={[styles.iconCircle, { backgroundColor: "rgba(24,162,166,0.15)" }]}>
+          <Icon name="checkmark" size={36} color={p.accent} />
         </View>
         <Text style={[styles.title, { color: p.textPrimary }]}>Payment successful!</Text>
         <Text style={[styles.body, { color: p.textSecondary }]}>
@@ -41,7 +42,7 @@ export function PaymentResultScreen(props: Props) {
   return (
     <View style={[styles.wrap, { backgroundColor: p.pageBg }]}>
       <View style={[styles.iconCircle, { backgroundColor: "rgba(224,71,92,0.15)" }]}>
-        <Text style={[styles.icon, { color: "#e0475c" }]}>✕</Text>
+        <Icon name="close" size={36} color="#e0475c" />
       </View>
       <Text style={[styles.title, { color: p.textPrimary }]}>Payment failed</Text>
       <Text style={[styles.body, { color: p.textSecondary }]}>{props.reason}</Text>

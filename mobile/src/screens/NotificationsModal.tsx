@@ -8,6 +8,7 @@
 
 import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Icon } from "../components/Icon";
 
 export type AppNotification = {
   id: string;
@@ -59,7 +60,7 @@ export function NotificationsModal({
 
           {items.length === 0 ? (
             <View style={s.empty}>
-              <Text style={s.bell}>🔔</Text>
+              <Icon name="notifications-outline" size={32} color="#716b63" />
               <Text style={s.emptyText}>No notifications yet.</Text>
             </View>
           ) : (

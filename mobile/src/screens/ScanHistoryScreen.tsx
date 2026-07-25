@@ -2,11 +2,11 @@
  * ScanHistoryScreen.tsx
  *
  * Displays the consumer's local scan history, persisted to
- * expo-sqlite/kv-store by App.tsx (up to 25 entries).
+ * expo-sqlite/kv-store by App.tsx (up to 25 entries). ProofLoop styling.
  *
  * Features:
  *   - Shows the 25 most recent scans, newest first.
- *   - Colour-coded status badge for each entry.
+ *   - Colour-coded status badge for each entry (SAFE / CAUTION / RECALLED / NOT_FOUND).
  *   - Tap an entry to view the summary inline.
  *   - "Clear history" button to wipe all stored entries.
  *   - Empty-state illustration when there are no scans yet.
@@ -21,6 +21,8 @@ import {
   View,
 } from "react-native";
 import type { ProductScanResult } from "@foodtrace/shared";
+import { Icon, type IconName } from "../components/Icon";
+import { usePalette } from "../theme/ThemeContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,23 +49,15 @@ type ScanHistoryScreenProps = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Returns the badge background colour for a given scan status. */
-function badgeColor(status: ProductScanResult["status"]): string {
-  switch (status) {
-    case "safe":
-      return "#c4f1db";
-    case "caution":
-      return "#f6e7b5";
-    case "recalled":
-      return "#f7c2c2";
-    default:
-      return "#d1d5db";
-  }
-}
+const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
+  safe: { bg: "rgba(24,162,166,0.14)", fg: "#0f6f6f", label: "SAFE" },
+  caution: { bg: "rgba(237,181,76,0.18)", fg: "#8a6414", label: "CAUTION" },
+  recalled: { bg: "rgba(224,71,92,0.15)", fg: "#a3283a", label: "RECALLED" },
+  not_found: { bg: "rgba(113,107,99,0.16)", fg: "#716b63", label: "NOT_FOUND" },
+};
 
-/** Returns the badge text colour for a given scan status. */
-function badgeTextColor(status: ProductScanResult["status"]): string {
-  return "#12392d";
+function statusStyle(status: string) {
+  return STATUS_STYLE[status] ?? STATUS_STYLE.not_found;
 }
 
 /** Returns a short, human-friendly relative timestamp. */
@@ -85,6 +79,7 @@ export function ScanHistoryScreen({
   onClear,
   onBack,
 }: ScanHistoryScreenProps) {
+  const p = usePalette();
   /** ID of the currently expanded entry (null = none). */
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -96,7 +91,6 @@ export function ScanHistoryScreen({
 
   function handleClear() {
     if (!confirmClear) {
-      // Ask for confirmation before wiping.
       setConfirmClear(true);
       return;
     }
@@ -104,35 +98,36 @@ export function ScanHistoryScreen({
     onClear();
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={{ backgroundColor: p.pageBg }} contentContainerStyle={styles.container}>
       {/* ── Header ── */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.kicker}>Scan history</Text>
-          <Text style={styles.title}>
+          <Text style={[styles.kicker, { color: p.signalCyan }]}>Scan history</Text>
+          <Text style={[styles.title, { color: p.textPrimary }]}>
             {history.length
               ? `${history.length} saved scan${history.length !== 1 ? "s" : ""}`
               : "No scans yet"}
           </Text>
         </View>
-        <Pressable style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Back</Text>
+        <Pressable style={[styles.backButton, { backgroundColor: p.cardBg }]} onPress={onBack}>
+          <Icon name="chevron-back" size={16} color={p.textPrimary} />
+          <Text style={[styles.backButtonText, { color: p.textPrimary }]}>Back</Text>
         </Pressable>
       </View>
 
       {/* ── Empty state ── */}
       {history.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>🔍</Text>
-          <Text style={styles.emptyTitle}>Nothing scanned yet</Text>
-          <Text style={styles.emptyBody}>
+          <View style={[styles.emptyIconWrap, { backgroundColor: p.cardBg }]}>
+            <Icon name="search-outline" size={28} color={p.signalCyan} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: p.textPrimary }]}>Nothing scanned yet</Text>
+          <Text style={[styles.emptyBody, { color: p.textSecondary }]}>
             Scan a food or drug QR code and your results will appear here for
             offline review.
           </Text>
-          <Pressable style={styles.primaryButton} onPress={onBack}>
+          <Pressable style={[styles.primaryButton, { backgroundColor: p.signalCyan }]} onPress={onBack}>
             <Text style={styles.primaryButtonText}>Start scanning</Text>
           </Pressable>
         </View>
@@ -141,66 +136,55 @@ export function ScanHistoryScreen({
           {/* ── Entry list ── */}
           {history.map((entry) => {
             const isExpanded = expandedId === entry.id;
+            const st = statusStyle(entry.status);
 
             return (
               <Pressable
                 key={entry.id}
-                style={styles.entryCard}
+                style={[styles.entryCard, { backgroundColor: p.cardBg }]}
                 onPress={() => toggleEntry(entry.id)}
                 accessibilityRole="button"
                 accessibilityLabel={`${entry.title}, ${entry.status}, ${relativeTime(entry.createdAt)}`}
               >
                 {/* Row: badge + title + timestamp */}
                 <View style={styles.entryRow}>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: badgeColor(entry.status) },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusBadgeText,
-                        { color: badgeTextColor(entry.status) },
-                      ]}
-                    >
-                      {entry.status.toUpperCase()}
-                    </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+                    <Text style={[styles.statusBadgeText, { color: st.fg }]}>{st.label}</Text>
                   </View>
 
                   <View style={styles.entryMeta}>
-                    <Text style={styles.entryTitle} numberOfLines={1}>
+                    <Text style={[styles.entryTitle, { color: p.textPrimary }]} numberOfLines={1}>
                       {entry.title}
                     </Text>
-                    <Text style={styles.entryCode}>
-                      {entry.kind === "drug" ? "💊" : "🌿"}{" "}
-                      {entry.codeString}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Icon name={entry.kind === "drug" ? "medkit-outline" : "leaf-outline"} size={11} color={p.textSecondary} />
+                      <Text style={[styles.entryCode, { color: p.textSecondary }]}>{entry.codeString}</Text>
+                    </View>
                   </View>
 
-                  <Text style={styles.entryTime}>
+                  <Text style={[styles.entryTime, { color: p.textSecondary }]}>
                     {relativeTime(entry.createdAt)}
                   </Text>
                 </View>
 
                 {/* Expanded detail panel */}
                 {isExpanded ? (
-                  <View style={styles.entryDetail}>
-                    <Text style={styles.detailLabel}>Summary</Text>
-                    <Text style={styles.detailText}>{entry.summary}</Text>
+                  <View style={[styles.entryDetail, { borderTopColor: p.border }]}>
+                    <Text style={[styles.detailLabel, { color: p.signalCyan }]}>Summary</Text>
+                    <Text style={[styles.detailText, { color: p.textPrimary }]}>{entry.summary}</Text>
 
                     {entry.recommendedAction ? (
                       <>
-                        <Text style={[styles.detailLabel, { marginTop: 10 }]}>
+                        <Text style={[styles.detailLabel, { color: p.signalCyan, marginTop: 10 }]}>
                           Recommended action
                         </Text>
-                        <Text style={styles.detailText}>
+                        <Text style={[styles.detailText, { color: p.textPrimary }]}>
                           {entry.recommendedAction}
                         </Text>
                       </>
                     ) : null}
 
-                    <Text style={styles.detailTimestamp}>
+                    <Text style={[styles.detailTimestamp, { color: p.textSecondary }]}>
                       Scanned:{" "}
                       {new Date(entry.createdAt).toLocaleString(undefined, {
                         dateStyle: "medium",
@@ -217,6 +201,7 @@ export function ScanHistoryScreen({
           <Pressable
             style={[
               styles.clearButton,
+              { borderColor: p.border },
               confirmClear && styles.clearButtonDanger,
             ]}
             onPress={handleClear}
@@ -224,6 +209,7 @@ export function ScanHistoryScreen({
             <Text
               style={[
                 styles.clearButtonText,
+                { color: p.textSecondary },
                 confirmClear && styles.clearButtonDangerText,
               ]}
             >
@@ -236,7 +222,7 @@ export function ScanHistoryScreen({
               style={styles.cancelButton}
               onPress={() => setConfirmClear(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.cancelButtonText, { color: p.textSecondary }]}>Cancel</Text>
             </Pressable>
           ) : null}
         </>
@@ -251,7 +237,6 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: "#05080b",
     gap: 12,
   },
   header: {
@@ -261,24 +246,25 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   kicker: {
-    color: "#93b9ac",
     textTransform: "uppercase",
     letterSpacing: 2,
+    fontWeight: "700",
+    fontSize: 11,
     marginBottom: 4,
   },
   title: {
-    color: "#f4f4ef",
     fontSize: 22,
     fontWeight: "700",
   },
   backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: "#182028",
     borderRadius: 999,
   },
   backButtonText: {
-    color: "#d5ddd9",
     fontWeight: "600",
   },
 
@@ -288,24 +274,20 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     gap: 12,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 4,
+  emptyIconWrap: {
+    width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", marginBottom: 4,
   },
   emptyTitle: {
-    color: "#f4f4ef",
     fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
   },
   emptyBody: {
-    color: "#748089",
     lineHeight: 20,
     textAlign: "center",
     paddingHorizontal: 16,
   },
   primaryButton: {
-    backgroundColor: "#77c7a2",
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 32,
@@ -319,11 +301,8 @@ const styles = StyleSheet.create({
 
   // ── Entry cards ──
   entryCard: {
-    backgroundColor: "#10161b",
     borderRadius: 18,
     padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
   },
   entryRow: {
     flexDirection: "row",
@@ -336,25 +315,22 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   statusBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
   entryMeta: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   entryTitle: {
-    color: "#f4f4ef",
     fontWeight: "600",
     fontSize: 14,
   },
   entryCode: {
-    color: "#748089",
     fontSize: 12,
   },
   entryTime: {
-    color: "#748089",
     fontSize: 12,
     flexShrink: 0,
   },
@@ -362,11 +338,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.07)",
     gap: 4,
   },
   detailLabel: {
-    color: "#93b9ac",
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -374,12 +348,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   detailText: {
-    color: "#d0dbd7",
     lineHeight: 20,
   },
   detailTimestamp: {
     marginTop: 10,
-    color: "#748089",
     fontSize: 12,
   },
 
@@ -389,26 +361,23 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
     marginTop: 4,
   },
   clearButtonDanger: {
-    borderColor: "#f7c2c2",
-    backgroundColor: "rgba(127,0,0,0.15)",
+    borderColor: "#e0475c",
+    backgroundColor: "rgba(224,71,92,0.1)",
   },
   clearButtonText: {
-    color: "#748089",
     fontWeight: "600",
   },
   clearButtonDangerText: {
-    color: "#f7c2c2",
+    color: "#e0475c",
   },
   cancelButton: {
     paddingVertical: 10,
     alignItems: "center",
   },
   cancelButtonText: {
-    color: "#748089",
     fontSize: 13,
   },
 });

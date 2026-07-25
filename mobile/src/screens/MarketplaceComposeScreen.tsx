@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Icon } from "../components/Icon";
 
 type Props = {
   apiBase: string;
@@ -157,7 +158,7 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
   if (submitted) {
     return (
       <View style={[s.root, s.successWrap]}>
-        <View style={s.successIcon}><Text style={s.successCheck}>✓</Text></View>
+        <View style={s.successIcon}><Icon name="checkmark" size={28} color="#18a2a6" /></View>
         <Text style={s.successTitle}>Submitted for approval</Text>
         <Text style={s.successBody}>Your product has been sent to a regulator for review. Once approved, it appears in the public marketplace with its verified safety badge.</Text>
         <Pressable style={s.postBtn} onPress={onPosted}>
