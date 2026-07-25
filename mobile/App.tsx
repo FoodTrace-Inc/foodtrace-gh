@@ -59,6 +59,8 @@ import {
   NotificationsModal,
 } from "./src/screens";
 import type { AppNotification } from "./src/screens";
+import { PasswordInput } from "./src/components/PasswordInput";
+import { ThemeProvider, useTheme, usePalette } from "./src/theme/ThemeContext";
 
 // â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -195,12 +197,19 @@ export default function App() {
   // edge-to-edge on Android and content spills under the system bars.
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
 
 function AppContent() {
+  const { theme, toggleTheme } = useTheme();
+  const palette = usePalette();
+  const themedInput = { backgroundColor: palette.fieldBg, color: palette.textPrimary, borderColor: palette.border };
+  const themedBtn = { backgroundColor: palette.accent };
+  const themedBtnText = { color: palette.onAccent };
   // auth
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
@@ -1025,15 +1034,24 @@ function AppContent() {
 
   if (!session) {
     return (
-      <SafeAreaView style={s.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#071a10" />
+      <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
+        <StatusBar barStyle={theme === "dark" ? "light-content" : "dark-content"} backgroundColor={palette.heroBg} />
         <ScrollView contentContainerStyle={s.authScroll} keyboardShouldPersistTaps="handled">
 
           {/* Hero */}
-          <View style={s.hero}>
-            <Text style={s.heroKicker}>FOODTRACE GH</Text>
-            <Text style={s.heroTitle}>Scan It. Trace It. Trust It.</Text>
-            <Text style={s.heroBody}>Ghana's food & drug safety platform.</Text>
+          <View style={[s.hero, { backgroundColor: palette.heroBg }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={[s.heroKicker, { color: palette.textSecondary }]}>FOODTRACE GH</Text>
+              <Pressable
+                onPress={toggleTheme}
+                accessibilityLabel="Toggle light and dark mode"
+                style={{ width: 44, height: 24, borderRadius: 999, backgroundColor: theme === "dark" ? "#1c2620" : "#dfe6e1", justifyContent: "center" }}
+              >
+                <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: theme === "dark" ? palette.accent : "#ffffff", marginLeft: theme === "dark" ? 23 : 3 }} />
+              </Pressable>
+            </View>
+            <Text style={[s.heroTitle, { color: palette.textPrimary }]}>Scan It. Trace It. Trust It.</Text>
+            <Text style={[s.heroBody, { color: palette.textSecondary }]}>Ghana's food & drug safety platform.</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rolePills}>
               {USER_ROLES.map((r) => (
                 <Pressable key={r} style={[s.rolePill, role === r && s.rolePillActive]} onPress={() => setRole(r)}>
@@ -1044,66 +1062,66 @@ function AppContent() {
           </View>
 
           {/* Auth card */}
-          <View style={s.authCard}>
+          <View style={[s.authCard, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
             <View style={s.segmented}>
-              <Pressable style={mode === "login" ? s.segActive : s.seg} onPress={() => { setMode("login"); setAuthStatus(""); }}>
-                <Text style={mode === "login" ? s.segTextActive : s.segText}>Log in</Text>
+              <Pressable style={mode === "login" ? [s.segActive, { backgroundColor: palette.accent }] : s.seg} onPress={() => { setMode("login"); setAuthStatus(""); }}>
+                <Text style={mode === "login" ? [s.segTextActive, { color: palette.onAccent }] : [s.segText, { color: palette.textSecondary }]}>Log in</Text>
               </Pressable>
-              <Pressable style={mode === "register" ? s.segActive : s.seg} onPress={() => { setMode("register"); setAuthStatus(""); }}>
-                <Text style={mode === "register" ? s.segTextActive : s.segText}>Create account</Text>
+              <Pressable style={mode === "register" ? [s.segActive, { backgroundColor: palette.accent }] : s.seg} onPress={() => { setMode("register"); setAuthStatus(""); }}>
+                <Text style={mode === "register" ? [s.segTextActive, { color: palette.onAccent }] : [s.segText, { color: palette.textSecondary }]}>Create account</Text>
               </Pressable>
             </View>
 
             {mode === "register" ? (
               <>
-                <View style={s.roleHint}>
-                  <Text style={s.roleHintText}>Creating as: <Text style={s.roleHintBold}>{roleLabels[role]}</Text></Text>
+                <View style={[s.roleHint, { backgroundColor: theme === "dark" ? "rgba(119,199,162,0.1)" : "rgba(28,156,110,0.08)" }]}>
+                  <Text style={[s.roleHintText, { color: palette.textSecondary }]}>Creating as: <Text style={[s.roleHintBold, { color: palette.accent }]}>{roleLabels[role]}</Text></Text>
                   <Text style={s.roleHintSub}>Select a role above first, then fill in your details.</Text>
                 </View>
-                <TextInput placeholder="Full name" placeholderTextColor="#748089" style={s.input} value={fullName} onChangeText={setFullName} />
-                <TextInput placeholder="Phone number (+233...)" placeholderTextColor="#748089" style={s.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                <TextInput placeholder="Email (optional)" placeholderTextColor="#748089" style={s.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-                <TextInput placeholder="Password" placeholderTextColor="#748089" style={s.input} value={password} onChangeText={setPassword} secureTextEntry />
-                <Pressable style={s.input} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion); setSecurityQuestion(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
-                  <Text style={{ color: "#f4f4ef" }}>{securityQuestion}</Text>
+                <TextInput placeholder="Full name" placeholderTextColor="#748089" style={[s.input, themedInput]} value={fullName} onChangeText={setFullName} />
+                <TextInput placeholder="Phone number (+233...)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+                <TextInput placeholder="Email (optional)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+                <PasswordInput placeholder="Password" placeholderTextColor="#748089" inputStyle={[s.input, themedInput]} value={password} onChangeText={setPassword} />
+                <Pressable style={[s.input, themedInput]} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion); setSecurityQuestion(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
+                  <Text style={{ color: palette.textPrimary }}>{securityQuestion}</Text>
                 </Pressable>
                 <Text style={s.hint}>Tap the question to change it â€” you'll answer it to recover your account.</Text>
-                <TextInput placeholder="Security answer" placeholderTextColor="#748089" style={s.input} value={securityAnswer} onChangeText={setSecurityAnswer} autoCapitalize="none" />
+                <TextInput placeholder="Security answer" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswer} onChangeText={setSecurityAnswer} autoCapitalize="none" />
                 <Text style={s.hint}>Each account needs a unique phone number or email. To test a different role, use a different number.</Text>
-                <Pressable style={s.primaryBtn} onPress={() => void submit()}>
-                  <Text style={s.primaryBtnText}>Create account as {roleLabels[role]}</Text>
+                <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submit()}>
+                  <Text style={[s.primaryBtnText, themedBtnText]}>Create account as {roleLabels[role]}</Text>
                 </Pressable>
               </>
             ) : mode === "forgot" ? (
               <>
-                <TextInput placeholder="Email or phone number" placeholderTextColor="#748089" style={s.input} value={forgotEmail} onChangeText={setForgotEmail} autoCapitalize="none" editable={!fetchedQuestion} />
+                <TextInput placeholder="Email or phone number" placeholderTextColor="#748089" style={[s.input, themedInput]} value={forgotEmail} onChangeText={setForgotEmail} autoCapitalize="none" editable={!fetchedQuestion} />
                 {fetchedQuestion ? (
                   <>
                     <Text style={s.hint}>{fetchedQuestion}</Text>
-                    <TextInput placeholder="Your answer" placeholderTextColor="#748089" style={s.input} value={securityAnswerReset} onChangeText={setSecurityAnswerReset} autoCapitalize="none" />
-                    <TextInput placeholder="New password" placeholderTextColor="#748089" style={s.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry />
-                    <Pressable style={s.primaryBtn} onPress={() => void submitPasswordReset()}>
-                      <Text style={s.primaryBtnText}>Reset password</Text>
+                    <TextInput placeholder="Your answer" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswerReset} onChangeText={setSecurityAnswerReset} autoCapitalize="none" />
+                    <PasswordInput placeholder="New password" placeholderTextColor="#748089" inputStyle={[s.input, themedInput]} value={newPassword} onChangeText={setNewPassword} />
+                    <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submitPasswordReset()}>
+                      <Text style={[s.primaryBtnText, themedBtnText]}>Reset password</Text>
                     </Pressable>
                   </>
                 ) : (
-                  <Pressable style={s.primaryBtn} onPress={() => void lookupSecurityQuestion()}>
-                    <Text style={s.primaryBtnText}>Continue</Text>
+                  <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void lookupSecurityQuestion()}>
+                    <Text style={[s.primaryBtnText, themedBtnText]}>Continue</Text>
                   </Pressable>
                 )}
                 <Pressable onPress={() => { setMode("login"); setAuthStatus(""); setFetchedQuestion(null); }}>
-                  <Text style={s.forgotLink}>Back to log in</Text>
+                  <Text style={[s.forgotLink, { color: palette.accent }]}>Back to log in</Text>
                 </Pressable>
               </>
             ) : (
               <>
-                <TextInput placeholder="Phone number or email" placeholderTextColor="#748089" style={s.input} value={identifier} onChangeText={setIdentifier} autoCapitalize="none" />
-                <TextInput placeholder="Password" placeholderTextColor="#748089" style={s.input} value={password} onChangeText={setPassword} secureTextEntry />
-                <Pressable style={s.primaryBtn} onPress={() => void submit()}>
-                  <Text style={s.primaryBtnText}>Log in</Text>
+                <TextInput placeholder="Phone number or email" placeholderTextColor="#748089" style={[s.input, themedInput]} value={identifier} onChangeText={setIdentifier} autoCapitalize="none" />
+                <PasswordInput placeholder="Password" placeholderTextColor="#748089" inputStyle={[s.input, themedInput]} value={password} onChangeText={setPassword} />
+                <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submit()}>
+                  <Text style={[s.primaryBtnText, themedBtnText]}>Log in</Text>
                 </Pressable>
                 <Pressable onPress={() => { setMode("forgot"); setAuthStatus(""); setFetchedQuestion(null); setForgotEmail(identifier); }}>
-                  <Text style={s.forgotLink}>Forgot password?</Text>
+                  <Text style={[s.forgotLink, { color: palette.accent }]}>Forgot password?</Text>
                 </Pressable>
               </>
             )}
@@ -1148,11 +1166,11 @@ function AppContent() {
 
   if (isConsumer) {
     return (
-      <SafeAreaView style={s.root}>
+      <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
         <StatusBar barStyle="light-content" backgroundColor="#071a10" />
 
         {/* Top header */}
-        <View style={s.topBar}>
+        <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
           <Text style={s.topBarLogo}>FOODTRACE GH</Text>
           <View style={s.topBarRight}>
             <Text style={s.topBarUser} numberOfLines={1}>{session.user.fullName || "Account"}</Text>
@@ -1361,9 +1379,9 @@ function AppContent() {
     : ["#0d3428", "#081e18"];
 
   return (
-    <SafeAreaView style={s.root}>
+    <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
       <StatusBar barStyle="light-content" backgroundColor="#071a10" />
-      <View style={s.topBar}>
+      <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
         <Text style={s.topBarLogo}>FOODTRACE GH</Text>
         <View style={s.topBarRight}>
           <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
