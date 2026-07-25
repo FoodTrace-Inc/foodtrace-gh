@@ -63,6 +63,7 @@ public class SecurityConfig {
             .requestMatchers("/api/manufacturer/**")
                 .hasAnyRole("MANUFACTURER", "REGULATOR")
             .requestMatchers("/api/regulator/**").hasRole("REGULATOR")
+            .requestMatchers("/api/admin/**").hasRole("REGULATOR")
             .requestMatchers("/api/drug/**", "/api/drugs/**", "/api/pharmacy/**")
                 .hasAnyRole("PHARMACIST", "REGULATOR")
             .requestMatchers("/api/marketplace/**")

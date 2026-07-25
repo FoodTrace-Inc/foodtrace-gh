@@ -89,6 +89,28 @@ public class ManufacturerService {
     return Map.of("dashboard", dashboard);
   }
 
+  /** Part F: every QR code this manufacturer has generated, with its download image and scan count, for the QR management page. */
+  public Map<String, Object> qrCodes(CurrentUser user) {
+    String manufacturerId = jdbc.sql("SELECT id FROM manufacturers WHERE user_id = :uid LIMIT 1")
+        .param("uid", user.id())
+        .query(String.class)
+        .optional().orElse(null);
+    if (manufacturerId == null) return Map.of("qrCodes", List.of());
+
+    List<Map<String, Object>> rows = jdbc.sql("""
+        SELECT q.id, q.code_string, q.s3_url, q.scan_count, q.status,
+               pb.batch_number, pb.product_name, pb.recall_status
+        FROM qr_codes q
+        JOIN product_batches pb ON pb.id = q.batch_id
+        WHERE pb.manufacturer_id = CAST(:mid AS uuid)
+        ORDER BY pb.created_at DESC
+        """)
+        .param("mid", manufacturerId)
+        .query(DatabaseRowMapper::toMap)
+        .list();
+    return Map.of("qrCodes", rows);
+  }
+
   public Map<String, Object> createProfile(CurrentUser user, Map<String, Object> body) {
     Validate.require(body, "companyName");
     boolean exists = jdbc.sql("SELECT 1 FROM manufacturers WHERE user_id = :uid")

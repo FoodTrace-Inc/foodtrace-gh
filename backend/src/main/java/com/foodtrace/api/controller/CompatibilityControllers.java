@@ -40,6 +40,11 @@ public class CompatibilityControllers {
       return manufacturerService.dashboard(currentUser(authentication));
     }
 
+    @GetMapping("/qr-codes")
+    Map<String, Object> qrCodes(Authentication authentication) {
+      return manufacturerService.qrCodes(currentUser(authentication));
+    }
+
     @PostMapping("/profile")
     @ResponseStatus(HttpStatus.CREATED)
     Map<String, Object> createProfile(@RequestBody Map<String, Object> body, Authentication authentication) {

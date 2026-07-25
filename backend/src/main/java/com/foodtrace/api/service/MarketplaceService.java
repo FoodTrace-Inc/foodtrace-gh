@@ -27,7 +27,8 @@ public class MarketplaceService {
     String search = query == null || query.isBlank() ? null : "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
 
     List<Map<String, Object>> posts = jdbc.sql("""
-        SELECT mp.id, mp.domain, mp.title, mp.caption, mp.location, mp.image_url, mp.price_text,
+        SELECT mp.id, mp.domain, mp.title, mp.caption, mp.location,
+               COALESCE(pb.image_url, db.image_url, mp.image_url) AS image_url, mp.price_text,
                mp.hashtags, mp.qr_code_string, mp.safety_source,
                CASE WHEN mp.status = 'recalled' OR pb.recall_status = 'recalled' OR db.recall_status = 'recalled'
                     THEN 'recalled' ELSE mp.safety_status END AS safety_status,
@@ -38,7 +39,11 @@ public class MarketplaceService {
                COUNT(DISTINCT l.user_id) AS like_count,
                COUNT(DISTINCT c.id) AS comment_count,
                EXISTS (SELECT 1 FROM marketplace_post_likes ml WHERE ml.post_id = mp.id AND ml.user_id = CAST(:viewerId AS uuid)) AS liked_by_viewer,
-               EXISTS (SELECT 1 FROM marketplace_post_saves ms WHERE ms.post_id = mp.id AND ms.user_id = CAST(:viewerId AS uuid)) AS saved_by_viewer
+               EXISTS (SELECT 1 FROM marketplace_post_saves ms WHERE ms.post_id = mp.id AND ms.user_id = CAST(:viewerId AS uuid)) AS saved_by_viewer,
+               (SELECT fm.fda_registration_number FROM fda_product_map fm
+                WHERE fm.match_status = 'matched_applied'
+                  AND (fm.product_batch_id = mp.product_batch_id OR fm.drug_batch_id = mp.drug_batch_id)
+                ORDER BY fm.last_synced_at DESC LIMIT 1) AS fda_registration_number
         FROM marketplace_posts mp
         JOIN users u ON u.id = mp.seller_id
         LEFT JOIN product_batches pb ON pb.id = mp.product_batch_id
@@ -54,7 +59,7 @@ public class MarketplaceService {
                OR lower(mp.title) LIKE CAST(:search AS text)
                OR lower(mp.caption) LIKE CAST(:search AS text)
                OR lower(u.full_name) LIKE CAST(:search AS text))
-        GROUP BY mp.id, u.full_name, u.role, pb.recall_status, db.recall_status
+        GROUP BY mp.id, u.full_name, u.role, pb.recall_status, db.recall_status, pb.image_url, db.image_url
         ORDER BY mp.created_at DESC
         LIMIT :limit
         """)

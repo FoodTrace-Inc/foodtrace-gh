@@ -40,6 +40,11 @@ public class DrugController {
     return drugService.dashboard(currentUser(authentication));
   }
 
+  @GetMapping("/qr-codes")
+  public Map<String, Object> qrCodes(Authentication authentication) {
+    return drugService.qrCodes(currentUser(authentication));
+  }
+
   @PostMapping("/register")
   @ResponseStatus(HttpStatus.CREATED)
   public Map<String, Object> registerPharmacy(@RequestBody Map<String, Object> body, Authentication authentication) {

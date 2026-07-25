@@ -92,6 +92,29 @@ public class DrugService {
     return Map.of("dashboard", result);
   }
 
+  /** Part F: every QR code this pharmacy has generated, with its download image and scan count, for the QR management page. */
+  public Map<String, Object> qrCodes(CurrentUser user) {
+    String pharmacyId = jdbc.sql("SELECT id FROM pharmacies WHERE user_id = :uid LIMIT 1")
+        .param("uid", user.id())
+        .query(String.class)
+        .optional().orElse(null);
+    if (pharmacyId == null) return Map.of("qrCodes", List.of());
+
+    List<Map<String, Object>> rows = jdbc.sql("""
+        SELECT q.id, q.code_string, q.s3_url, q.scan_count, q.status,
+               db.batch_number, d.name AS product_name, db.recall_status
+        FROM drug_qr_codes q
+        JOIN drug_batches db ON db.id = q.drug_batch_id
+        JOIN drugs d ON d.id = db.drug_id
+        WHERE db.pharmacy_id = CAST(:pid AS uuid)
+        ORDER BY db.created_at DESC
+        """)
+        .param("pid", pharmacyId)
+        .query(DatabaseRowMapper::toMap)
+        .list();
+    return Map.of("qrCodes", rows);
+  }
+
   public Map<String, Object> registerPharmacy(CurrentUser user, Map<String, Object> body) {
     Validate.require(body, "businessName", "ghanaPharmacyCouncilNumber", "district", "region");
     boolean exists = jdbc.sql("SELECT 1 FROM pharmacies WHERE user_id = :uid")
