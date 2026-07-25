@@ -2,16 +2,21 @@ import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import type { AuthResponse } from "@foodtrace/shared";
 import { AppShell } from "./layout/AppShell";
+import { MarketingShell } from "./layout/MarketingShell";
 import { ThemeProvider } from "./theme/ThemeContext";
-import { LandingScreen } from "./screens/LandingScreen";
+import { HomeScreen } from "./screens/HomeScreen";
+import { AboutScreen } from "./screens/AboutScreen";
+import { FeaturesScreen } from "./screens/FeaturesScreen";
+import { PublicPricingScreen } from "./screens/PublicPricingScreen";
+import { SignInScreen } from "./screens/SignInScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { MarketplaceScreen } from "./screens/MarketplaceScreen";
 import { AssistantScreen } from "./screens/AssistantScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { PricingScreen } from "./screens/PricingScreen";
-import { AboutScreen } from "./screens/AboutScreen";
 import { TermsScreen } from "./screens/TermsScreen";
 import { PrivacyScreen } from "./screens/PrivacyScreen";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 function App() {
   const [session, setSession] = useState<AuthResponse | null>(null);
@@ -28,24 +33,39 @@ function App() {
   return (
     <ThemeProvider>
       <BrowserRouter basename={(import.meta as any).env.BASE_URL}>
+        <ScrollToTop />
         <Routes>
-          <Route
-            path="/"
-            element={session ? <Navigate to="/dashboard" replace /> : <LandingScreen onSignIn={setSession} />}
-          />
           {session ? (
-            <Route element={<AppShell session={session} onSignOut={() => setSession(null)} />}>
-              <Route path="/dashboard" element={<DashboardScreen />} />
-              <Route path="/marketplace" element={<MarketplaceScreen />} />
-              <Route path="/assistant" element={<AssistantScreen />} />
-              <Route path="/profile" element={<ProfileScreen />} />
-              <Route path="/pricing" element={<PricingScreen />} />
-            </Route>
-          ) : null}
-          <Route path="/about" element={<AboutScreen />} />
-          <Route path="/terms" element={<TermsScreen />} />
-          <Route path="/privacy" element={<PrivacyScreen />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+            <>
+              {/* Signed in: the app shell owns everything; "/" jumps to the dashboard. */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/signin" element={<Navigate to="/dashboard" replace />} />
+              <Route element={<AppShell session={session} onSignOut={() => setSession(null)} />}>
+                <Route path="/dashboard" element={<DashboardScreen />} />
+                <Route path="/marketplace" element={<MarketplaceScreen />} />
+                <Route path="/assistant" element={<AssistantScreen />} />
+                <Route path="/profile" element={<ProfileScreen />} />
+                <Route path="/pricing" element={<PricingScreen />} />
+              </Route>
+              <Route path="/terms" element={<TermsScreen />} />
+              <Route path="/privacy" element={<PrivacyScreen />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </>
+          ) : (
+            <>
+              {/* Public marketing site */}
+              <Route element={<MarketingShell />}>
+                <Route path="/" element={<HomeScreen />} />
+                <Route path="/features" element={<FeaturesScreen />} />
+                <Route path="/about" element={<AboutScreen />} />
+                <Route path="/pricing" element={<PublicPricingScreen />} />
+                <Route path="/terms" element={<TermsScreen />} />
+                <Route path="/privacy" element={<PrivacyScreen />} />
+              </Route>
+              <Route path="/signin" element={<SignInScreen onSignIn={setSession} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          )}
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

@@ -2,7 +2,9 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import type { AuthResponse } from "@foodtrace/shared";
 import { SessionProvider } from "../session/SessionContext";
-import { useTheme, usePalette } from "../theme/ThemeContext";
+import { usePalette } from "../theme/ThemeContext";
+import { LogoMark } from "../components/Logo";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 interface Props {
   session: AuthResponse;
@@ -19,7 +21,6 @@ const NAV_ITEMS: { to: string; label: string; icon: string }[] = [
 
 export function AppShell({ session, onSignOut }: Props) {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   const p = usePalette();
   const avatarLabel = useMemo(() => {
     const raw = (session.user.fullName || session.user.email || session.user.phone || "").trim();
@@ -50,19 +51,10 @@ export function AppShell({ session, onSignOut }: Props) {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: p.accent, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: p.onAccent, fontSize: 13 }}>
-              FT
-            </div>
-            <span style={{ color: p.textPrimary, fontWeight: 600, fontSize: 14 }}>FoodTrace GH</span>
+            <LogoMark size={26} />
+            <span style={{ color: p.textPrimary, fontWeight: 700, fontSize: 14 }}>FoodTrace GH</span>
           </div>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle light and dark mode"
-            style={{ width: 40, height: 22, borderRadius: 999, background: theme === "dark" ? "#1c2620" : "#dfe6e1", border: "none", cursor: "pointer", position: "relative", flexShrink: 0 }}
-          >
-            <span style={{ position: "absolute", top: 2.5, width: 17, height: 17, borderRadius: "50%", background: theme === "dark" ? p.accent : "#ffffff", left: theme === "dark" ? 20.5 : 2.5, transition: "left 0.15s ease" }} />
-          </button>
+          <ThemeToggle size={40} />
         </div>
 
         {NAV_ITEMS.map((item) => (
