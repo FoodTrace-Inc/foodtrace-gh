@@ -1,6 +1,7 @@
 package com.foodtrace.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foodtrace.api.payments.SubscriptionLimitService;
 import com.foodtrace.api.security.CurrentUser;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,10 +19,12 @@ public class ManufacturerService {
   private final RecallSmsNotifier recallSmsNotifier;
   private final NotificationService notifications;
   private final AuditLogService auditLog;
+  private final SubscriptionLimitService subscriptionLimits;
   private final ObjectMapper json = new ObjectMapper();
 
-  public ManufacturerService(JdbcClient jdbc, QrCodeService qrCodeService, RecallSmsNotifier recallSmsNotifier, NotificationService notifications, AuditLogService auditLog) {
+  public ManufacturerService(JdbcClient jdbc, QrCodeService qrCodeService, RecallSmsNotifier recallSmsNotifier, NotificationService notifications, AuditLogService auditLog, SubscriptionLimitService subscriptionLimits) {
     this.jdbc = jdbc;
+    this.subscriptionLimits = subscriptionLimits;
     this.qrCodeService = qrCodeService;
     this.recallSmsNotifier = recallSmsNotifier;
     this.notifications = notifications;
@@ -137,6 +140,10 @@ public class ManufacturerService {
     UUID manufacturerId = jdbc.sql("SELECT id FROM manufacturers WHERE user_id = :uid LIMIT 1")
         .param("uid", user.id()).query(UUID.class).optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Create a manufacturer profile first"));
+
+    long currentBatchCount = jdbc.sql("SELECT COUNT(*) FROM product_batches WHERE manufacturer_id = :mid")
+        .param("mid", manufacturerId).query(Long.class).single();
+    subscriptionLimits.enforceSellerLimit(user.id(), currentBatchCount);
 
     String batchNumber = String.valueOf(body.get("batchNumber"));
     Map<String, Object> batch = jdbc.sql("""

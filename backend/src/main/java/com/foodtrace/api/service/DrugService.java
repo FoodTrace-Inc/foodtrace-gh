@@ -1,5 +1,6 @@
 package com.foodtrace.api.service;
 
+import com.foodtrace.api.payments.SubscriptionLimitService;
 import com.foodtrace.api.security.CurrentUser;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,12 +17,14 @@ public class DrugService {
   private final QrCodeService qrCodeService;
   private final NotificationService notifications;
   private final AuditLogService auditLog;
+  private final SubscriptionLimitService subscriptionLimits;
 
-  public DrugService(JdbcClient jdbc, QrCodeService qrCodeService, NotificationService notifications, AuditLogService auditLog) {
+  public DrugService(JdbcClient jdbc, QrCodeService qrCodeService, NotificationService notifications, AuditLogService auditLog, SubscriptionLimitService subscriptionLimits) {
     this.jdbc = jdbc;
     this.qrCodeService = qrCodeService;
     this.notifications = notifications;
     this.auditLog = auditLog;
+    this.subscriptionLimits = subscriptionLimits;
   }
 
   public Map<String, Object> dashboard(CurrentUser user) {
@@ -172,6 +175,10 @@ public class DrugService {
     UUID pharmacyId = requirePharmacy(user);
     UUID drugId = UUID.fromString(String.valueOf(body.get("drugId")));
     String batchNumber = String.valueOf(body.get("batchNumber"));
+
+    long currentBatchCount = jdbc.sql("SELECT COUNT(*) FROM drug_batches WHERE pharmacy_id = :pid")
+        .param("pid", pharmacyId).query(Long.class).single();
+    subscriptionLimits.enforceSellerLimit(user.id(), currentBatchCount);
 
     Map<String, Object> batch = jdbc.sql("""
         INSERT INTO drug_batches

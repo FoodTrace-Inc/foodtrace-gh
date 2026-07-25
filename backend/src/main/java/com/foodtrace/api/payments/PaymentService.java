@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.foodtrace.api.config.AppProperties;
 import com.foodtrace.api.security.CurrentUser;
+import com.foodtrace.api.service.EmailService;
 import com.foodtrace.api.service.NotificationService;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
@@ -36,14 +37,16 @@ public class PaymentService {
   private final PaystackClient paystackClient;
   private final AppProperties appProperties;
   private final NotificationService notificationService;
+  private final EmailService emailService;
   private final ObjectMapper mapper = new ObjectMapper();
 
   public PaymentService(JdbcClient jdbc, PaystackClient paystackClient, AppProperties appProperties,
-      NotificationService notificationService) {
+      NotificationService notificationService, EmailService emailService) {
     this.jdbc = jdbc;
     this.paystackClient = paystackClient;
     this.appProperties = appProperties;
     this.notificationService = notificationService;
+    this.emailService = emailService;
   }
 
   /** Mobile flow: server drives Paystack's hosted checkout (authorization_url), opened in an in-app browser. */
@@ -143,6 +146,8 @@ public class PaymentService {
       if (updated > 0) {
         notificationService.notify(userId, "payment_failed", "Payment failed",
             "Your payment failed. Please update your payment method.", null);
+        emailService.send(lookupEmail(userId), "Your FoodTrace GH payment failed",
+            "Your payment failed. Please update your payment method and try again.\n\n— FoodTrace GH");
       }
       return;
     }
@@ -165,6 +170,9 @@ public class PaymentService {
 
     notificationService.notify(userId, "payment_success", "Subscription activated",
         "Your " + planType + " subscription is now active. Thank you!", null);
+    emailService.send(lookupEmail(userId), "Your FoodTrace GH subscription is active",
+        "Your " + planType + " subscription is now active. Thank you for subscribing!\n\n"
+            + "Renews on " + expiresAt.toLocalDate() + ".\n\n— FoodTrace GH");
   }
 
   public Map<String, Object> handleWebhook(String rawBody, String signature) {
@@ -196,6 +204,8 @@ public class PaymentService {
                 .param("uid", userId).update();
             notificationService.notify(userId, "subscription_cancelled", "Subscription cancelled",
                 "Your subscription has been cancelled.", null);
+            emailService.send(lookupEmail(userId), "Your FoodTrace GH subscription was cancelled",
+                "Your subscription has been cancelled.\n\n— FoodTrace GH");
           }
         }
         case "invoice.payment_failed" -> {
@@ -203,6 +213,8 @@ public class PaymentService {
           if (userId != null) {
             notificationService.notify(userId, "payment_failed", "Payment failed",
                 "Your payment failed. Please update your payment method.", null);
+            emailService.send(lookupEmail(userId), "Your FoodTrace GH payment failed",
+                "Your payment failed. Please update your payment method.\n\n— FoodTrace GH");
           }
         }
         default -> { /* ignore events we don't act on */ }
@@ -252,12 +264,19 @@ public class PaymentService {
   }
 
   public Map<String, Object> cancel(String userId) {
+    OffsetDateTime expiresAt = jdbc.sql("SELECT expires_at FROM subscriptions WHERE user_id = CAST(:uid AS uuid)")
+        .param("uid", userId).query(OffsetDateTime.class).optional().orElse(null);
+
     int updated = jdbc.sql("UPDATE subscriptions SET status = 'cancelled', auto_renew = false, updated_at = now() WHERE user_id = CAST(:uid AS uuid)")
         .param("uid", userId)
         .update();
     if (updated == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No subscription to cancel");
+
+    String expiryText = expiresAt != null ? expiresAt.toLocalDate().toString() : "your next renewal date";
     notificationService.notify(userId, "subscription_cancelled", "Subscription cancelled",
-        "Your subscription has been cancelled. Your products will be hidden when it expires.", null);
+        "Your subscription has been cancelled. Your products will be hidden on " + expiryText + ".", null);
+    emailService.send(lookupEmail(userId), "Your FoodTrace GH subscription was cancelled",
+        "Your subscription has been cancelled. Your products will be hidden on " + expiryText + ".\n\n— FoodTrace GH");
     return Map.of("cancelled", true);
   }
 

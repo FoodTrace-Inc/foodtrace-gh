@@ -1,5 +1,6 @@
 package com.foodtrace.api.service;
 
+import com.foodtrace.api.payments.SubscriptionLimitService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -10,14 +11,17 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ScanService {
   private final JdbcClient jdbc;
+  private final SubscriptionLimitService subscriptionLimits;
 
-  public ScanService(JdbcClient jdbc) {
+  public ScanService(JdbcClient jdbc, SubscriptionLimitService subscriptionLimits) {
     this.jdbc = jdbc;
+    this.subscriptionLimits = subscriptionLimits;
   }
 
   // ── Food scan ──────────────────────────────────────────────────────────────
 
   public Map<String, Object> scanFood(String codeString, String userId) {
+    subscriptionLimits.enforceConsumerScanLimit(userId);
     String code = normalize(codeString);
     return jdbc.sql("""
         SELECT
@@ -60,6 +64,7 @@ public class ScanService {
               .param("qrId", row.get("qrId"))
               .param("userId", userId)
               .update();
+          subscriptionLimits.recordConsumerScan(userId);
           return buildFoodResult(row);
         })
         .orElseGet(() -> notFound(code));
@@ -68,6 +73,7 @@ public class ScanService {
   // ── Drug scan ──────────────────────────────────────────────────────────────
 
   public Map<String, Object> scanDrug(String codeString, String userId) {
+    subscriptionLimits.enforceConsumerScanLimit(userId);
     String code = normalize(codeString);
     return jdbc.sql("""
         SELECT
@@ -110,6 +116,7 @@ public class ScanService {
               .param("qrId", row.get("qrId"))
               .param("userId", userId)
               .update();
+          subscriptionLimits.recordConsumerScan(userId);
           return buildDrugResult(row);
         })
         .orElseGet(() -> notFound(code));

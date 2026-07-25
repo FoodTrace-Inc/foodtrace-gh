@@ -74,4 +74,35 @@ public class EmailService {
       return false;
     }
   }
+
+  /** Generic transactional email — used for payment/subscription notifications. Returns true if actually sent. */
+  public boolean send(String toEmail, String subject, String text) {
+    if (!configured) {
+      log.warn("RESEND_API_KEY not set — email to {} ({}) was not sent.", toEmail, subject);
+      return false;
+    }
+    if (toEmail == null || toEmail.isBlank()) return false;
+    try {
+      Map<String, Object> body = new java.util.LinkedHashMap<>();
+      body.put("from", FROM);
+      body.put("to", List.of(toEmail));
+      body.put("subject", subject);
+      body.put("text", text);
+      if (replyTo != null) body.put("reply_to", replyTo);
+
+      HttpRequest request = HttpRequest.newBuilder()
+          .uri(URI.create("https://api.resend.com/emails"))
+          .header("Content-Type", "application/json")
+          .header("Authorization", "Bearer " + apiKey)
+          .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
+          .build();
+      HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() >= 200 && response.statusCode() < 300) return true;
+      log.error("Resend API error sending '{}' to {}: {} {}", subject, toEmail, response.statusCode(), response.body());
+      return false;
+    } catch (Exception error) {
+      log.error("Failed to send '{}' email to {}: {}", subject, toEmail, error.getMessage());
+      return false;
+    }
+  }
 }
