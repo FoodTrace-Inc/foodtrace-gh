@@ -61,6 +61,7 @@ import {
 import type { AppNotification } from "./src/screens";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { Logo } from "./src/components/Logo";
+import { Icon, type IconName } from "./src/components/Icon";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { ThemeProvider, useTheme, usePalette } from "./src/theme/ThemeContext";
 import { SubscriptionPlansScreen, SELLER_PLANS, CONSUMER_PLANS, type PlanDef } from "./src/screens/SubscriptionPlansScreen";
@@ -69,7 +70,7 @@ import { PaymentResultScreen } from "./src/screens/PaymentResultScreen";
 import { SubscriptionManagementScreen } from "./src/screens/SubscriptionManagementScreen";
 import { LegalScreen } from "./src/screens/LegalScreen";
 
-// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function resolveDefaultApiBase() {
   const constants = Constants as typeof Constants & {
@@ -128,7 +129,7 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
   return data;
 }
 
-// â”€â”€â”€ constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── constants ───────────────────────────────────────────────────────────────
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -162,7 +163,7 @@ const roleLabels: Record<string, string> = {
   pharmacist: "Pharmacist",
 };
 
-// â”€â”€â”€ types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── types ───────────────────────────────────────────────────────────────────
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first school?",
@@ -196,7 +197,7 @@ function epaBannerColor(status: string) {
   return { backgroundColor: "#151A15", borderColor: "#26302A" };
 }
 
-// â”€â”€â”€ component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── component ───────────────────────────────────────────────────────────────
 
 export default function App() {
   // SafeAreaProvider supplies real device insets (status bar, notch, gesture
@@ -378,7 +379,7 @@ function AppContent() {
   const isRegulator = currentRole === "regulator";
   const isPharmacist = currentRole === "pharmacist";
 
-  // â”€â”€ effects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     void (async () => {
@@ -422,7 +423,7 @@ function AppContent() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
           body: JSON.stringify({ token: pushToken }),
         });
-      } catch { /* push registration is best-effort â€” app works fine without it */ }
+      } catch { /* push registration is best-effort — app works fine without it */ }
     })();
   }, [session?.token, apiBase]);
 
@@ -476,10 +477,10 @@ function AppContent() {
     return () => { if (cameraResumeTimerRef.current) clearTimeout(cameraResumeTimerRef.current); };
   }, []);
 
-  // â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── helpers ────────────────────────────────────────────────────────────────
 
   function getFriendlyError(error: unknown) {
-    // A failed fetch (no response at all) throws TypeError â€” almost always a
+    // A failed fetch (no response at all) throws TypeError — almost always a
     // connectivity problem on the device side.
     if (error instanceof TypeError) return `Could not reach the server at ${apiBase}. Check the backend URL or your connection.`;
     const status = (error as { status?: number })?.status;
@@ -500,7 +501,7 @@ function AppContent() {
     return /error|fail|could not|server|wrong|denied|unauthori/i.test(msg);
   }
 
-  // Retries once after a short delay â€” handles Render cold start
+  // Retries once after a short delay — handles Render cold start
   async function fetchWithRetry(url: string, options?: RequestInit, retries = 1): Promise<Response> {
     try {
       const res = await fetch(url, options);
@@ -588,7 +589,7 @@ function AppContent() {
     }
   }
 
-  // â”€â”€ auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── auth ──────────────────────────────────────────────────────────────────
 
   async function submit() {
     if (mode === "register") {
@@ -602,7 +603,7 @@ function AppContent() {
       if (!identifier.trim()) { setAuthStatus("Please enter your phone or email."); return; }
       if (!password.trim()) { setAuthStatus("Please enter your password."); return; }
     }
-    setAuthStatus("Please waitâ€¦");
+    setAuthStatus("Please wait…");
     try {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
       const payload = mode === "login"
@@ -628,7 +629,7 @@ function AppContent() {
 
   async function lookupSecurityQuestion() {
     if (!forgotEmail.trim()) { setAuthStatus("Enter your email or phone number."); return; }
-    setAuthStatus("Please waitâ€¦");
+    setAuthStatus("Please wait…");
     try {
       const data = await readJsonResponse<{ question?: string }>(await fetch(`${apiBase}/auth/security-question/lookup`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: forgotEmail.trim() }),
@@ -643,7 +644,7 @@ function AppContent() {
   async function submitPasswordReset() {
     if (!securityAnswerReset.trim()) { setAuthStatus("Enter your security answer."); return; }
     if (newPassword.trim().length < 6) { setAuthStatus("New password must be at least 6 characters."); return; }
-    setAuthStatus("Please waitâ€¦");
+    setAuthStatus("Please wait…");
     try {
       const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/reset-with-security`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -680,7 +681,7 @@ function AppContent() {
     setShowNotifications(false);
   }
 
-  // â”€â”€ scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── scan ──────────────────────────────────────────────────────────────────
 
   const handleScanResult = useCallback(
     (result: ProductScanResult | DrugScanResult, kind: "food" | "drug") => {
@@ -745,7 +746,7 @@ function AppContent() {
   async function scanDrugProduct(code = drugScanCode) {
     const normalized = code.trim().toUpperCase();
     if (!normalized) { setDrugScanStatus("Enter a drug QR code first."); return; }
-    setDrugScanStatus("Looking up drugâ€¦");
+    setDrugScanStatus("Looking up drug…");
     try {
       const response = await fetch(`${apiBase}/drug/scan/${encodeURIComponent(normalized)}`, {
         headers: session?.token ? { Authorization: `Bearer ${session.token}` } : undefined,
@@ -767,7 +768,7 @@ function AppContent() {
     scheduleCameraResume();
   }
 
-  // â”€â”€ speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── speech ────────────────────────────────────────────────────────────────
 
   async function playGoogleSpeech(text: string) {
     const response = await fetch(`${apiBase}/audio/speech`, {
@@ -781,11 +782,11 @@ function AppContent() {
     sound.setOnPlaybackStatusUpdate((s) => { if ("didJustFinish" in s && s.didJustFinish) void sound.unloadAsync(); });
   }
 
-  // â”€â”€ food / farmer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── food / farmer ─────────────────────────────────────────────────────────
 
   async function loadFoodDashboard() {
     if (!session?.token) return;
-    setFoodStatus("Loadingâ€¦");
+    setFoodStatus("Loading…");
     try {
       const response = await fetchWithRetry(`${apiBase}/food/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await readJsonResponse<{ dashboard: FoodDashboardResponse }>(response);
@@ -804,7 +805,7 @@ function AppContent() {
       const response = await fetchWithRetry(`${apiBase}/food/weather${qs}`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await readJsonResponse<WeatherResponse>(response);
       setWeather(data);
-    } catch { /* weather is a nice-to-have â€” dashboard still works without it */ }
+    } catch { /* weather is a nice-to-have — dashboard still works without it */ }
   }
 
   async function searchPesticides(query: string) {
@@ -828,7 +829,7 @@ function AppContent() {
 
   async function createFarm() {
     if (!session?.token) return;
-    setFoodStatus("Creating farmâ€¦");
+    setFoodStatus("Creating farm…");
     try {
       const payload: CreateFarmRequest = { name: farmName, district: farmDistrict, region: farmRegion, cropTypes: farmCrops.split(",").map((s) => s.trim()).filter(Boolean) };
       await readJsonResponse(await fetch(`${apiBase}/food/farms`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -838,7 +839,7 @@ function AppContent() {
 
   async function createCropCycle() {
     if (!session?.token) return;
-    setFoodStatus("Creating cycleâ€¦");
+    setFoodStatus("Creating cycle…");
     try {
       const payload: CreateCropCycleRequest = { farmId: cycleFarmId, cropType: cycleCropType, plantingDate: cyclePlantingDate };
       await readJsonResponse(await fetch(`${apiBase}/food/crop-cycles`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -848,7 +849,7 @@ function AppContent() {
 
   async function createInputLog() {
     if (!session?.token) return;
-    setFoodStatus("Saving input logâ€¦");
+    setFoodStatus("Saving input log…");
     try {
       const payload: CreateInputLogRequest = { cropCycleId: inputCycleId, inputType, productName: inputProductName, applicationDate: inputApplicationDate, withdrawalPeriodDays: Number(inputWithdrawalDays), epaApprovalStatus: inputEpaStatus as CreateInputLogRequest["epaApprovalStatus"] };
       await readJsonResponse(await fetch(`${apiBase}/food/input-logs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -874,11 +875,11 @@ function AppContent() {
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
   }
 
-  // â”€â”€ manufacturer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── manufacturer ──────────────────────────────────────────────────────────
 
   async function loadManufacturerDashboard() {
     if (!session?.token) return;
-    setManufacturerStatus("Loadingâ€¦");
+    setManufacturerStatus("Loading…");
     try {
       const data = await readJsonResponse<{ dashboard: ManufacturerDashboardResponse }>(await fetchWithRetry(`${apiBase}/manufacturer/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setManufacturerDashboard(data.dashboard);
@@ -889,7 +890,7 @@ function AppContent() {
 
   async function createManufacturerProfile() {
     if (!session?.token) return;
-    setManufacturerStatus("Creating profileâ€¦");
+    setManufacturerStatus("Creating profile…");
     try {
       const payload: CreateManufacturerProfileRequest = { companyName, fdaRegistrationNumber: fdaRegNumber || null, sector: manufacturerSector, subscriptionTier };
       await readJsonResponse(await fetch(`${apiBase}/manufacturer/profile`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -906,7 +907,7 @@ function AppContent() {
 
   async function createManufacturerBatch() {
     if (!session?.token) return;
-    setManufacturerStatus("Creating batchâ€¦");
+    setManufacturerStatus("Creating batch…");
     try {
       const payload: CreateProductBatchRequest = { batchNumber, ingredientSources: [ingredientSources], processingSteps: processingSteps.split(",").map((s) => s.trim()).filter(Boolean), qualityChecks: [qualityChecks], packagingDate, expiryDate, imageUrl: batchImage };
       const data = await readJsonResponse<CreateProductBatchResponse>(await fetch(`${apiBase}/manufacturer/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -918,7 +919,7 @@ function AppContent() {
 
   async function createManufacturerRecall() {
     if (!session?.token) return;
-    setManufacturerStatus("Issuing recallâ€¦");
+    setManufacturerStatus("Issuing recall…");
     try {
       const payload: CreateRecallRequest = { batchId: recallBatchId, recallType, reason: recallReason, scopeDistricts: recallScopeDistricts.split(",").map((s) => s.trim()).filter(Boolean) };
       await readJsonResponse(await fetch(`${apiBase}/manufacturer/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -926,11 +927,11 @@ function AppContent() {
     } catch (error) { setManufacturerStatus(getFriendlyError(error)); }
   }
 
-  // â”€â”€ regulator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── regulator ─────────────────────────────────────────────────────────────
 
   async function loadRegulatorDashboard() {
     if (!session?.token) return;
-    setRegulatorStatus("Loadingâ€¦");
+    setRegulatorStatus("Loading…");
     try {
       const data = await readJsonResponse<{ dashboard: RegulatorDashboardResponse }>(await fetchWithRetry(`${apiBase}/regulator/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setRegulatorDashboard(data.dashboard);
@@ -944,7 +945,7 @@ function AppContent() {
     if (!session?.token) return;
     if (!reportId.trim()) { setRegulatorStatus("There is no report to review yet."); return; }
     if (!["reviewing", "resolved", "dismissed"].includes(reportStatus)) { setRegulatorStatus("Status must be reviewing, resolved, or dismissed."); return; }
-    setRegulatorStatus("Updating reportâ€¦");
+    setRegulatorStatus("Updating report…");
     try {
       await readJsonResponse(await fetch(`${apiBase}/regulator/reports`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ reportId: reportId.trim(), status: reportStatus }) }));
       setRegulatorStatus("Report updated.");
@@ -954,7 +955,7 @@ function AppContent() {
 
   async function createRegulatorRecall() {
     if (!session?.token) return;
-    setRegulatorStatus("Issuing recallâ€¦");
+    setRegulatorStatus("Issuing recall…");
     try {
       const payload: RegulatorRecallRequest = { batchId: regulatorRecallBatchId, reason: regulatorRecallReason, scopeDistricts: regulatorRecallDistricts.split(",").map((s) => s.trim()).filter(Boolean), domain: regulatorRecallDomain };
       await readJsonResponse(await fetch(`${apiBase}/regulator/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -962,11 +963,11 @@ function AppContent() {
     } catch (error) { setRegulatorStatus(getFriendlyError(error)); }
   }
 
-  // â”€â”€ pharmacist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── pharmacist ────────────────────────────────────────────────────────────
 
   async function loadPharmacyDashboard() {
     if (!session?.token) return;
-    setPharmacyStatus("Loadingâ€¦");
+    setPharmacyStatus("Loading…");
     try {
       const data = await readJsonResponse<{ dashboard: DrugDashboardResponse }>(await fetchWithRetry(`${apiBase}/drug/dashboard`, { headers: { Authorization: `Bearer ${session.token}` } }));
       setPharmacyDashboard(data.dashboard);
@@ -976,7 +977,7 @@ function AppContent() {
 
   async function registerPharmacy() {
     if (!session?.token) return;
-    setPharmacyStatus("Registeringâ€¦");
+    setPharmacyStatus("Registering…");
     try {
       const payload: RegisterPharmacyRequest = { businessName, ghanaPharmacyCouncilNumber: gpcNumber, district: pharmacyDistrict, region: pharmacyRegion };
       await readJsonResponse(await fetch(`${apiBase}/drug/register`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -986,7 +987,7 @@ function AppContent() {
 
   async function createDrugRecord() {
     if (!session?.token) return;
-    setPharmacyStatus("Creating drug recordâ€¦");
+    setPharmacyStatus("Creating drug record…");
     try {
       const payload: CreateDrugRecordRequest = { name: drugName, genericName: drugGenericName || null, manufacturerName: drugManufacturer || null, fdaDrugRegistrationNumber: drugFdaNumber || null, drugClass: drugClass || null, dosageForm: drugDosageForm || null, strength: drugStrength || null, requiresPrescription: drugRequiresPrescription, isControlled: drugIsControlled, fdaApprovalStatus: drugApprovalStatus, storageConditions: drugStorage || null, sideEffectsSummary: drugSideEffects || null };
       await readJsonResponse(await fetch(`${apiBase}/drug/drugs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1005,7 +1006,7 @@ function AppContent() {
     if (!session?.token) return;
     const firstDrugId = pharmacyDashboard?.drugs[0]?.id ?? "";
     if (!firstDrugId) { setPharmacyStatus("Create a drug record first."); return; }
-    setPharmacyStatus("Creating batchâ€¦");
+    setPharmacyStatus("Creating batch…");
     try {
       const payload: CreateDrugBatchRequest = { drugId: firstDrugId, batchNumber: drugBatchNumber, manufactureDate: drugManufactureDate, expiryDate: drugExpiryDate, quantityReceived: Number(drugQuantityReceived), quantityRemaining: Number(drugQuantityRemaining), supplierName: drugSupplierName || null, imageUrl: drugBatchImage };
       const data = await readJsonResponse<CreateDrugBatchResponse>(await fetch(`${apiBase}/drug/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1017,7 +1018,7 @@ function AppContent() {
 
   async function createDrugRecall() {
     if (!session?.token) return;
-    setPharmacyStatus("Creating recallâ€¦");
+    setPharmacyStatus("Creating recall…");
     try {
       const payload: CreateDrugRecallRequest = { batchId: drugRecallBatchId, reason: drugRecallReason };
       await readJsonResponse(await fetch(`${apiBase}/drug/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
@@ -1025,7 +1026,7 @@ function AppContent() {
     } catch (error) { setPharmacyStatus(getFriendlyError(error)); }
   }
 
-  // â”€â”€ AI assistant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AI assistant ──────────────────────────────────────────────────────────
 
   async function sendAiMessage() {
     const text = aiInput.trim();
@@ -1049,9 +1050,9 @@ function AppContent() {
     } finally { setAiLoading(false); }
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER: ANIMATED INTRO (plays on every launch)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (showIntro) {
     return <SplashIntro onFinish={() => setShowIntro(false)} />;
@@ -1061,9 +1062,9 @@ function AppContent() {
     return <OnboardingScreen onDone={finishOnboarding} />;
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER: AUTH SCREEN
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (!session) {
     return (
@@ -1118,7 +1119,7 @@ function AppContent() {
                 <Pressable style={[s.input, themedInput]} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion); setSecurityQuestion(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
                   <Text style={{ color: palette.textPrimary }}>{securityQuestion}</Text>
                 </Pressable>
-                <Text style={s.hint}>Tap the question to change it â€” you'll answer it to recover your account.</Text>
+                <Text style={s.hint}>Tap the question to change it — you'll answer it to recover your account.</Text>
                 <TextInput placeholder="Security answer" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswer} onChangeText={setSecurityAnswer} autoCapitalize="none" />
                 <Text style={s.hint}>Each account needs a unique phone number or email. To test a different role, use a different number.</Text>
                 <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submit()}>
@@ -1159,8 +1160,8 @@ function AppContent() {
               </>
             )}
 
-            {authStatus === "Please waitâ€¦" ? (
-              <Text style={s.statusLoading}>Please waitâ€¦</Text>
+            {authStatus === "Please wait…" ? (
+              <Text style={s.statusLoading}>Please wait…</Text>
             ) : authStatus ? (
               <View style={isErrorMsg(authStatus) ? s.errorBox : s.infoBox}>
                 <Text style={isErrorMsg(authStatus) ? s.errorText : s.infoText}>{authStatus}</Text>
@@ -1193,9 +1194,9 @@ function AppContent() {
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // RENDER: LOGGED-IN â€” CONSUMER (bottom nav layout)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER: LOGGED-IN — CONSUMER (bottom nav layout)
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isConsumer) {
     return (
@@ -1204,11 +1205,11 @@ function AppContent() {
 
         {/* Top header */}
         <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
-          <Logo size={22} fontSize={15} />
+          <Logo size={22} fontSize={15} color={palette.textPrimary} />
           <View style={s.topBarRight}>
-            <Text style={s.topBarUser} numberOfLines={1}>{session.user.fullName || "Account"}</Text>
+            <Text style={[s.topBarUser, { color: palette.textSecondary }]} numberOfLines={1}>{session.user.fullName || "Account"}</Text>
             <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
-              <Text style={s.bellIcon}>ðŸ””</Text>
+              <Icon name="notifications-outline" size={20} color={palette.textPrimary} />
               {unread > 0 ? <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text></View> : null}
             </Pressable>
           </View>
@@ -1341,11 +1342,11 @@ function AppContent() {
                       </View>
                     ))
                   )}
-                  {aiLoading ? <Text style={s.statusLoading}>Thinkingâ€¦</Text> : null}
+                  {aiLoading ? <Text style={s.statusLoading}>Thinking…</Text> : null}
                 </View>
 
                 <View style={s.chatInputRow}>
-                  <TextInput style={s.chatInput} placeholder="Ask a questionâ€¦" placeholderTextColor="#748089" value={aiInput} onChangeText={setAiInput} multiline />
+                  <TextInput style={s.chatInput} placeholder="Ask a question…" placeholderTextColor="#748089" value={aiInput} onChangeText={setAiInput} multiline />
                   <Pressable style={[s.sendBtn, (!aiInput.trim() || aiLoading) && s.sendBtnOff]} onPress={() => void sendAiMessage()} disabled={!aiInput.trim() || aiLoading}>
                     <Text style={s.sendBtnText}>Send</Text>
                   </Pressable>
@@ -1355,85 +1356,90 @@ function AppContent() {
           ) : (
             /* HOME */
             <ScrollView contentContainerStyle={s.scrollPad}>
-              <Text style={s.homeGreeting}>Hi, {(session.user.fullName || "there").split(" ")[0]}</Text>
+              <Text style={[s.homeGreeting, { color: palette.textPrimary }]}>Your proof before purchase.</Text>
+              <Text style={{ color: palette.textSecondary, fontSize: 13, marginTop: -8, marginBottom: 14, lineHeight: 18 }}>
+                A safety companion for food, medicine, and farm produce in Ghana.
+              </Text>
 
-              <Pressable style={s.scanHero} onPress={() => setConsumerTab("scanner")}>
-                <LinearGradient colors={["#1c4a34", "#0a1e15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                <View style={[s.scanCorner, s.scanCornerTL]} />
-                <View style={[s.scanCorner, s.scanCornerTR]} />
-                <View style={[s.scanCorner, s.scanCornerBL]} />
-                <View style={[s.scanCorner, s.scanCornerBR]} />
-                <View style={s.scanIconRing}>
-                  <Text style={s.scanIconText}>âŠ¡</Text>
+              <Pressable style={[s.scanHero, { backgroundColor: "#111417" }]} onPress={() => setConsumerTab("scanner")}>
+                <View style={[s.scanCorner, s.scanCornerTL, { borderColor: palette.signalCyan }]} />
+                <View style={[s.scanCorner, s.scanCornerTR, { borderColor: palette.signalCyan }]} />
+                <View style={[s.scanCorner, s.scanCornerBL, { borderColor: palette.signalCyan }]} />
+                <View style={[s.scanCorner, s.scanCornerBR, { borderColor: palette.signalCyan }]} />
+                <View style={[s.scanIconRing, { borderColor: palette.signalCyan, backgroundColor: "rgba(24,162,166,0.12)" }]}>
+                  <Icon name="scan" size={30} color={palette.signalCyan} />
                 </View>
                 <Text style={s.scanHeroTitle}>Tap to scan a product</Text>
-                <Text style={s.scanHeroSub}>Know before you buy</Text>
+                <Text style={[s.scanHeroSub, { color: palette.marketAmber }]}>QR, batch, seller, recall and origin.</Text>
               </Pressable>
 
               <View style={s.bentoRow}>
-                <View style={[s.bentoBig, { overflow: "hidden" }]}>
-                  <LinearGradient colors={["#1a3d2c", "#12241a"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                  <Text style={s.bentoBigNumber}>{consumerHistory.length === 0 ? "â€”" : `${Math.round((consumerHistory.filter((h) => h.status !== "recalled").length / consumerHistory.length) * 100)}%`}</Text>
-                  <Text style={s.bentoBigLabel}>Safe scans so far</Text>
+                <View style={[s.bentoBig, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
+                  <Text style={[s.bentoBigNumber, { color: palette.signalCyan }]}>{consumerHistory.length === 0 ? "—" : `${Math.round((consumerHistory.filter((h) => h.status !== "recalled").length / consumerHistory.length) * 100)}%`}</Text>
+                  <Text style={[s.bentoBigLabel, { color: palette.textSecondary }]}>Safe scans</Text>
                 </View>
-                <View style={s.bentoStack}>
-                  <View style={s.bentoMiniGood}>
-                    <Text style={s.bentoMiniNumberGood}>{consumerHistory.length}</Text>
-                    <Text style={s.bentoMiniLabelGood}>Scans</Text>
-                  </View>
-                  <View style={s.bentoMiniBad}>
-                    <Text style={s.bentoMiniNumberBad}>{consumerHistory.filter((h) => h.status === "recalled").length}</Text>
-                    <Text style={s.bentoMiniLabelBad}>Recalls caught</Text>
-                  </View>
+                <View style={[s.bentoBig, { backgroundColor: palette.cardBg, borderColor: palette.border, flex: 1 }]}>
+                  <Text style={[s.bentoBigNumber, { color: palette.textPrimary }]}>{consumerHistory.length}</Text>
+                  <Text style={[s.bentoBigLabel, { color: palette.textSecondary }]}>Total scans</Text>
                 </View>
               </View>
 
               <View style={s.homeSectionRow}>
-                <Text style={s.homeSectionTitle}>Recent scans</Text>
+                <Text style={[s.homeSectionTitle, { color: palette.textPrimary }]}>Recent scans</Text>
                 {consumerHistory.length > 0 ? (
-                  <Pressable onPress={() => setConsumerTab("history")}><Text style={s.homeSectionLink}>See all</Text></Pressable>
+                  <Pressable onPress={() => setConsumerTab("history")}><Text style={[s.homeSectionLink, { color: palette.signalCyan }]}>See all</Text></Pressable>
                 ) : null}
               </View>
 
               {consumerHistory.length === 0 ? (
-                <View style={[s.card, { alignItems: "center", paddingVertical: 32 }]}>
-                  <Text style={s.chatEmptyText}>No scans yet. Tap above to get started.</Text>
+                <View style={[s.card, { backgroundColor: palette.cardBg, borderColor: palette.border, alignItems: "center", paddingVertical: 32 }]}>
+                  <Text style={{ color: palette.textSecondary }}>No scans yet. Tap above to get started.</Text>
                 </View>
               ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
-                  {consumerHistory.slice(0, 8).map((item, i) => (
-                    <Pressable key={i} style={s.recentTile} onPress={() => setConsumerTab("history")}>
-                      <View style={[s.recentTileIconWrap, item.status === "recalled" ? s.recentTileIconWrapBad : s.recentTileIconWrapGood]}>
-                        <Text style={s.recentTileIcon}>{item.status === "recalled" ? "âœ•" : item.status === "caution" ? "!" : "âœ“"}</Text>
-                      </View>
-                      <Text style={s.recentTileTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={item.status === "recalled" ? s.recentTileStatusBad : s.recentTileStatusGood}>
-                        {item.status === "recalled" ? "Recalled" : item.status === "caution" ? "Caution" : "Safe"}
+                consumerHistory.slice(0, 6).map((item, i) => (
+                  <Pressable
+                    key={i}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: palette.cardBg, borderRadius: 16, padding: 12, marginBottom: 8 }}
+                    onPress={() => setConsumerTab("history")}
+                  >
+                    <View style={{
+                      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+                      backgroundColor: item.status === "recalled" ? "rgba(224,71,92,0.15)" : item.status === "caution" ? "rgba(237,181,76,0.18)" : "rgba(24,162,166,0.14)",
+                    }}>
+                      <Text style={{
+                        fontSize: 10, fontWeight: "800", letterSpacing: 0.5,
+                        color: item.status === "recalled" ? "#e0475c" : item.status === "caution" ? "#8a6414" : "#0f7a7d",
+                      }}>
+                        {item.status === "recalled" ? "RECALLED" : item.status === "caution" ? "CAUTION" : "SAFE"}
                       </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: palette.textPrimary, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>{item.title}</Text>
+                      <Text style={{ color: palette.textSecondary, fontSize: 11, marginTop: 1 }} numberOfLines={1}>{item.codeString}</Text>
+                    </View>
+                  </Pressable>
+                ))
               )}
             </ScrollView>
           )}
         </View>
 
         {/* Bottom nav */}
-        <View style={s.bottomNav}>
+        <View style={[s.bottomNav, { backgroundColor: palette.cardBg, borderTopColor: palette.border }]}>
           {([
-            { tab: "home" as ConsumerTab, icon: "âŒ‚", label: "Home" },
-            { tab: "market" as ConsumerTab, icon: "â–¤", label: "Market" },
-            { tab: "scanner" as ConsumerTab, icon: "âŠ¡", label: "Scan" },
-            { tab: "history" as ConsumerTab, icon: "â—·", label: "History" },
-            { tab: "account" as ConsumerTab, icon: "â—‹", label: "Account" },
-          ] as const).map(({ tab, icon, label }) => {
+            { tab: "home" as ConsumerTab, icon: "home-outline" as IconName, iconActive: "home" as IconName, label: "Home" },
+            { tab: "market" as ConsumerTab, icon: "storefront-outline" as IconName, iconActive: "storefront" as IconName, label: "Market" },
+            { tab: "scanner" as ConsumerTab, icon: "scan-outline" as IconName, iconActive: "scan" as IconName, label: "Scan" },
+            { tab: "history" as ConsumerTab, icon: "time-outline" as IconName, iconActive: "time" as IconName, label: "History" },
+            { tab: "account" as ConsumerTab, icon: "person-outline" as IconName, iconActive: "person" as IconName, label: "Account" },
+          ] as const).map(({ tab, icon, iconActive, label }) => {
             const isActive = tab === "home"
               ? (consumerTab === "home" || consumerTab === "result" || consumerTab === "report")
               : consumerTab === tab;
             return (
               <Pressable key={tab} style={s.navItem} onPress={() => setConsumerTab(tab)}>
-                <Text style={[s.navIcon, isActive && s.navActive]}>{icon}</Text>
-                <Text style={[s.navLabel, isActive && s.navActive]}>{label}</Text>
+                <Icon name={isActive ? iconActive : icon} size={22} color={isActive ? palette.accent : palette.textSecondary} />
+                <Text style={[s.navLabel, { color: isActive ? palette.accent : palette.textSecondary }]}>{label}</Text>
               </Pressable>
             );
           })}
@@ -1444,9 +1450,9 @@ function AppContent() {
     );
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // RENDER: LOGGED-IN â€” OTHER ROLES (farmer / manufacturer / regulator / pharmacist)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER: LOGGED-IN — OTHER ROLES (farmer / manufacturer / regulator / pharmacist)
+  // ─────────────────────────────────────────────────────────────────────────
 
   const portalTitle = roleLabels[currentRole ?? ""] ?? "Portal";
   const portalGradient: [string, string] = isFarmer
@@ -1466,7 +1472,7 @@ function AppContent() {
         <Logo size={22} fontSize={15} />
         <View style={s.topBarRight}>
           <Pressable onPress={() => void openNotifications()} hitSlop={8} style={s.bellBtn}>
-            <Text style={s.bellIcon}>ðŸ””</Text>
+            <Icon name="notifications-outline" size={20} color={palette.textPrimary} />
             {unread > 0 ? <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text></View> : null}
           </Pressable>
           <Pressable onPress={signOut} style={s.signOutBtn}>
@@ -1523,7 +1529,7 @@ function AppContent() {
         {isFarmer ? (
           <>
             <View style={s.card}>
-              <Text style={[s.cardKicker, { color: "#77c7a2" }]}>FARMER Â· DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#77c7a2" }]}>FARMER · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadFoodDashboard()}>
                 <Text style={s.primaryBtnText}>Load Dashboard</Text>
               </Pressable>
@@ -1549,10 +1555,10 @@ function AppContent() {
             {weather ? (
               <View style={[s.card, { overflow: "hidden" }]}>
                 <LinearGradient colors={["#173a2c", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                <Text style={[s.cardKicker, { color: "#77c7a2" }]}>{weather.region.toUpperCase()} Â· WEATHER</Text>
+                <Text style={[s.cardKicker, { color: "#77c7a2" }]}>{weather.region.toUpperCase()} · WEATHER</Text>
                 <View style={s.weatherNow}>
                   <View>
-                    <Text style={s.weatherTemp}>{Math.round(weather.current.temperatureC)}Â°C</Text>
+                    <Text style={s.weatherTemp}>{Math.round(weather.current.temperatureC)}°C</Text>
                     <Text style={s.weatherCondition}>{weather.current.condition}</Text>
                   </View>
                   <View style={s.weatherStatsCol}>
@@ -1567,7 +1573,7 @@ function AppContent() {
                       <Text style={s.weatherDayLabel}>
                         {i === 0 ? "Today" : new Date(day).toLocaleDateString("en-GB", { weekday: "short" })}
                       </Text>
-                      <Text style={s.weatherDayTemp}>{Math.round(weather.forecast.temperature_2m_max[i])}Â°/{Math.round(weather.forecast.temperature_2m_min[i])}Â°</Text>
+                      <Text style={s.weatherDayTemp}>{Math.round(weather.forecast.temperature_2m_max[i])}°/{Math.round(weather.forecast.temperature_2m_min[i])}°</Text>
                       <Text style={s.weatherDayRain}>{weather.forecast.precipitation_probability_max[i]}% rain</Text>
                     </View>
                   ))}
@@ -1598,7 +1604,7 @@ function AppContent() {
                     {segments.map(([label, count, color]) => (
                       <View key={label} style={s.pipelineLegendItem}>
                         <View style={[s.pipelineDot, { backgroundColor: color }]} />
-                        <Text style={s.pipelineLegendText}>{label} Â· {count}</Text>
+                        <Text style={s.pipelineLegendText}>{label} · {count}</Text>
                       </View>
                     ))}
                   </View>
@@ -1638,9 +1644,9 @@ function AppContent() {
               {matchedPesticide ? (
                 <View style={[s.pesticideBanner, epaBannerColor(matchedPesticide.epaStatus)]}>
                   <Text style={s.pesticideBannerText}>
-                    {matchedPesticide.epaStatus === "banned" ? `âš  Banned by EPA Ghana${matchedPesticide.banReason ? `: ${matchedPesticide.banReason}` : ""}`
-                      : matchedPesticide.epaStatus === "restricted" ? "âš  Restricted-use pesticide â€” trained applicators only"
-                      : matchedPesticide.epaStatus === "approved" ? "âœ“ EPA Ghana registered pesticide"
+                    {matchedPesticide.epaStatus === "banned" ? `⚠  Banned by EPA Ghana${matchedPesticide.banReason ? `: ${matchedPesticide.banReason}` : ""}`
+                      : matchedPesticide.epaStatus === "restricted" ? "⚠  Restricted-use pesticide — trained applicators only"
+                      : matchedPesticide.epaStatus === "approved" ? "✓ EPA Ghana registered pesticide"
                       : "EPA status not yet verified"}
                   </Text>
                 </View>
@@ -1667,13 +1673,13 @@ function AppContent() {
           <>
             <View style={[s.card, { overflow: "hidden" }]}>
               <LinearGradient colors={["#3d2e10", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Text style={[s.cardKicker, { color: "#E0A83B" }]}>MANUFACTURER Â· DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#E0A83B" }]}>MANUFACTURER · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadManufacturerDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {manufacturerStatus ? <Text style={[s.statusMsg, isErrorMsg(manufacturerStatus) ? s.statusErr : s.statusOk]}>{manufacturerStatus}</Text> : null}
               {manufacturerDashboard ? (
                 <View style={s.metricGrid}>
                   {[
-                    ["Profile", manufacturerDashboard.profile?.companyName ?? "â€”"],
+                    ["Profile", manufacturerDashboard.profile?.companyName ?? "—"],
                     ["Batches", manufacturerDashboard.metrics.batches],
                     ["QR codes", manufacturerDashboard.metrics.qrCodes],
                     ["Active recalls", manufacturerDashboard.metrics.activeRecalls],
@@ -1710,7 +1716,7 @@ function AppContent() {
                     {segments.map(([label, count, color]) => (
                       <View key={label} style={s.pipelineLegendItem}>
                         <View style={[s.pipelineDot, { backgroundColor: color }]} />
-                        <Text style={s.pipelineLegendText}>{label} Â· {count}</Text>
+                        <Text style={s.pipelineLegendText}>{label} · {count}</Text>
                       </View>
                     ))}
                   </View>
@@ -1752,7 +1758,7 @@ function AppContent() {
           <>
             <View style={[s.card, { overflow: "hidden" }]}>
               <LinearGradient colors={["#3d1c1c", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Text style={[s.cardKicker, { color: "#E27D7D" }]}>REGULATOR Â· DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#E27D7D" }]}>REGULATOR · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadRegulatorDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {regulatorStatus ? <Text style={[s.statusMsg, isErrorMsg(regulatorStatus) ? s.statusErr : s.statusOk]}>{regulatorStatus}</Text> : null}
               {regulatorDashboard ? (
@@ -1799,7 +1805,7 @@ function AppContent() {
                         {segments.map(([label, count, color]) => (
                           <View key={label} style={s.pipelineLegendItem}>
                             <View style={[s.pipelineDot, { backgroundColor: color }]} />
-                            <Text style={s.pipelineLegendText}>{label} Â· {count}</Text>
+                            <Text style={s.pipelineLegendText}>{label} · {count}</Text>
                           </View>
                         ))}
                       </View>
@@ -1843,13 +1849,13 @@ function AppContent() {
           <>
             <View style={[s.card, { overflow: "hidden" }]}>
               <LinearGradient colors={["#12303d", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>PHARMACY Â· DASHBOARD</Text>
+              <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>PHARMACY · DASHBOARD</Text>
               <Pressable style={s.primaryBtn} onPress={() => void loadPharmacyDashboard()}><Text style={s.primaryBtnText}>Load Dashboard</Text></Pressable>
               {pharmacyStatus ? <Text style={[s.statusMsg, isErrorMsg(pharmacyStatus) ? s.statusErr : s.statusOk]}>{pharmacyStatus}</Text> : null}
               {pharmacyDashboard ? (
                 <View style={s.metricGrid}>
                   {[
-                    ["Pharmacy", pharmacyDashboard.pharmacy?.businessName ?? "â€”"],
+                    ["Pharmacy", pharmacyDashboard.pharmacy?.businessName ?? "—"],
                     ["Drugs", pharmacyDashboard.metrics.drugs],
                     ["Batches", pharmacyDashboard.metrics.batches],
                     ["QR codes", pharmacyDashboard.metrics.qrCodes],
@@ -1874,7 +1880,7 @@ function AppContent() {
               return (
                 <View style={[s.card, { overflow: "hidden" }]}>
                   <LinearGradient colors={["#12303d", "#151A15"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                  <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>INVENTORY Â· EXPIRY WATCH</Text>
+                  <Text style={[s.cardKicker, { color: "#5CA8E0" }]}>INVENTORY · EXPIRY WATCH</Text>
                   {rows.map((b) => {
                     const urgent = b.daysLeft <= 7;
                     const soon = b.daysLeft <= 30;
@@ -1965,7 +1971,7 @@ function AppContent() {
   );
 }
 
-// â”€â”€ sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── sub-components ─────────────────────────────────────────────────────────
 
 function FormCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -1976,7 +1982,7 @@ function FormCard({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-// â”€â”€ utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── utilities ──────────────────────────────────────────────────────────────
 
 function statusBadgeStyle(status: string) {
   switch (status) {
@@ -1987,7 +1993,7 @@ function statusBadgeStyle(status: string) {
   }
 }
 
-// â”€â”€ styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── styles ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#05080b" },

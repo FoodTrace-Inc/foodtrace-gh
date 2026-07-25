@@ -13,7 +13,7 @@ const ThemeContext = createContext<ThemeContextValue>({ theme: "dark", toggleThe
 const STORAGE_KEY = "ft-theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     (async () => {
@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored === "light" || stored === "dark") setTheme(stored);
       } catch {
-        // ignore — default to dark
+        // ignore — default to light (ProofLoop's cream home screen)
       }
     })();
   }, []);
@@ -41,6 +41,15 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
+/**
+ * ProofLoop design system palette. Two named modes exist (light/dark) so the
+ * existing theme toggle keeps working, but per the ProofLoop spec these
+ * aren't a generic light/dark mode — "light" is the everyday cream
+ * Proof Hub look, "dark" is the focused scanner/proof-card look. Individual
+ * screens (scanner, proof card) may force the dark palette's colors
+ * regardless of the current mode, since those surfaces are always dark by
+ * design.
+ */
 export interface Palette {
   pageBg: string;
   heroBg: string;
@@ -52,32 +61,45 @@ export interface Palette {
   accent: string;
   onAccent: string;
   topBarBg: string;
+  // ProofLoop accent roles, available regardless of mode
+  signalCyan: string;
+  marketAmber: string;
+  civicBlue: string;
+  freshLime: string;
 }
 
-const dark: Palette = {
-  pageBg: "#05080b",
-  heroBg: "#0d3428",
-  cardBg: "#10161b",
-  border: "rgba(255,255,255,0.08)",
-  textPrimary: "#f4f4ef",
-  textSecondary: "#93b9ac",
-  fieldBg: "#0b0f13",
-  accent: "#77c7a2",
-  onAccent: "#062014",
-  topBarBg: "#071a10",
+const light: Palette = {
+  pageBg: "#fff9ec", // Proof Cream
+  heroBg: "#fff9ec",
+  cardBg: "#ffffff",
+  border: "rgba(24,23,22,0.08)",
+  textPrimary: "#181716", // Ink Black
+  textSecondary: "#716b63", // Muted Text
+  fieldBg: "#ffffff",
+  accent: "#18a2a6", // Signal Cyan
+  onAccent: "#ffffff",
+  topBarBg: "#fff9ec",
+  signalCyan: "#18a2a6",
+  marketAmber: "#edb54c",
+  civicBlue: "#1b6d8f",
+  freshLime: "#c9d95f",
 };
 
-const light: Palette = {
-  pageBg: "#f4f6f4",
-  heroBg: "#ffe9c2",
-  cardBg: "#ffffff",
-  border: "rgba(16,36,28,0.1)",
-  textPrimary: "#10241c",
-  textSecondary: "#5c6f66",
-  fieldBg: "#ffffff",
-  accent: "#1c9c6e",
+const dark: Palette = {
+  pageBg: "#111417", // Dark Screen
+  heroBg: "#111417",
+  cardBg: "#181716", // Ink Black
+  border: "rgba(255,255,255,0.08)",
+  textPrimary: "#fff9ec",
+  textSecondary: "#a39d94",
+  fieldBg: "#0d0f11",
+  accent: "#18a2a6",
   onAccent: "#ffffff",
-  topBarBg: "#ffffff",
+  topBarBg: "#181716",
+  signalCyan: "#18a2a6",
+  marketAmber: "#edb54c",
+  civicBlue: "#1b6d8f",
+  freshLime: "#c9d95f",
 };
 
 export function usePalette(): Palette {
