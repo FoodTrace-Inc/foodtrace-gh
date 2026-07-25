@@ -27,19 +27,19 @@ public class PaymentController {
     return paymentService.initialize(currentUser(authentication), body);
   }
 
-  /** Web's Paystack inline popup flow — see PaymentService.initializeInline for why this differs from /initialize. */
+  /** Web's Paystack inline popup flow - see PaymentService.initializeInline for why this differs from /initialize. */
   @PostMapping("/initialize-inline")
   public Map<String, Object> initializeInline(@RequestBody Map<String, Object> body, Authentication authentication) {
     return paymentService.initializeInline(currentUser(authentication), body);
   }
 
   @GetMapping("/verify/{reference}")
-  public Map<String, Object> verify(@PathVariable String reference) {
-    return paymentService.verify(reference);
+  public Map<String, Object> verify(@PathVariable String reference, Authentication authentication) {
+    return paymentService.verify(currentUser(authentication), reference);
   }
 
   /**
-   * Paystack calls this directly (no JWT — see SecurityConfig's public
+   * Paystack calls this directly (no JWT - see SecurityConfig's public
    * filter chain) and signs the raw body with HMAC SHA512 using the secret
    * key, sent in the x-paystack-signature header. We read the raw body via
    * HttpServletRequest rather than @RequestBody because the signature is
@@ -52,13 +52,13 @@ public class PaymentController {
   }
 
   @GetMapping("/subscription/{userId}")
-  public Map<String, Object> subscriptionStatus(@PathVariable String userId) {
-    return paymentService.subscriptionStatus(userId);
+  public Map<String, Object> subscriptionStatus(@PathVariable String userId, Authentication authentication) {
+    return paymentService.subscriptionStatus(currentUser(authentication), userId);
   }
 
   @PostMapping("/subscription/cancel")
-  public Map<String, Object> cancelSubscription(@RequestBody Map<String, Object> body) {
-    return paymentService.cancel(String.valueOf(body.get("userId")));
+  public Map<String, Object> cancelSubscription(Authentication authentication) {
+    return paymentService.cancel(currentUser(authentication));
   }
 
   @GetMapping("/history")

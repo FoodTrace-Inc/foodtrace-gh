@@ -25,7 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class PaymentService {
-  /** GHS price for each plan — matches the pricing table in the spec. Premium is the consumer plan; the rest are manufacturer/pharmacist tiers. */
+  /** GHS price for each plan - matches the pricing table in the spec. Premium is the consumer plan; the rest are manufacturer/pharmacist tiers. */
   private static final Map<String, BigDecimal> PLAN_PRICES = Map.of(
       "micro", new BigDecimal("50"),
       "small", new BigDecimal("150"),
@@ -62,7 +62,7 @@ public class PaymentService {
 
   /**
    * Web flow: the browser drives Paystack's inline popup (PaystackPop.setup)
-   * directly with the public key — we never touch Paystack's API here,
+   * directly with the public key - we never touch Paystack's API here,
    * just reserve our own ledger row + reference so /verify has something to
    * reconcile against once the popup reports success.
    */
@@ -104,22 +104,43 @@ public class PaymentService {
     return new PendingPayment(reference, email, price, planType);
   }
 
-  public Map<String, Object> verify(String reference) {
+  public Map<String, Object> verify(CurrentUser user, String reference) {
+    Map<String, Object> stored = jdbc.sql("SELECT user_id, plan_type, amount FROM payments WHERE reference = :ref")
+        .param("ref", reference)
+        .query((rs, rn) -> {
+          Map<String, Object> m = new HashMap<String, Object>();
+          m.put("userId", rs.getString("user_id"));
+          m.put("planType", rs.getString("plan_type"));
+          m.put("amount", rs.getBigDecimal("amount"));
+          return m;
+        })
+        .optional().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown payment reference"));
+
+    String ownerId = (String) stored.get("userId");
+    if (!ownerId.equalsIgnoreCase(user.id())) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This payment does not belong to the current user.");
+    }
+
     JsonNode data = paystackClient.verifyTransaction(reference);
     String status = data.path("status").asText(); // "success" | "failed" | "abandoned"
     String channel = data.path("channel").asText(null);
-    boolean success = "success".equals(status);
+    String currency = data.path("currency").asText("");
+    String returnedReference = data.path("reference").asText("");
+    long amountKobo = data.path("amount").asLong(0);
 
-    Map<String, Object> payment = jdbc.sql("SELECT user_id, plan_type FROM payments WHERE reference = :ref")
-        .param("ref", reference)
-        .query((rs, rn) -> Map.<String, Object>of("userId", rs.getString("user_id"), "planType", rs.getString("plan_type")))
-        .optional().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown payment reference"));
+    BigDecimal storedAmount = (BigDecimal) stored.get("amount");
+    long expectedKobo = storedAmount.multiply(BigDecimal.valueOf(100)).longValueExact();
 
-    reconcile(reference, success ? "success" : "failed", channel, (String) payment.get("userId"), (String) payment.get("planType"));
+    boolean success = "success".equals(status)
+        && "GHS".equalsIgnoreCase(currency)
+        && amountKobo == expectedKobo
+        && reference.equals(returnedReference);
+
+    reconcile(reference, success ? "success" : "failed", channel, ownerId, (String) stored.get("planType"));
 
     return Map.of(
         "status", success ? "success" : "failed",
-        "amount", data.path("amount").asLong(0) / 100.0,
+        "amount", amountKobo / 100.0,
         "paidAt", data.path("paid_at").asText(""),
         "channel", channel == null ? "" : channel);
   }
@@ -147,12 +168,12 @@ public class PaymentService {
         notificationService.notify(userId, "payment_failed", "Payment failed",
             "Your payment failed. Please update your payment method.", null);
         emailService.send(lookupEmail(userId), "Your FoodTrace GH payment failed",
-            "Your payment failed. Please update your payment method and try again.\n\n— FoodTrace GH");
+            "Your payment failed. Please update your payment method and try again.\n\n- FoodTrace GH");
       }
       return;
     }
 
-    // Payment already reconciled by an earlier call (verify then webhook, or vice versa) — skip re-activation.
+    // Payment already reconciled by an earlier call (verify then webhook, or vice versa) - skip re-activation.
     if (updated == 0) return;
 
     jdbc.sql("""
@@ -172,7 +193,7 @@ public class PaymentService {
         "Your " + planType + " subscription is now active. Thank you!", null);
     emailService.send(lookupEmail(userId), "Your FoodTrace GH subscription is active",
         "Your " + planType + " subscription is now active. Thank you for subscribing!\n\n"
-            + "Renews on " + expiresAt.toLocalDate() + ".\n\n— FoodTrace GH");
+            + "Renews on " + expiresAt.toLocalDate() + ".\n\n- FoodTrace GH");
   }
 
   public Map<String, Object> handleWebhook(String rawBody, String signature) {
@@ -188,12 +209,24 @@ public class PaymentService {
       switch (eventType) {
         case "charge.success" -> {
           if (reference != null) {
-            Map<String, Object> payment = jdbc.sql("SELECT user_id, plan_type FROM payments WHERE reference = :ref")
+            Map<String, Object> payment = jdbc.sql("SELECT user_id, plan_type, amount FROM payments WHERE reference = :ref")
                 .param("ref", reference)
-                .query((rs, rn) -> Map.<String, Object>of("userId", rs.getString("user_id"), "planType", rs.getString("plan_type")))
+                .query((rs, rn) -> {
+                  Map<String, Object> m = new HashMap<String, Object>();
+                  m.put("userId", rs.getString("user_id"));
+                  m.put("planType", rs.getString("plan_type"));
+                  m.put("amount", rs.getBigDecimal("amount"));
+                  return m;
+                })
                 .optional().orElse(null);
             if (payment != null) {
-              reconcile(reference, "success", data.path("channel").asText(null), (String) payment.get("userId"), (String) payment.get("planType"));
+              String currency = data.path("currency").asText("");
+              long amountKobo = data.path("amount").asLong(0);
+              BigDecimal storedAmount = (BigDecimal) payment.get("amount");
+              long expectedKobo = storedAmount.multiply(BigDecimal.valueOf(100)).longValueExact();
+              boolean amountOk = "GHS".equalsIgnoreCase(currency) && amountKobo == expectedKobo;
+              reconcile(reference, amountOk ? "success" : "failed", data.path("channel").asText(null),
+                  (String) payment.get("userId"), (String) payment.get("planType"));
             }
           }
         }
@@ -205,7 +238,7 @@ public class PaymentService {
             notificationService.notify(userId, "subscription_cancelled", "Subscription cancelled",
                 "Your subscription has been cancelled.", null);
             emailService.send(lookupEmail(userId), "Your FoodTrace GH subscription was cancelled",
-                "Your subscription has been cancelled.\n\n— FoodTrace GH");
+                "Your subscription has been cancelled.\n\n- FoodTrace GH");
           }
         }
         case "invoice.payment_failed" -> {
@@ -214,7 +247,7 @@ public class PaymentService {
             notificationService.notify(userId, "payment_failed", "Payment failed",
                 "Your payment failed. Please update your payment method.", null);
             emailService.send(lookupEmail(userId), "Your FoodTrace GH payment failed",
-                "Your payment failed. Please update your payment method.\n\n— FoodTrace GH");
+                "Your payment failed. Please update your payment method.\n\n- FoodTrace GH");
           }
         }
         default -> { /* ignore events we don't act on */ }
@@ -240,7 +273,10 @@ public class PaymentService {
     }
   }
 
-  public Map<String, Object> subscriptionStatus(String userId) {
+  public Map<String, Object> subscriptionStatus(CurrentUser user, String userId) {
+    if (!user.id().equalsIgnoreCase(userId)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view another user's subscription.");
+    }
     Map<String, Object> sub = jdbc.sql("""
         SELECT plan_type, status, expires_at FROM subscriptions WHERE user_id = CAST(:uid AS uuid)
         """)
@@ -263,7 +299,8 @@ public class PaymentService {
     return sub;
   }
 
-  public Map<String, Object> cancel(String userId) {
+  public Map<String, Object> cancel(CurrentUser user) {
+    String userId = user.id();
     OffsetDateTime expiresAt = jdbc.sql("SELECT expires_at FROM subscriptions WHERE user_id = CAST(:uid AS uuid)")
         .param("uid", userId).query(OffsetDateTime.class).optional().orElse(null);
 
@@ -276,7 +313,7 @@ public class PaymentService {
     notificationService.notify(userId, "subscription_cancelled", "Subscription cancelled",
         "Your subscription has been cancelled. Your products will be hidden on " + expiryText + ".", null);
     emailService.send(lookupEmail(userId), "Your FoodTrace GH subscription was cancelled",
-        "Your subscription has been cancelled. Your products will be hidden on " + expiryText + ".\n\n— FoodTrace GH");
+        "Your subscription has been cancelled. Your products will be hidden on " + expiryText + ".\n\n- FoodTrace GH");
     return Map.of("cancelled", true);
   }
 

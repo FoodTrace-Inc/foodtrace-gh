@@ -54,7 +54,9 @@ export function PaymentScreen({ apiBase, token, userEmail, plan, onSuccess, onFa
       // redirect back - either way, verify against our backend, which is
       // the source of truth, rather than trusting the browser result type.
       setStatus("Verifying payment...");
-      const verifyRes = await fetch(`${apiBase}/payments/verify/${reference}`);
+      const verifyRes = await fetch(`${apiBase}/payments/verify/${reference}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verifyData.error || "Could not verify payment.");
 
@@ -63,7 +65,7 @@ export function PaymentScreen({ apiBase, token, userEmail, plan, onSuccess, onFa
         expiry.setMonth(expiry.getMonth() + 1);
         onSuccess({ plan: plan.name, expiryDate: expiry.toISOString().slice(0, 10) });
       } else {
-        onFailure(result.type === "cancel" ? "Payment was cancelled." : "The payment was not successful.");
+        onFailure(result.type === "cancel" ? "Payment failed or cancelled." : "Payment failed or cancelled.");
       }
     } catch (error) {
       onFailure(error instanceof Error ? error.message : "Payment failed.");

@@ -35,11 +35,11 @@ export function PricingScreen() {
       return;
     }
     if (!paystackPublicKey) {
-      setStatus("Payments are not configured yet — VITE_PAYSTACK_PUBLIC_KEY is not set.");
+      setStatus("Payments are not configured yet - VITE_PAYSTACK_PUBLIC_KEY is not set.");
       return;
     }
     setBusyPlan(plan.key);
-    setStatus("Starting payment…");
+    setStatus("Starting payment...");
     try {
       const initRes = await fetch(`${apiBase}/payments/initialize-inline`, {
         method: "POST",
@@ -57,14 +57,16 @@ export function PricingScreen() {
         ref: initData.reference,
         callback: (response) => {
           void (async () => {
-            setStatus("Verifying payment…");
+            setStatus("Verifying payment...");
             try {
-              const verifyRes = await fetch(`${apiBase}/payments/verify/${response.reference}`);
+              const verifyRes = await fetch(`${apiBase}/payments/verify/${response.reference}`, {
+                headers: { Authorization: `Bearer ${session.token}` },
+              });
               const verifyData = await verifyRes.json();
-              if (verifyData.status === "success") {
-                setStatus(`Payment successful! Your ${plan.name} plan is now active.`);
+              if (verifyRes.ok && verifyData.status === "success") {
+                setStatus(`Payment successful. Your ${plan.name} plan is now active.`);
               } else {
-                setStatus("The payment was not successful. Please try again.");
+                setStatus("Payment failed or cancelled. Please try again.");
               }
             } catch {
               setStatus("Could not verify payment. Check your subscription status on the Profile page.");
@@ -123,7 +125,7 @@ export function PricingScreen() {
               GHS {plan.priceGhs} <span style={{ fontSize: 13, fontWeight: 500, color: p.textSecondary }}>/{plan.period}</span>
             </p>
             {plan.features.map((f) => (
-              <p key={f} style={{ margin: "0 0 6px", fontSize: 13, color: p.textSecondary }}>• {f}</p>
+              <p key={f} style={{ margin: "0 0 6px", fontSize: 13, color: p.textSecondary }}>- {f}</p>
             ))}
             <button
               type="button"
@@ -135,7 +137,7 @@ export function PricingScreen() {
                 cursor: "pointer", opacity: busyPlan === plan.key ? 0.6 : 1,
               }}
             >
-              {busyPlan === plan.key ? "Processing…" : "Subscribe now"}
+              {busyPlan === plan.key ? "Processing..." : "Subscribe now"}
             </button>
           </div>
         ))}

@@ -15,7 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Thin wrapper over Paystack's REST API (https://api.paystack.co). Paystack
- * itself is the source of truth for transaction state — this client only
+ * itself is the source of truth for transaction state - this client only
  * initiates/verifies; PaymentService reconciles the result into our own
  * payments/subscriptions tables.
  */
@@ -43,7 +43,7 @@ public class PaystackClient {
     }
   }
 
-  /** POST /transaction/initialize — amount is in the major unit (GHS), converted to pesewas here. */
+  /** POST /transaction/initialize - amount is in the major unit (GHS), converted to pesewas here. */
   public JsonNode initializeTransaction(String email, java.math.BigDecimal amountGhs, String reference, Map<String, Object> metadata) {
     requireConfigured();
     long amountInKobo = amountGhs.multiply(java.math.BigDecimal.valueOf(100)).longValueExact();

@@ -25,11 +25,13 @@ export function ProfileScreen() {
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
 
   useEffect(() => {
-    fetch(`${apiBase}/payments/subscription/${user.id}`)
+    fetch(`${apiBase}/payments/subscription/${user.id}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    })
       .then((r) => r.json())
       .then(setSubscription)
       .catch(() => {});
-  }, [user.id]);
+  }, [user.id, session.token]);
 
   const isActive = subscription?.status === "active";
 

@@ -38,7 +38,7 @@ export function SubscriptionManagementScreen({ apiBase, token, userId, onUpgrade
     setLoading(true);
     try {
       const [subRes, histRes] = await Promise.all([
-        fetch(`${apiBase}/payments/subscription/${userId}`),
+        fetch(`${apiBase}/payments/subscription/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${apiBase}/payments/history`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const subData = await subRes.json();
@@ -60,7 +60,6 @@ export function SubscriptionManagementScreen({ apiBase, token, userId, onUpgrade
       const res = await fetch(`${apiBase}/payments/subscription/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not cancel subscription.");
