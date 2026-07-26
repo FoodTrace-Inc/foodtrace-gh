@@ -77,14 +77,19 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
     if (!session?.token) return;
     const payload: RegisterPharmacyRequest = { businessName, ghanaPharmacyCouncilNumber: gpcNumber, district: pharmacyDistrict, region: pharmacyRegion };
     setPharmacyStatus("Registering pharmacy...");
-    const response = await fetch(`${apiBase}/drug/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not register pharmacy");
-    await loadPharmacyDashboard();
+    try {
+      const response = await fetch(`${apiBase}/drug/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not register pharmacy");
+      setPharmacyStatus("Pharmacy registered.");
+      await loadPharmacyDashboard();
+    } catch (error) {
+      setPharmacyStatus(error instanceof Error ? error.message : "Could not register pharmacy");
+    }
   }
 
   async function createDrugRecord() {
@@ -104,14 +109,19 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
       sideEffectsSummary: drugSideEffects,
     };
     setPharmacyStatus("Creating drug record...");
-    const response = await fetch(`${apiBase}/drug/drugs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create drug record");
-    await loadPharmacyDashboard();
+    try {
+      const response = await fetch(`${apiBase}/drug/drugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create drug record");
+      setPharmacyStatus("Drug record created.");
+      await loadPharmacyDashboard();
+    } catch (error) {
+      setPharmacyStatus(error instanceof Error ? error.message : "Could not create drug record");
+    }
   }
 
   async function createDrugBatch() {
@@ -128,29 +138,38 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
       supplierName: drugSupplierName,
     };
     setPharmacyStatus("Creating drug batch and QR...");
-    const response = await fetch(`${apiBase}/drug/batches`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as CreateDrugBatchResponse & { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create drug batch");
-    setPharmacyStatus(`Drug batch created. QR: ${data.qrCode.codeString}`);
-    await loadPharmacyDashboard();
+    try {
+      const response = await fetch(`${apiBase}/drug/batches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as CreateDrugBatchResponse & { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create drug batch");
+      setPharmacyStatus(`Drug batch created. QR: ${data.qrCode.codeString}`);
+      await loadPharmacyDashboard();
+    } catch (error) {
+      setPharmacyStatus(error instanceof Error ? error.message : "Could not create drug batch");
+    }
   }
 
   async function createDrugRecall() {
     if (!session?.token) return;
     const payload: CreateDrugRecallRequest = { batchId: drugRecallBatchId, reason: drugRecallReason };
     setPharmacyStatus("Creating drug recall...");
-    const response = await fetch(`${apiBase}/drug/recalls`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create drug recall");
-    await loadPharmacyDashboard();
+    try {
+      const response = await fetch(`${apiBase}/drug/recalls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create drug recall");
+      setPharmacyStatus("Drug recall created.");
+      await loadPharmacyDashboard();
+    } catch (error) {
+      setPharmacyStatus(error instanceof Error ? error.message : "Could not create drug recall");
+    }
   }
 
   return (

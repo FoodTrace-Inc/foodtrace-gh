@@ -45,14 +45,19 @@ export function RegulatorSection({ session }: Props) {
   async function reviewRegulatorReport() {
     const payload: ReviewReportRequest = { reportId, status: reportStatus };
     setRegulatorStatus("Updating report...");
-    const response = await fetch(`${apiBase}/regulator/reports`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not update report");
-    await loadRegulatorDashboard();
+    try {
+      const response = await fetch(`${apiBase}/regulator/reports`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not update report");
+      setRegulatorStatus("Report updated.");
+      await loadRegulatorDashboard();
+    } catch (error) {
+      setRegulatorStatus(error instanceof Error ? error.message : "Could not update report");
+    }
   }
 
   async function createRegulatorRecall() {
@@ -63,14 +68,19 @@ export function RegulatorSection({ session }: Props) {
       domain: regulatorRecallDomain,
     };
     setRegulatorStatus("Issuing regulator recall...");
-    const response = await fetch(`${apiBase}/regulator/recalls`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not issue regulator recall");
-    await loadRegulatorDashboard();
+    try {
+      const response = await fetch(`${apiBase}/regulator/recalls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not issue regulator recall");
+      setRegulatorStatus("Regulator recall issued.");
+      await loadRegulatorDashboard();
+    } catch (error) {
+      setRegulatorStatus(error instanceof Error ? error.message : "Could not issue regulator recall");
+    }
   }
 
   return (

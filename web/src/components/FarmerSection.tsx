@@ -81,27 +81,37 @@ export function FarmerSection({ session }: Props) {
       cropTypes: farmCrops.split(",").map((s) => s.trim()).filter(Boolean),
     };
     setFoodStatus("Creating farm...");
-    const response = await fetch(`${apiBase}/food/farms`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create farm");
-    await loadFoodDashboard();
+    try {
+      const response = await fetch(`${apiBase}/food/farms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create farm");
+      setFoodStatus("Farm created.");
+      await loadFoodDashboard();
+    } catch (error) {
+      setFoodStatus(error instanceof Error ? error.message : "Could not create farm");
+    }
   }
 
   async function createCropCycle() {
     const payload: CreateCropCycleRequest = { farmId: cycleFarmId, cropType: cycleCropType, plantingDate: cyclePlantingDate };
     setFoodStatus("Creating crop cycle...");
-    const response = await fetch(`${apiBase}/food/crop-cycles`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create crop cycle");
-    await loadFoodDashboard();
+    try {
+      const response = await fetch(`${apiBase}/food/crop-cycles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create crop cycle");
+      setFoodStatus("Crop cycle created.");
+      await loadFoodDashboard();
+    } catch (error) {
+      setFoodStatus(error instanceof Error ? error.message : "Could not create crop cycle");
+    }
   }
 
   async function createInputLog() {
@@ -114,38 +124,54 @@ export function FarmerSection({ session }: Props) {
       epaApprovalStatus: inputEpaStatus as CreateInputLogRequest["epaApprovalStatus"],
     };
     setFoodStatus("Saving input log...");
-    const response = await fetch(`${apiBase}/food/input-logs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not save input log");
-    await loadFoodDashboard();
+    try {
+      const response = await fetch(`${apiBase}/food/input-logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not save input log");
+      setFoodStatus("Input log saved.");
+      await loadFoodDashboard();
+    } catch (error) {
+      setFoodStatus(error instanceof Error ? error.message : "Could not save input log");
+    }
   }
 
   async function markMarketReady() {
-    const response = await fetch(`${apiBase}/food/crop-cycles/market-ready`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify({ cropCycleId: marketReadyCycleId, marketReady: marketReadyValue }),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not update market-ready flag");
-    await loadFoodDashboard();
+    setFoodStatus("Updating market-ready status...");
+    try {
+      const response = await fetch(`${apiBase}/food/crop-cycles/market-ready`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ cropCycleId: marketReadyCycleId, marketReady: marketReadyValue }),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not update market-ready flag");
+      setFoodStatus("Market-ready status updated.");
+      await loadFoodDashboard();
+    } catch (error) {
+      setFoodStatus(error instanceof Error ? error.message : "Could not update market-ready flag");
+    }
   }
 
   async function syncOfflineQueue() {
-    const payload = JSON.parse(offlineQueue) as OfflineSyncRequest;
-    const response = await fetch(`${apiBase}/food/offline-sync`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { results?: unknown; error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not sync offline queue");
-    setFoodStatus(`Offline queue synced: ${JSON.stringify(data.results)}`);
-    await loadFoodDashboard();
+    setFoodStatus("Syncing offline queue...");
+    try {
+      const payload = JSON.parse(offlineQueue) as OfflineSyncRequest;
+      const response = await fetch(`${apiBase}/food/offline-sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { results?: unknown; error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not sync offline queue");
+      setFoodStatus(`Offline queue synced: ${JSON.stringify(data.results)}`);
+      await loadFoodDashboard();
+    } catch (error) {
+      setFoodStatus(error instanceof Error ? error.message : "Could not sync offline queue");
+    }
   }
 
   return (
