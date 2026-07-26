@@ -27,6 +27,13 @@ function App() {
     if (redirect) {
       const base = (import.meta as any).env.BASE_URL.replace(/\/$/, "");
       window.history.replaceState(null, "", base + redirect);
+      // BrowserRouter only re-evaluates the current route on "popstate" - a
+      // plain replaceState() changes the address bar but leaves the app
+      // rendering whatever matched "/" on first paint. Dispatching a
+      // synthetic popstate makes react-router pick up the corrected path,
+      // so a direct link/refresh to e.g. /pricing actually lands there
+      // instead of silently falling back to the landing page.
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, []);
 
