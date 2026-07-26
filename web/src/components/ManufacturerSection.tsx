@@ -63,14 +63,19 @@ export function ManufacturerSection({ session }: Props) {
       subscriptionTier,
     };
     setManufacturerStatus("Creating manufacturer profile...");
-    const response = await fetch(`${apiBase}/manufacturer/profile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create manufacturer profile");
-    await loadManufacturerDashboard();
+    try {
+      const response = await fetch(`${apiBase}/manufacturer/profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create manufacturer profile");
+      setManufacturerStatus("Manufacturer profile created.");
+      await loadManufacturerDashboard();
+    } catch (error) {
+      setManufacturerStatus(error instanceof Error ? error.message : "Could not create manufacturer profile");
+    }
   }
 
   async function createManufacturerBatch() {
@@ -85,16 +90,20 @@ export function ManufacturerSection({ session }: Props) {
       expiryDate,
     };
     setManufacturerStatus("Creating batch and QR...");
-    const response = await fetch(`${apiBase}/manufacturer/batches`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as CreateProductBatchResponse & { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create batch");
-    setManufacturerStatus(`Batch created. QR: ${data.qrCode.codeString}`);
-    setLatestCreatedQr(data.qrCode);
-    await loadManufacturerDashboard();
+    try {
+      const response = await fetch(`${apiBase}/manufacturer/batches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as CreateProductBatchResponse & { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create batch");
+      setManufacturerStatus(`Batch created. QR: ${data.qrCode.codeString}`);
+      setLatestCreatedQr(data.qrCode);
+      await loadManufacturerDashboard();
+    } catch (error) {
+      setManufacturerStatus(error instanceof Error ? error.message : "Could not create batch");
+    }
   }
 
   async function copyLatestQrCode() {
@@ -115,14 +124,19 @@ export function ManufacturerSection({ session }: Props) {
       scopeDistricts: recallScopeDistricts.split(",").map((s) => s.trim()).filter(Boolean),
     };
     setManufacturerStatus("Creating recall...");
-    const response = await fetch(`${apiBase}/manufacturer/recalls`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = (await readJsonResponse(response)) as { error?: unknown };
-    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create recall");
-    await loadManufacturerDashboard();
+    try {
+      const response = await fetch(`${apiBase}/manufacturer/recalls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = (await readJsonResponse(response)) as { error?: unknown };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not create recall");
+      setManufacturerStatus("Recall created.");
+      await loadManufacturerDashboard();
+    } catch (error) {
+      setManufacturerStatus(error instanceof Error ? error.message : "Could not create recall");
+    }
   }
 
   return (
