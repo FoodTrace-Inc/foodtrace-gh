@@ -82,29 +82,52 @@ public class MarketplaceService {
    * shared that widely is almost certainly a mistaken placeholder rather
    * than a real product photo - clear it and let the feed fall back to its
    * domain-colored gradient placeholder instead of a misleading image.
-   * Idempotent: once cleared, image_url no longer matches anything else.
+   *
+   * The root cause turned out to be a column-level DEFAULT on
+   * product_batches.image_url set directly on the database (not present in
+   * any migration in this repo) - every batch inserted without an explicit
+   * image silently inherited that one rice photo, including batches this
+   * service auto-generates for marketplace posts. The feed's COALESCE
+   * prefers the linked batch's image over the post's own, so clearing only
+   * marketplace_posts.image_url was not enough; product_batches and
+   * drug_batches need the same cleanup, and the DEFAULT itself is dropped so
+   * new batches stop inheriting it. All idempotent - a real unique photo is
+   * never shared across unrelated rows, and dropping an already-absent
+   * DEFAULT is a harmless no-op.
    */
   @PostConstruct
   void clearMisassignedSharedImages() {
     try {
+      jdbc.sql("ALTER TABLE product_batches ALTER COLUMN image_url DROP DEFAULT").update();
+      jdbc.sql("ALTER TABLE drug_batches ALTER COLUMN image_url DROP DEFAULT").update();
+    } catch (Exception e) {
+      log.warn("Could not drop stray image_url default: {}", e.getMessage());
+    }
+    clearDuplicateImages("marketplace_posts");
+    clearDuplicateImages("product_batches");
+    clearDuplicateImages("drug_batches");
+  }
+
+  private void clearDuplicateImages(String table) {
+    try {
       List<Map<String, Object>> duplicated = jdbc.sql("""
-          SELECT image_url, COUNT(*) AS uses FROM marketplace_posts
+          SELECT image_url, COUNT(*) AS uses FROM %s
           WHERE image_url IS NOT NULL
           GROUP BY image_url
           HAVING COUNT(*) > 2
-          """)
+          """.formatted(table))
           .query(DatabaseRowMapper::toMap)
           .list();
       int cleared = 0;
       for (Map<String, Object> row : duplicated) {
         String imageUrl = String.valueOf(row.get("imageUrl"));
-        cleared += jdbc.sql("UPDATE marketplace_posts SET image_url = NULL WHERE image_url = :img")
+        cleared += jdbc.sql(("UPDATE " + table + " SET image_url = NULL WHERE image_url = :img"))
             .param("img", imageUrl)
             .update();
       }
-      if (cleared > 0) log.info("Cleared {} marketplace post(s) sharing a mistaken duplicate image.", cleared);
+      if (cleared > 0) log.info("Cleared {} row(s) in {} sharing a mistaken duplicate image.", cleared, table);
     } catch (Exception e) {
-      log.warn("Marketplace duplicate-image cleanup skipped: {}", e.getMessage());
+      log.warn("Duplicate-image cleanup skipped for {}: {}", table, e.getMessage());
     }
   }
 
