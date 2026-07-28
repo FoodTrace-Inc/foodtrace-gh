@@ -81,6 +81,32 @@ function initials(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase()).join("") || "FT";
 }
 
+
+function farmVisualFor(title: string): { label: string; bg: string; accent: string; ink: string } {
+  const value = title.toLowerCase();
+  if (value.includes("groundnut")) return { label: "GROUNDNUTS", bg: "#6f4d2f", accent: "#f1d49a", ink: "#fff9ec" };
+  if (value.includes("okra")) return { label: "OKRA", bg: "#204f38", accent: "#9bd67d", ink: "#fff9ec" };
+  if (value.includes("pepper") || value.includes("chilli") || value.includes("chili")) return { label: "PEPPER", bg: "#6f2028", accent: "#edb54c", ink: "#fff9ec" };
+  if (value.includes("soy")) return { label: "SOYBEAN", bg: "#d2bf75", accent: "#315b3b", ink: "#111417" };
+  if (value.includes("rice")) return { label: "RICE", bg: "#eadfae", accent: "#7d8f5b", ink: "#111417" };
+  return { label: "FARM CROP", bg: "#315b3b", accent: "#c9d95f", ink: "#fff9ec" };
+}
+
+function isSeededFarmPost(post: MarketplacePost): boolean {
+  return post.domain === "farm" && post.caption === "Real, verified crop photo. Fresh from the farm.";
+}
+
+function FarmCropVisual({ title }: { title: string }) {
+  const visual = farmVisualFor(title || "Farm crop");
+  return (
+    <View style={[s.farmVisual, { backgroundColor: visual.bg }]}>
+      <View style={[s.farmShapeLarge, { backgroundColor: visual.accent }]} />
+      <View style={[s.farmShapeSmall, { borderColor: visual.accent }]} />
+      <Text style={[s.farmVisualKicker, { color: visual.ink }]}>VERIFIED FARM LOT</Text>
+      <Text style={[s.farmVisualTitle, { color: visual.ink }]}>{visual.label}</Text>
+    </View>
+  );
+}
 function badgeColors(status: string): { bg: string; fg: string } {
   if (status === "recalled") return { bg: "#e0475c", fg: "#3a0d12" };
   if (status === "unverified") return { bg: "#edb54c", fg: "#4a3400" };
@@ -216,6 +242,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
     const badgeLabel = pending ? "Pending approval" : post.safetyLabel;
     const comments = openComments[post.id];
     const gradient = DOMAIN_GRADIENT[post.domain] ?? DOMAIN_GRADIENT.food;
+    const useFarmVisual = isSeededFarmPost(post);
 
     return (
       <View style={s.card}>
@@ -231,7 +258,9 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
         </View>
 
         <View style={s.imageArea}>
-          {post.imageUrl ? (
+          {useFarmVisual ? (
+            <FarmCropVisual title={post.title} />
+          ) : post.imageUrl ? (
             <Image source={{ uri: post.imageUrl }} style={s.image} resizeMode="cover" />
           ) : (
             <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -388,6 +417,11 @@ const s = StyleSheet.create({
 
   imageArea: { height: 150, backgroundColor: "#0d0f11" },
   image: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  farmVisual: { ...StyleSheet.absoluteFillObject, padding: 16, justifyContent: "space-between", overflow: "hidden" },
+  farmShapeLarge: { position: "absolute", width: 180, height: 180, borderRadius: 90, right: -38, top: -42, opacity: 0.42 },
+  farmShapeSmall: { position: "absolute", width: 112, height: 112, borderRadius: 56, left: -20, bottom: -26, borderWidth: 18, opacity: 0.34 },
+  farmVisualKicker: { fontSize: 10, fontWeight: "800", letterSpacing: 1.4, opacity: 0.82 },
+  farmVisualTitle: { fontSize: 30, fontWeight: "900", letterSpacing: 0 },
   badge: { position: "absolute", bottom: 10, right: 10, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   badgeText: { fontSize: 11, fontWeight: "700" },
 

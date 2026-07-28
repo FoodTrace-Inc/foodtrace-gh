@@ -33,13 +33,15 @@ public class MarketplaceService {
    * methods on the same bean):
    *   1. Drop the stray image_url column DEFAULT (see clearStrayImageDefault).
    *   2. Backfill any marketplace post missing a scannable code.
-   *   3. Clear any row that still carries the stray default photo, including
+   *   3. Clear repeated farm placeholder photos from old/demo rows.
+   *   4. Clear any row that still carries the stray default photo, including
    *      ones freshly created by step 2 - this must run last.
    */
   @PostConstruct
   void runStartupMaintenance() {
     clearStrayImageDefault();
     backfillMissingCodes();
+    clearRepeatedFarmImages();
     clearByLength("product_batches");
     clearByLength("drug_batches");
     clearByLength("marketplace_posts");
@@ -112,6 +114,50 @@ public class MarketplaceService {
       log.info("clearByLength({}): cleared {} row(s).", table, cleared);
     } catch (Exception e) {
       log.warn("Length-based image cleanup failed for {}: {}", table, e.getMessage(), e);
+    }
+  }
+
+  private void clearRepeatedFarmImages() {
+    try {
+      int clearedBatchImages = jdbc.sql("""
+          UPDATE product_batches pb
+          SET image_url = NULL
+          WHERE pb.image_url IS NOT NULL
+            AND EXISTS (
+              SELECT 1 FROM marketplace_posts mp
+              WHERE mp.product_batch_id = pb.id
+                AND mp.domain = 'farm'
+            )
+            AND pb.image_url IN (
+              SELECT pb2.image_url
+              FROM marketplace_posts mp2
+              JOIN product_batches pb2 ON pb2.id = mp2.product_batch_id
+              WHERE mp2.domain = 'farm'
+                AND pb2.image_url IS NOT NULL
+              GROUP BY pb2.image_url
+              HAVING COUNT(*) > 1
+            )
+          """).update();
+
+      int clearedPostImages = jdbc.sql("""
+          UPDATE marketplace_posts mp
+          SET image_url = NULL
+          WHERE mp.domain = 'farm'
+            AND mp.image_url IS NOT NULL
+            AND mp.image_url IN (
+              SELECT image_url
+              FROM marketplace_posts
+              WHERE domain = 'farm'
+                AND image_url IS NOT NULL
+              GROUP BY image_url
+              HAVING COUNT(*) > 1
+            )
+          """).update();
+
+      log.info("Cleared {} repeated farm batch image(s) and {} repeated farm post image(s).",
+          clearedBatchImages, clearedPostImages);
+    } catch (Exception e) {
+      log.warn("Repeated farm image cleanup skipped: {}", e.getMessage(), e);
     }
   }
 
