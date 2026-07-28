@@ -27,13 +27,44 @@ public class MarketplaceService {
   }
 
   /**
+   * Single consolidated startup routine - runs in this exact order, in one
+   * method, so there is no ambiguity about which step happens first (Spring
+   * does not guarantee relative order between multiple @PostConstruct
+   * methods on the same bean):
+   *   1. Drop the stray image_url column DEFAULT (see clearStrayImageDefault).
+   *   2. Backfill any marketplace post missing a scannable code.
+   *   3. Clear any row that still carries the stray default photo, including
+   *      ones freshly created by step 2 - this must run last.
+   */
+  @PostConstruct
+  void runStartupMaintenance() {
+    clearStrayImageDefault();
+    backfillMissingCodes();
+    clearByLength("product_batches");
+    clearByLength("drug_batches");
+    clearByLength("marketplace_posts");
+  }
+
+  private void clearStrayImageDefault() {
+    try {
+      jdbc.sql("ALTER TABLE product_batches ALTER COLUMN image_url DROP DEFAULT").update();
+    } catch (Exception e) {
+      log.warn("Could not drop stray product_batches.image_url default: {}", e.getMessage());
+    }
+    try {
+      jdbc.sql("ALTER TABLE drug_batches ALTER COLUMN image_url DROP DEFAULT").update();
+    } catch (Exception e) {
+      log.warn("Could not drop stray drug_batches.image_url default: {}", e.getMessage());
+    }
+  }
+
+  /**
    * Backfills any marketplace post created before every post was guaranteed a
    * scannable code (e.g. posts made without attaching an existing batch).
    * Idempotent - only touches posts still missing a code, so this is a no-op
    * on every startup after the first.
    */
-  @PostConstruct
-  void backfillMissingCodes() {
+  private void backfillMissingCodes() {
     try {
       List<Map<String, Object>> stale = jdbc.sql("""
           SELECT id, seller_id, domain, title FROM marketplace_posts
@@ -72,50 +103,6 @@ public class MarketplaceService {
     } catch (Exception e) {
       log.warn("Marketplace code backfill skipped: {}", e.getMessage());
     }
-  }
-
-  /**
-   * Some demo posts were seeded with one generic stock photo copy-pasted
-   * across many unrelated products (e.g. every "farm" listing showing the
-   * exact same rice photo regardless of the actual crop). A single distinct
-   * photo should never appear on more than a couple of posts, so anything
-   * shared that widely is almost certainly a mistaken placeholder rather
-   * than a real product photo - clear it and let the feed fall back to its
-   * domain-colored gradient placeholder instead of a misleading image.
-   *
-   * The root cause turned out to be a column-level DEFAULT on
-   * product_batches.image_url set directly on the database (not present in
-   * any migration in this repo) - every batch inserted without an explicit
-   * image silently inherited that one rice photo, including batches this
-   * service auto-generates for marketplace posts. The feed's COALESCE
-   * prefers the linked batch's image over the post's own, so clearing only
-   * marketplace_posts.image_url was not enough; product_batches and
-   * drug_batches need the same cleanup, and the DEFAULT itself is dropped so
-   * new batches stop inheriting it. All idempotent - a real unique photo is
-   * never shared across unrelated rows, and dropping an already-absent
-   * DEFAULT is a harmless no-op.
-   */
-  @PostConstruct
-  void clearMisassignedSharedImages() {
-    try {
-      jdbc.sql("ALTER TABLE product_batches ALTER COLUMN image_url DROP DEFAULT").update();
-    } catch (Exception e) {
-      log.warn("Could not drop stray product_batches.image_url default: {}", e.getMessage());
-    }
-    try {
-      jdbc.sql("ALTER TABLE drug_batches ALTER COLUMN image_url DROP DEFAULT").update();
-    } catch (Exception e) {
-      log.warn("Could not drop stray drug_batches.image_url default: {}", e.getMessage());
-    }
-
-    // The stray photo is a large, specific base64 blob (~13.5KB / ~13800
-    // chars) - no real uploaded product photo happens to land on that exact
-    // length, so this is a cheap, unambiguous way to find every row that
-    // inherited it, independent of which table/column chain it flowed
-    // through or when the row was created.
-    clearByLength("product_batches");
-    clearByLength("drug_batches");
-    clearByLength("marketplace_posts");
   }
 
   private void clearByLength(String table) {
