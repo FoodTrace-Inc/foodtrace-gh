@@ -128,6 +128,21 @@ public class MarketplaceService {
     }
   }
 
+  /** Temporary diagnostic - runs the same cleanup synchronously inside a request so the result is visible directly in the HTTP response. */
+  public Map<String, Object> debugRunCleanupNow() {
+    Map<String, Object> out = new java.util.LinkedHashMap<>();
+    for (String table : new String[] {"product_batches", "drug_batches", "marketplace_posts"}) {
+      try {
+        int cleared = jdbc.sql("UPDATE " + table + " SET image_url = NULL WHERE LENGTH(image_url) > 13000").update();
+        Long remaining = jdbc.sql("SELECT COUNT(*) FROM " + table + " WHERE LENGTH(image_url) > 13000").query(Long.class).single();
+        out.put(table, Map.of("clearedJustNow", cleared, "remainingAfter", remaining));
+      } catch (Exception e) {
+        out.put(table, "error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+      }
+    }
+    return out;
+  }
+
   /** Temporary diagnostic - remove once the duplicate-image investigation is closed out. */
   public Map<String, Object> debugImageState() {
     Map<String, Object> out = new java.util.LinkedHashMap<>();
