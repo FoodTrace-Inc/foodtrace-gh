@@ -25,16 +25,6 @@ public class MarketplaceController {
     this.marketplaceService = marketplaceService;
   }
 
-  @GetMapping("/_debug/images")
-  public Map<String, Object> debugImages() {
-    return marketplaceService.debugImageState();
-  }
-
-  @PostMapping("/_debug/clear-images")
-  public Map<String, Object> debugClearImages() {
-    return marketplaceService.debugRunCleanupNow();
-  }
-
   @GetMapping("/posts")
   public Map<String, Object> feed(
       @RequestParam(required = false) String domain,

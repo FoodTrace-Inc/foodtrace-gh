@@ -128,46 +128,6 @@ public class MarketplaceService {
     }
   }
 
-  /** Temporary diagnostic - runs the same cleanup synchronously inside a request so the result is visible directly in the HTTP response. */
-  public Map<String, Object> debugRunCleanupNow() {
-    Map<String, Object> out = new java.util.LinkedHashMap<>();
-    for (String table : new String[] {"product_batches", "drug_batches", "marketplace_posts"}) {
-      try {
-        int cleared = jdbc.sql("UPDATE " + table + " SET image_url = NULL WHERE LENGTH(image_url) > 13000").update();
-        Long remaining = jdbc.sql("SELECT COUNT(*) FROM " + table + " WHERE LENGTH(image_url) > 13000").query(Long.class).single();
-        out.put(table, Map.of("clearedJustNow", cleared, "remainingAfter", remaining));
-      } catch (Exception e) {
-        out.put(table, "error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
-      }
-    }
-    return out;
-  }
-
-  /** Temporary diagnostic - remove once the duplicate-image investigation is closed out. */
-  public Map<String, Object> debugImageState() {
-    Map<String, Object> out = new java.util.LinkedHashMap<>();
-    for (String table : new String[] {"product_batches", "drug_batches", "marketplace_posts"}) {
-      try {
-        Long longImages = jdbc.sql("SELECT COUNT(*) FROM " + table + " WHERE LENGTH(image_url) > 13000")
-            .query(Long.class).single();
-        Long anyImages = jdbc.sql("SELECT COUNT(*) FROM " + table + " WHERE image_url IS NOT NULL")
-            .query(Long.class).single();
-        out.put(table, Map.of("rowsWithLongImage", longImages, "rowsWithAnyImage", anyImages));
-      } catch (Exception e) {
-        out.put(table, "error: " + e.getMessage());
-      }
-    }
-    try {
-      out.put("hasDefaultOnProductBatches", jdbc.sql("""
-          SELECT column_default FROM information_schema.columns
-          WHERE table_name = 'product_batches' AND column_name = 'image_url'
-          """).query(String.class).optional().orElse(null));
-    } catch (Exception e) {
-      out.put("hasDefaultOnProductBatches", "error: " + e.getMessage());
-    }
-    return out;
-  }
-
   public Map<String, Object> feed(CurrentUser user, String domain, String query, int limit) {
     String domainFilter = normalizeDomain(domain);
     int safeLimit = Math.max(1, Math.min(limit, 50));
