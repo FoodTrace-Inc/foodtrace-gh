@@ -25,6 +25,11 @@ public class MarketplaceController {
     this.marketplaceService = marketplaceService;
   }
 
+  @GetMapping("/_debug/state")
+  public Map<String, Object> debugState() {
+    return marketplaceService.debugFullState();
+  }
+
   @GetMapping("/posts")
   public Map<String, Object> feed(
       @RequestParam(required = false) String domain,

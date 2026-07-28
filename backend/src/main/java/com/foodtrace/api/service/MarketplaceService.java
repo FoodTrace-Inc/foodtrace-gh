@@ -117,6 +117,44 @@ public class MarketplaceService {
     }
   }
 
+  /** Temporary diagnostic - remove once the FT-93ADF74558 investigation is closed out. */
+  public Map<String, Object> debugFullState() {
+    Map<String, Object> out = new java.util.LinkedHashMap<>();
+    try {
+      out.put("hasDefaultOnProductBatches", jdbc.sql("""
+          SELECT column_default FROM information_schema.columns
+          WHERE table_name = 'product_batches' AND column_name = 'image_url'
+          """).query(String.class).optional().orElse("NO_DEFAULT"));
+    } catch (Exception e) {
+      out.put("hasDefaultOnProductBatches", "error: " + e.getMessage());
+    }
+    try {
+      List<Map<String, Object>> rows = jdbc.sql("""
+          SELECT pb.id, pb.batch_number, LENGTH(pb.image_url) AS img_len, pb.manufacturer_id
+          FROM qr_codes q JOIN product_batches pb ON pb.id = q.batch_id
+          WHERE q.code_string = 'FT-93ADF74558'
+          """).query(DatabaseRowMapper::toMap).list();
+      out.put("batchesForGroundnutsCode", rows);
+    } catch (Exception e) {
+      out.put("batchesForGroundnutsCode", "error: " + e.getMessage());
+    }
+    try {
+      Long dupBatchCount = jdbc.sql("SELECT COUNT(*) FROM product_batches WHERE batch_number = 'MP-899AFBE2'")
+          .query(Long.class).single();
+      out.put("rowsWithThatBatchNumber", dupBatchCount);
+    } catch (Exception e) {
+      out.put("rowsWithThatBatchNumber", "error: " + e.getMessage());
+    }
+    try {
+      Long qrCount = jdbc.sql("SELECT COUNT(*) FROM qr_codes WHERE code_string = 'FT-93ADF74558'")
+          .query(Long.class).single();
+      out.put("qrCodeRowCount", qrCount);
+    } catch (Exception e) {
+      out.put("qrCodeRowCount", "error: " + e.getMessage());
+    }
+    return out;
+  }
+
   private void clearRepeatedFarmImages() {
     try {
       int clearedBatchImages = jdbc.sql("""
