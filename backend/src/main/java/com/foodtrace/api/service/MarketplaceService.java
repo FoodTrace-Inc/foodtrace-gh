@@ -27,46 +27,13 @@ public class MarketplaceService {
   }
 
   /**
-   * Single consolidated startup routine - runs in this exact order, in one
-   * method, so there is no ambiguity about which step happens first (Spring
-   * does not guarantee relative order between multiple @PostConstruct
-   * methods on the same bean):
-   *   1. Drop the stray image_url column DEFAULT (see clearStrayImageDefault).
-   *   2. Backfill any marketplace post missing a scannable code.
-   *   3. Clear repeated farm placeholder photos from old/demo rows.
-   *   4. Clear any row that still carries the stray default photo, including
-   *      ones freshly created by step 2 - this must run last.
-   */
-  @PostConstruct
-  void runStartupMaintenance() {
-    clearStrayImageDefault();
-    backfillMissingCodes();
-    clearRepeatedFarmImages();
-    clearByLength("product_batches");
-    clearByLength("drug_batches");
-    clearByLength("marketplace_posts");
-  }
-
-  private void clearStrayImageDefault() {
-    try {
-      jdbc.sql("ALTER TABLE product_batches ALTER COLUMN image_url DROP DEFAULT").update();
-    } catch (Exception e) {
-      log.warn("Could not drop stray product_batches.image_url default: {}", e.getMessage());
-    }
-    try {
-      jdbc.sql("ALTER TABLE drug_batches ALTER COLUMN image_url DROP DEFAULT").update();
-    } catch (Exception e) {
-      log.warn("Could not drop stray drug_batches.image_url default: {}", e.getMessage());
-    }
-  }
-
-  /**
    * Backfills any marketplace post created before every post was guaranteed a
    * scannable code (e.g. posts made without attaching an existing batch).
    * Idempotent - only touches posts still missing a code, so this is a no-op
    * on every startup after the first.
    */
-  private void backfillMissingCodes() {
+  @PostConstruct
+  void backfillMissingCodes() {
     try {
       List<Map<String, Object>> stale = jdbc.sql("""
           SELECT id, seller_id, domain, title FROM marketplace_posts
@@ -107,98 +74,6 @@ public class MarketplaceService {
     }
   }
 
-  private void clearByLength(String table) {
-    try {
-      int cleared = jdbc.sql("UPDATE " + table + " SET image_url = NULL WHERE LENGTH(image_url) > 13000")
-          .update();
-      log.info("clearByLength({}): cleared {} row(s).", table, cleared);
-    } catch (Exception e) {
-      log.warn("Length-based image cleanup failed for {}: {}", table, e.getMessage(), e);
-    }
-  }
-
-  /** Temporary diagnostic - remove once the FT-93ADF74558 investigation is closed out. */
-  public Map<String, Object> debugFullState() {
-    Map<String, Object> out = new java.util.LinkedHashMap<>();
-    try {
-      out.put("hasDefaultOnProductBatches", jdbc.sql("""
-          SELECT column_default FROM information_schema.columns
-          WHERE table_name = 'product_batches' AND column_name = 'image_url'
-          """).query(String.class).optional().orElse("NO_DEFAULT"));
-    } catch (Exception e) {
-      out.put("hasDefaultOnProductBatches", "error: " + e.getMessage());
-    }
-    try {
-      List<Map<String, Object>> rows = jdbc.sql("""
-          SELECT pb.id, pb.batch_number, LENGTH(pb.image_url) AS img_len, pb.manufacturer_id
-          FROM qr_codes q JOIN product_batches pb ON pb.id = q.batch_id
-          WHERE q.code_string = 'FT-93ADF74558'
-          """).query(DatabaseRowMapper::toMap).list();
-      out.put("batchesForGroundnutsCode", rows);
-    } catch (Exception e) {
-      out.put("batchesForGroundnutsCode", "error: " + e.getMessage());
-    }
-    try {
-      Long dupBatchCount = jdbc.sql("SELECT COUNT(*) FROM product_batches WHERE batch_number = 'MP-899AFBE2'")
-          .query(Long.class).single();
-      out.put("rowsWithThatBatchNumber", dupBatchCount);
-    } catch (Exception e) {
-      out.put("rowsWithThatBatchNumber", "error: " + e.getMessage());
-    }
-    try {
-      Long qrCount = jdbc.sql("SELECT COUNT(*) FROM qr_codes WHERE code_string = 'FT-93ADF74558'")
-          .query(Long.class).single();
-      out.put("qrCodeRowCount", qrCount);
-    } catch (Exception e) {
-      out.put("qrCodeRowCount", "error: " + e.getMessage());
-    }
-    return out;
-  }
-
-  private void clearRepeatedFarmImages() {
-    try {
-      int clearedBatchImages = jdbc.sql("""
-          UPDATE product_batches pb
-          SET image_url = NULL
-          WHERE pb.image_url IS NOT NULL
-            AND EXISTS (
-              SELECT 1 FROM marketplace_posts mp
-              WHERE mp.product_batch_id = pb.id
-                AND mp.domain = 'farm'
-            )
-            AND pb.image_url IN (
-              SELECT pb2.image_url
-              FROM marketplace_posts mp2
-              JOIN product_batches pb2 ON pb2.id = mp2.product_batch_id
-              WHERE mp2.domain = 'farm'
-                AND pb2.image_url IS NOT NULL
-              GROUP BY pb2.image_url
-              HAVING COUNT(*) > 1
-            )
-          """).update();
-
-      int clearedPostImages = jdbc.sql("""
-          UPDATE marketplace_posts mp
-          SET image_url = NULL
-          WHERE mp.domain = 'farm'
-            AND mp.image_url IS NOT NULL
-            AND mp.image_url IN (
-              SELECT image_url
-              FROM marketplace_posts
-              WHERE domain = 'farm'
-                AND image_url IS NOT NULL
-              GROUP BY image_url
-              HAVING COUNT(*) > 1
-            )
-          """).update();
-
-      log.info("Cleared {} repeated farm batch image(s) and {} repeated farm post image(s).",
-          clearedBatchImages, clearedPostImages);
-    } catch (Exception e) {
-      log.warn("Repeated farm image cleanup skipped: {}", e.getMessage(), e);
-    }
-  }
-
   public Map<String, Object> feed(CurrentUser user, String domain, String query, int limit) {
     String domainFilter = normalizeDomain(domain);
     int safeLimit = Math.max(1, Math.min(limit, 50));
@@ -206,12 +81,7 @@ public class MarketplaceService {
 
     List<Map<String, Object>> posts = jdbc.sql("""
         SELECT mp.id, mp.domain, mp.title, mp.caption, mp.location,
-               CASE
-                 WHEN mp.domain = 'farm'
-                   AND mp.caption = 'Real, verified crop photo. Fresh from the farm.'
-                 THEN NULL
-                 ELSE COALESCE(pb.image_url, db.image_url, mp.image_url)
-               END AS image_url, mp.price_text,
+               COALESCE(pb.image_url, db.image_url, mp.image_url) AS image_url, mp.price_text,
                mp.hashtags, mp.qr_code_string, mp.safety_source,
                CASE WHEN mp.status = 'recalled' OR pb.recall_status = 'recalled' OR db.recall_status = 'recalled'
                     THEN 'recalled' ELSE mp.safety_status END AS safety_status,
