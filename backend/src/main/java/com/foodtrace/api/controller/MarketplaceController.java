@@ -1,7 +1,6 @@
 package com.foodtrace.api.controller;
 
 import com.foodtrace.api.security.CurrentUser;
-import com.foodtrace.api.service.MarketplaceImageBackfillService;
 import com.foodtrace.api.service.MarketplaceService;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -21,17 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/marketplace")
 public class MarketplaceController {
   private final MarketplaceService marketplaceService;
-  private final MarketplaceImageBackfillService imageBackfillService;
 
-  public MarketplaceController(MarketplaceService marketplaceService, MarketplaceImageBackfillService imageBackfillService) {
+  public MarketplaceController(MarketplaceService marketplaceService) {
     this.marketplaceService = marketplaceService;
-    this.imageBackfillService = imageBackfillService;
-  }
-
-  /** Temporary, one-time trigger for the Wikipedia image backfill - remove after use. */
-  @PostMapping("/_debug/backfill-images")
-  public Map<String, Object> debugBackfillImages() {
-    return imageBackfillService.run();
   }
 
   @GetMapping("/posts")
