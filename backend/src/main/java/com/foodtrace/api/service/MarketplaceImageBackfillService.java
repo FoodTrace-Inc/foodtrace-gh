@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -166,14 +165,20 @@ public class MarketplaceImageBackfillService {
         continue;
       }
 
-      Optional<String> thumbnail = wikipedia.fetchThumbnail(wikiPage);
-      if (thumbnail.isEmpty()) {
+      WikipediaImageClient.Result thumbnail = wikipedia.fetchThumbnail(wikiPage);
+      // Be polite to Wikipedia's API - a tight loop of 60+ requests risks rate limiting.
+      try {
+        Thread.sleep(400);
+      } catch (InterruptedException ignored) {
+        Thread.currentThread().interrupt();
+      }
+      if (!thumbnail.ok()) {
         skippedNoThumbnail++;
-        details.put(title, "wiki page '" + wikiPage + "' had no thumbnail");
+        details.put(title, "wiki page '" + wikiPage + "' failed: " + thumbnail.failureReason());
         continue;
       }
 
-      String candidateUrl = thumbnail.get();
+      String candidateUrl = thumbnail.thumbnailUrl();
       long existingUses = jdbc.sql("SELECT COUNT(*) FROM marketplace_posts WHERE image_url = :img")
           .param("img", candidateUrl)
           .query(Long.class)
