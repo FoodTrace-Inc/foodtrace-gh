@@ -168,7 +168,12 @@ public class MarketplaceService {
 
     List<Map<String, Object>> posts = jdbc.sql("""
         SELECT mp.id, mp.domain, mp.title, mp.caption, mp.location,
-               COALESCE(pb.image_url, db.image_url, mp.image_url) AS image_url, mp.price_text,
+               CASE
+                 WHEN mp.domain = 'farm'
+                   AND mp.caption = 'Real, verified crop photo. Fresh from the farm.'
+                 THEN NULL
+                 ELSE COALESCE(pb.image_url, db.image_url, mp.image_url)
+               END AS image_url, mp.price_text,
                mp.hashtags, mp.qr_code_string, mp.safety_source,
                CASE WHEN mp.status = 'recalled' OR pb.recall_status = 'recalled' OR db.recall_status = 'recalled'
                     THEN 'recalled' ELSE mp.safety_status END AS safety_status,
