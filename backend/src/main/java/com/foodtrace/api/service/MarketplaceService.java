@@ -99,35 +99,56 @@ public class MarketplaceService {
   void clearMisassignedSharedImages() {
     try {
       jdbc.sql("ALTER TABLE product_batches ALTER COLUMN image_url DROP DEFAULT").update();
+    } catch (Exception e) {
+      log.warn("Could not drop stray product_batches.image_url default: {}", e.getMessage());
+    }
+    try {
       jdbc.sql("ALTER TABLE drug_batches ALTER COLUMN image_url DROP DEFAULT").update();
     } catch (Exception e) {
-      log.warn("Could not drop stray image_url default: {}", e.getMessage());
+      log.warn("Could not drop stray drug_batches.image_url default: {}", e.getMessage());
     }
-    clearDuplicateImages("marketplace_posts");
-    clearDuplicateImages("product_batches");
-    clearDuplicateImages("drug_batches");
-  }
 
-  private void clearDuplicateImages(String table) {
+    // Every batch/pharmacy this service auto-generates is tagged this way
+    // (see ensureManufacturerProfile/ensurePharmacyProfile) - target those
+    // rows precisely instead of guessing which photo is a mistaken
+    // duplicate. These auto-generated batches never had a real photo
+    // attached, so any image on them came only from the stray column
+    // DEFAULT above and is always safe to clear.
     try {
-      List<Map<String, Object>> duplicated = jdbc.sql("""
-          SELECT image_url, COUNT(*) AS uses FROM %s
+      int cleared = jdbc.sql("""
+          UPDATE product_batches SET image_url = NULL
           WHERE image_url IS NOT NULL
-          GROUP BY image_url
-          HAVING COUNT(*) > 2
-          """.formatted(table))
-          .query(DatabaseRowMapper::toMap)
-          .list();
-      int cleared = 0;
-      for (Map<String, Object> row : duplicated) {
-        String imageUrl = String.valueOf(row.get("imageUrl"));
-        cleared += jdbc.sql(("UPDATE " + table + " SET image_url = NULL WHERE image_url = :img"))
-            .param("img", imageUrl)
-            .update();
-      }
-      if (cleared > 0) log.info("Cleared {} row(s) in {} sharing a mistaken duplicate image.", cleared, table);
+            AND manufacturer_id IN (SELECT id FROM manufacturers WHERE sector = 'marketplace')
+          """)
+          .update();
+      if (cleared > 0) log.info("Cleared {} auto-generated product batch image(s).", cleared);
     } catch (Exception e) {
-      log.warn("Duplicate-image cleanup skipped for {}: {}", table, e.getMessage());
+      log.warn("product_batches image cleanup skipped: {}", e.getMessage());
+    }
+    try {
+      int cleared = jdbc.sql("""
+          UPDATE drug_batches SET image_url = NULL
+          WHERE image_url IS NOT NULL
+            AND pharmacy_id IN (SELECT id FROM pharmacies WHERE ghana_pharmacy_council_number = 'MARKETPLACE-AUTO')
+          """)
+          .update();
+      if (cleared > 0) log.info("Cleared {} auto-generated drug batch image(s).", cleared);
+    } catch (Exception e) {
+      log.warn("drug_batches image cleanup skipped: {}", e.getMessage());
+    }
+    try {
+      int cleared = jdbc.sql("""
+          UPDATE marketplace_posts SET image_url = NULL
+          WHERE image_url IS NOT NULL
+            AND (product_batch_id IN (SELECT id FROM product_batches WHERE manufacturer_id IN
+                   (SELECT id FROM manufacturers WHERE sector = 'marketplace'))
+              OR drug_batch_id IN (SELECT id FROM drug_batches WHERE pharmacy_id IN
+                   (SELECT id FROM pharmacies WHERE ghana_pharmacy_council_number = 'MARKETPLACE-AUTO')))
+          """)
+          .update();
+      if (cleared > 0) log.info("Cleared {} marketplace post image(s) tied to auto-generated batches.", cleared);
+    } catch (Exception e) {
+      log.warn("marketplace_posts image cleanup skipped: {}", e.getMessage());
     }
   }
 
