@@ -108,48 +108,49 @@ public class MarketplaceService {
       log.warn("Could not drop stray drug_batches.image_url default: {}", e.getMessage());
     }
 
-    // Every batch/pharmacy this service auto-generates is tagged this way
-    // (see ensureManufacturerProfile/ensurePharmacyProfile) - target those
-    // rows precisely instead of guessing which photo is a mistaken
-    // duplicate. These auto-generated batches never had a real photo
-    // attached, so any image on them came only from the stray column
-    // DEFAULT above and is always safe to clear.
+    // The stray photo is a large, specific base64 blob (~13.5KB / ~13800
+    // chars) - no real uploaded product photo happens to land on that exact
+    // length, so this is a cheap, unambiguous way to find every row that
+    // inherited it, independent of which table/column chain it flowed
+    // through or when the row was created.
+    clearByLength("product_batches");
+    clearByLength("drug_batches");
+    clearByLength("marketplace_posts");
+  }
+
+  private void clearByLength(String table) {
     try {
-      int cleared = jdbc.sql("""
-          UPDATE product_batches SET image_url = NULL
-          WHERE image_url IS NOT NULL
-            AND manufacturer_id IN (SELECT id FROM manufacturers WHERE sector = 'marketplace')
-          """)
+      int cleared = jdbc.sql("UPDATE " + table + " SET image_url = NULL WHERE LENGTH(image_url) > 13000")
           .update();
-      if (cleared > 0) log.info("Cleared {} auto-generated product batch image(s).", cleared);
+      log.info("clearByLength({}): cleared {} row(s).", table, cleared);
     } catch (Exception e) {
-      log.warn("product_batches image cleanup skipped: {}", e.getMessage());
+      log.warn("Length-based image cleanup failed for {}: {}", table, e.getMessage(), e);
+    }
+  }
+
+  /** Temporary diagnostic - remove once the duplicate-image investigation is closed out. */
+  public Map<String, Object> debugImageState() {
+    Map<String, Object> out = new java.util.LinkedHashMap<>();
+    for (String table : new String[] {"product_batches", "drug_batches", "marketplace_posts"}) {
+      try {
+        Long longImages = jdbc.sql("SELECT COUNT(*) FROM " + table + " WHERE LENGTH(image_url) > 13000")
+            .query(Long.class).single();
+        Long anyImages = jdbc.sql("SELECT COUNT(*) FROM " + table + " WHERE image_url IS NOT NULL")
+            .query(Long.class).single();
+        out.put(table, Map.of("rowsWithLongImage", longImages, "rowsWithAnyImage", anyImages));
+      } catch (Exception e) {
+        out.put(table, "error: " + e.getMessage());
+      }
     }
     try {
-      int cleared = jdbc.sql("""
-          UPDATE drug_batches SET image_url = NULL
-          WHERE image_url IS NOT NULL
-            AND pharmacy_id IN (SELECT id FROM pharmacies WHERE ghana_pharmacy_council_number = 'MARKETPLACE-AUTO')
-          """)
-          .update();
-      if (cleared > 0) log.info("Cleared {} auto-generated drug batch image(s).", cleared);
+      out.put("hasDefaultOnProductBatches", jdbc.sql("""
+          SELECT column_default FROM information_schema.columns
+          WHERE table_name = 'product_batches' AND column_name = 'image_url'
+          """).query(String.class).optional().orElse(null));
     } catch (Exception e) {
-      log.warn("drug_batches image cleanup skipped: {}", e.getMessage());
+      out.put("hasDefaultOnProductBatches", "error: " + e.getMessage());
     }
-    try {
-      int cleared = jdbc.sql("""
-          UPDATE marketplace_posts SET image_url = NULL
-          WHERE image_url IS NOT NULL
-            AND (product_batch_id IN (SELECT id FROM product_batches WHERE manufacturer_id IN
-                   (SELECT id FROM manufacturers WHERE sector = 'marketplace'))
-              OR drug_batch_id IN (SELECT id FROM drug_batches WHERE pharmacy_id IN
-                   (SELECT id FROM pharmacies WHERE ghana_pharmacy_council_number = 'MARKETPLACE-AUTO')))
-          """)
-          .update();
-      if (cleared > 0) log.info("Cleared {} marketplace post image(s) tied to auto-generated batches.", cleared);
-    } catch (Exception e) {
-      log.warn("marketplace_posts image cleanup skipped: {}", e.getMessage());
-    }
+    return out;
   }
 
   public Map<String, Object> feed(CurrentUser user, String domain, String query, int limit) {
