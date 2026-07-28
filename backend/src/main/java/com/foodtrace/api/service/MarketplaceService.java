@@ -74,6 +74,40 @@ public class MarketplaceService {
     }
   }
 
+  /**
+   * Some demo posts were seeded with one generic stock photo copy-pasted
+   * across many unrelated products (e.g. every "farm" listing showing the
+   * exact same rice photo regardless of the actual crop). A single distinct
+   * photo should never appear on more than a couple of posts, so anything
+   * shared that widely is almost certainly a mistaken placeholder rather
+   * than a real product photo - clear it and let the feed fall back to its
+   * domain-colored gradient placeholder instead of a misleading image.
+   * Idempotent: once cleared, image_url no longer matches anything else.
+   */
+  @PostConstruct
+  void clearMisassignedSharedImages() {
+    try {
+      List<Map<String, Object>> duplicated = jdbc.sql("""
+          SELECT image_url, COUNT(*) AS uses FROM marketplace_posts
+          WHERE image_url IS NOT NULL
+          GROUP BY image_url
+          HAVING COUNT(*) > 2
+          """)
+          .query(DatabaseRowMapper::toMap)
+          .list();
+      int cleared = 0;
+      for (Map<String, Object> row : duplicated) {
+        String imageUrl = String.valueOf(row.get("imageUrl"));
+        cleared += jdbc.sql("UPDATE marketplace_posts SET image_url = NULL WHERE image_url = :img")
+            .param("img", imageUrl)
+            .update();
+      }
+      if (cleared > 0) log.info("Cleared {} marketplace post(s) sharing a mistaken duplicate image.", cleared);
+    } catch (Exception e) {
+      log.warn("Marketplace duplicate-image cleanup skipped: {}", e.getMessage());
+    }
+  }
+
   public Map<String, Object> feed(CurrentUser user, String domain, String query, int limit) {
     String domainFilter = normalizeDomain(domain);
     int safeLimit = Math.max(1, Math.min(limit, 50));
