@@ -242,7 +242,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
     const badgeLabel = pending ? "Pending approval" : post.safetyLabel;
     const comments = openComments[post.id];
     const gradient = DOMAIN_GRADIENT[post.domain] ?? DOMAIN_GRADIENT.food;
-    const useFarmVisual = isSeededFarmPost(post);
+    const useFarmVisual = !post.imageUrl && isSeededFarmPost(post);
 
     return (
       <View style={s.card}>
