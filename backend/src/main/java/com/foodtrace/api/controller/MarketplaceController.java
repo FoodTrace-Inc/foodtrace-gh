@@ -1,6 +1,7 @@
 package com.foodtrace.api.controller;
 
 import com.foodtrace.api.security.CurrentUser;
+import com.foodtrace.api.service.MarketplaceImageEmbedService;
 import com.foodtrace.api.service.MarketplaceService;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/marketplace")
 public class MarketplaceController {
   private final MarketplaceService marketplaceService;
+  private final MarketplaceImageEmbedService imageEmbedService;
 
-  public MarketplaceController(MarketplaceService marketplaceService) {
+  public MarketplaceController(MarketplaceService marketplaceService, MarketplaceImageEmbedService imageEmbedService) {
     this.marketplaceService = marketplaceService;
+    this.imageEmbedService = imageEmbedService;
+  }
+
+  /** Temporary, one-time trigger to embed external image URLs as base64 - remove after use. */
+  @PostMapping("/_debug/embed-images")
+  public Map<String, Object> debugEmbedImages() {
+    return imageEmbedService.run();
   }
 
   @GetMapping("/posts")
