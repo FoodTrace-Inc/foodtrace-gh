@@ -60,6 +60,10 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
   }, [session?.user.email, session?.user.fullName, session?.user.phone]);
 
   function continueToSecurityStep() {
+    if (!fullName.trim()) { setStatus("Please enter your full name."); return; }
+    if (!phone.trim() && !email.trim()) { setStatus("Please enter a phone number or email address."); return; }
+    if (!password.trim() || password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
+    setStatus("Ready");
     setRegisterStep("security");
   }
 
