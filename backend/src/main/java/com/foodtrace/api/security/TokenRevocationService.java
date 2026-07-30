@@ -1,6 +1,8 @@
 package com.foodtrace.api.security;
 
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Map;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -21,15 +23,16 @@ public class TokenRevocationService {
   }
 
   public boolean isStillValid(String userId, Instant issuedAt) {
-    return jdbc.sql("""
-        SELECT (token_valid_after IS NULL OR :issuedAt >= token_valid_after) AS still_valid
+    Map<String, Object> row = jdbc.sql("""
+        SELECT (token_valid_after IS NULL OR CAST(:issuedAt AS timestamptz) >= token_valid_after) AS still_valid
         FROM users WHERE id = CAST(:id AS uuid)
         """)
-        .param("issuedAt", issuedAt)
+        .param("issuedAt", Timestamp.from(issuedAt))
         .param("id", userId)
-        .query(Boolean.class)
+        .query((rs, rowNum) -> Map.<String, Object>of("stillValid", rs.getBoolean("still_valid")))
         .optional()
-        .orElse(true);
+        .orElse(null);
+    return row == null || Boolean.TRUE.equals(row.get("stillValid"));
   }
 
   public void revokeAllTokensForUser(String userId) {
