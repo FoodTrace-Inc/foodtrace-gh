@@ -513,7 +513,9 @@ public class AuthService {
 
   private Map<String, Object> loadActiveSession(String token) {
     Map<String, Object> session = jdbc.sql("""
-        SELECT id, user_id, question_1_text, question_2_text, q1_verified, q2_verified, attempt_count, locked_until, expires_at
+        SELECT id, user_id, question_1_text, question_2_text, q1_verified, q2_verified, attempt_count,
+               (locked_until IS NOT NULL AND locked_until > now()) AS is_locked,
+               (expires_at < now()) AS is_expired
         FROM password_reset_sessions
         WHERE session_token = :token
         """)
@@ -521,13 +523,11 @@ public class AuthService {
         .query(DatabaseRowMapper::toMap)
         .optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Reset session expired. Please start again."));
-    OffsetDateTime lockedUntil = (OffsetDateTime) session.get("lockedUntil");
-    if (lockedUntil != null && lockedUntil.isAfter(OffsetDateTime.now())) {
+    if (Boolean.TRUE.equals(session.get("isLocked"))) {
       throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
           "Too many wrong answers. Please wait 15 minutes before trying again.");
     }
-    OffsetDateTime expiresAt = (OffsetDateTime) session.get("expiresAt");
-    if (expiresAt == null || expiresAt.isBefore(OffsetDateTime.now())) {
+    if (!Boolean.FALSE.equals(session.get("isExpired"))) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Reset session expired. Please start again.");
     }
     return session;
