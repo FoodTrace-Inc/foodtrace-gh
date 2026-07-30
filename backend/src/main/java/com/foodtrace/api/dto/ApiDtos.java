@@ -14,7 +14,7 @@ public final class ApiDtos {
   }
 
   public record RegisterRequest(String fullName, String phone, String email, String password, String role, String language,
-      String securityQuestion, String securityAnswer) {
+      String securityQuestion1, String securityAnswer1, String securityQuestion2, String securityAnswer2) {
   }
 
   public record LoginRequest(String identifier, String password) {
@@ -39,6 +39,22 @@ public final class ApiDtos {
   }
 
   public record SetSecurityQuestionRequest(String securityQuestion, String securityAnswer) {
+  }
+
+  public record SecurityQuestionOption(String id, String text) {
+  }
+
+  public record ForgotPasswordStartRequest(String identifier) {
+  }
+
+  public record VerifySecurityAnswerRequest(String sessionToken, String answer) {
+  }
+
+  public record ResetWithTokenRequest(String resetToken, String newPassword) {
+  }
+
+  public record SecurityQuestionsUpdateRequest(String securityQuestion1, String securityAnswer1,
+      String securityQuestion2, String securityAnswer2) {
   }
 
   public record DashboardResponse(Map<String, Object> dashboard) {

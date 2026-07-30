@@ -14,10 +14,12 @@ import requests
 BASE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("API_BASE", "https://foodtrace-gh.onrender.com/api")
 PASSWORD = "Password123!"
 
-# All demo accounts get the same recovery question so a reviewer can test the
-# security-question password reset on any of them (answer: Accra).
-SECURITY_QUESTION = "What town were you born in?"
-SECURITY_ANSWER = "Accra"
+# All demo accounts get the same two recovery questions so a reviewer can
+# test the two-question security-question password reset on any of them.
+SECURITY_QUESTION_1 = "Q1"  # "What was the full name of your first primary school teacher?"
+SECURITY_ANSWER_1 = "Mrs Abena Asante"
+SECURITY_QUESTION_2 = "Q6"  # "What was the name of the hospital you were born in?"
+SECURITY_ANSWER_2 = "Korle Bu Teaching Hospital"
 
 def post(url, body, token=None):
     headers = {"Content-Type": "application/json"}
@@ -25,16 +27,18 @@ def post(url, body, token=None):
         headers["Authorization"] = f"Bearer {token}"
     return requests.post(f"{BASE}{url}", json=body, headers=headers, timeout=30)
 
-def set_security_question(token):
+def set_security_questions(token):
     if not token:
         return
-    requests.put(f"{BASE}/auth/security-question",
-                 json={"securityQuestion": SECURITY_QUESTION, "securityAnswer": SECURITY_ANSWER},
+    requests.put(f"{BASE}/auth/security-questions",
+                 json={"securityQuestion1": SECURITY_QUESTION_1, "securityAnswer1": SECURITY_ANSWER_1,
+                       "securityQuestion2": SECURITY_QUESTION_2, "securityAnswer2": SECURITY_ANSWER_2},
                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}, timeout=30)
 
 def register_and_login(full_name, email, role):
     r = post("/auth/register", {"fullName": full_name, "email": email, "password": PASSWORD, "role": role, "language": "en",
-                                "securityQuestion": SECURITY_QUESTION, "securityAnswer": SECURITY_ANSWER})
+                                "securityQuestion1": SECURITY_QUESTION_1, "securityAnswer1": SECURITY_ANSWER_1,
+                                "securityQuestion2": SECURITY_QUESTION_2, "securityAnswer2": SECURITY_ANSWER_2})
     if r.status_code == 200:
         print(f"  [OK] registered {email}")
         return r.json()["token"]
@@ -42,7 +46,7 @@ def register_and_login(full_name, email, role):
     if r2.status_code == 200:
         print(f"  [OK] already existed, logged in {email}")
         token = r2.json()["token"]
-        set_security_question(token)  # ensure recovery works on pre-existing accounts too
+        set_security_questions(token)  # ensure recovery works on pre-existing accounts too
         return token
     print(f"  [ERR] {email}: register={r.status_code} {r.text[:150]} | login={r2.status_code} {r2.text[:150]}")
     return None

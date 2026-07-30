@@ -19,17 +19,25 @@ public class AuditLogService {
   }
 
   public void log(String userId, String action, String entityType, String entityId, Map<String, Object> metadata) {
+    log(userId, action, entityType, entityId, metadata, null, null);
+  }
+
+  /** Same as above, plus the client IP and outcome — used by the password-reset flow's audit trail and rate limiting. */
+  public void log(String userId, String action, String entityType, String entityId, Map<String, Object> metadata,
+      String ipAddress, Boolean success) {
     try {
       String json = toJson(metadata);
       jdbc.sql("""
-          INSERT INTO audit_logs (user_id, action, entity_type, entity_id, metadata)
-          VALUES (CAST(:userId AS uuid), :action, :entityType, CAST(:entityId AS uuid), CAST(:metadata AS jsonb))
+          INSERT INTO audit_logs (user_id, action, entity_type, entity_id, metadata, ip_address, success)
+          VALUES (CAST(:userId AS uuid), :action, :entityType, CAST(:entityId AS uuid), CAST(:metadata AS jsonb), :ipAddress, :success)
           """)
           .param("userId", userId)
           .param("action", action)
           .param("entityType", entityType)
           .param("entityId", entityId)
           .param("metadata", json)
+          .param("ipAddress", ipAddress)
+          .param("success", success)
           .update();
     } catch (Exception ignored) {
       // Auditing is best-effort — never let a logging failure block the real action.

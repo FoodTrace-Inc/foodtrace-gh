@@ -28,7 +28,11 @@ public class JwtService {
   }
 
   public CurrentUser verify(String token) {
-    DecodedJWT jwt = JWT.require(algorithm).build().verify(token);
+    DecodedJWT jwt = decode(token);
     return new CurrentUser(jwt.getSubject(), jwt.getClaim("role").asString(), jwt.getClaim("fullName").asString());
+  }
+
+  public DecodedJWT decode(String token) {
+    return JWT.require(algorithm).build().verify(token);
   }
 }

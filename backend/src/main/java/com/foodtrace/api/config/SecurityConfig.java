@@ -23,7 +23,7 @@ public class SecurityConfig {
   @Order(1)
   SecurityFilterChain publicSecurityFilterChain(HttpSecurity http) throws Exception {
     return http
-        .securityMatcher("/health", "/api/health", "/api", "/api/auth/roles", "/api/auth/register", "/api/auth/login", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/security-question/lookup", "/api/auth/reset-with-security", "/api/assistant/**", "/api/ussd", "/api/sms/**", "/uploads/**", "/actuator/**", "/api/payments/webhook")
+        .securityMatcher("/health", "/api/health", "/api", "/api/auth/roles", "/api/auth/register", "/api/auth/login", "/api/auth/request-otp", "/api/auth/verify-otp", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/security-question/lookup", "/api/auth/reset-with-security", "/api/auth/forgot-password/start", "/api/auth/forgot-password/verify-q1", "/api/auth/forgot-password/verify-q2", "/api/auth/forgot-password/reset", "/api/assistant/**", "/api/ussd", "/api/sms/**", "/uploads/**", "/actuator/**", "/api/payments/webhook")
         .cors(cors -> cors.configurationSource(corsSource()))
         .csrf(csrf -> csrf.disable())
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -58,6 +58,7 @@ public class SecurityConfig {
         .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
         .authorizeHttpRequests(auth -> auth
+            .requestMatchers(HttpMethod.GET, "/api/auth/security-questions").permitAll()
             .requestMatchers("/api/food/**", "/api/farmer/**")
                 .hasAnyRole("FARMER", "REGULATOR")
             .requestMatchers("/api/manufacturer/**")

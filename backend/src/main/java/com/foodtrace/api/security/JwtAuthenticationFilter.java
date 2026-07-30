@@ -1,5 +1,6 @@
 package com.foodtrace.api.security;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,9 +16,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final JwtService jwtService;
+  private final TokenRevocationService tokenRevocationService;
 
-  public JwtAuthenticationFilter(JwtService jwtService) {
+  public JwtAuthenticationFilter(JwtService jwtService, TokenRevocationService tokenRevocationService) {
     this.jwtService = jwtService;
+    this.tokenRevocationService = tokenRevocationService;
   }
 
   @Override
@@ -26,7 +29,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     String header = request.getHeader("Authorization");
     if (header != null && header.startsWith("Bearer ")) {
       try {
-        CurrentUser user = jwtService.verify(header.substring("Bearer ".length()));
+        DecodedJWT jwt = jwtService.decode(header.substring("Bearer ".length()));
+        CurrentUser user = new CurrentUser(jwt.getSubject(), jwt.getClaim("role").asString(), jwt.getClaim("fullName").asString());
+        if (!tokenRevocationService.isStillValid(user.id(), jwt.getIssuedAt().toInstant())) {
+          throw new RuntimeException("Token revoked");
+        }
         var auth = new AbstractAuthenticationToken(List.of(new SimpleGrantedAuthority("ROLE_" + user.role().toUpperCase()))) {
           @Override
           public Object getCredentials() {

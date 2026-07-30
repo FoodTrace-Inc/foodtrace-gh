@@ -71,6 +71,7 @@ import { PaymentScreen } from "./src/screens/PaymentScreen";
 import { PaymentResultScreen } from "./src/screens/PaymentResultScreen";
 import { SubscriptionManagementScreen } from "./src/screens/SubscriptionManagementScreen";
 import { LegalScreen } from "./src/screens/LegalScreen";
+import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -167,12 +168,13 @@ const roleLabels: Record<string, string> = {
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-const SECURITY_QUESTIONS = [
-  "What was the name of your first school?",
-  "What is your mother's maiden name?",
-  "What was the name of your first pet?",
-  "What town were you born in?",
-  "What is your favourite food?",
+const SECURITY_QUESTIONS: { id: string; text: string }[] = [
+  { id: "Q1", text: "What was the full name of your first primary school teacher?" },
+  { id: "Q2", text: "What was the street name of the house you grew up in?" },
+  { id: "Q3", text: "What was your maternal grandmother's first name?" },
+  { id: "Q4", text: "What was the name of your first Senior High School house?" },
+  { id: "Q5", text: "What was the name of the first person you sent mobile money to?" },
+  { id: "Q6", text: "What was the name of the hospital you were born in?" },
 ];
 
 type Mode = "login" | "register" | "forgot";
@@ -232,12 +234,11 @@ function AppContent() {
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
   const [identifier, setIdentifier] = useState("");
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [securityQuestion, setSecurityQuestion] = useState(SECURITY_QUESTIONS[0]);
-  const [securityAnswer, setSecurityAnswer] = useState("");
-  const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
-  const [securityAnswerReset, setSecurityAnswerReset] = useState("");
+  const [registerStep, setRegisterStep] = useState<"main" | "security">("main");
+  const [securityQuestion1, setSecurityQuestion1] = useState(SECURITY_QUESTIONS[0]);
+  const [securityAnswer1, setSecurityAnswer1] = useState("");
+  const [securityQuestion2, setSecurityQuestion2] = useState(SECURITY_QUESTIONS[1]);
+  const [securityAnswer2, setSecurityAnswer2] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -601,14 +602,21 @@ function AppContent() {
 
   // ── auth ──────────────────────────────────────────────────────────────────
 
+  function continueToSecurityStep() {
+    if (!fullName.trim()) { setAuthStatus("Please enter your full name."); return; }
+    if (!phone.trim() && !email.trim()) { setAuthStatus("Please enter a phone number or email address."); return; }
+    if (phone.trim() && !isValidGhanaPhone(phone)) { setAuthStatus("Enter a valid Ghana phone number, e.g. 024 123 4567."); return; }
+    if (email.trim() && !isValidEmail(email)) { setAuthStatus("Enter a valid email address, e.g. name@example.com."); return; }
+    if (!password.trim()) { setAuthStatus("Please enter a password."); return; }
+    if (password.trim().length < 6) { setAuthStatus("Password must be at least 6 characters."); return; }
+    setAuthStatus("");
+    setRegisterStep("security");
+  }
+
   async function submit() {
     if (mode === "register") {
-      if (!fullName.trim()) { setAuthStatus("Please enter your full name."); return; }
-      if (!phone.trim() && !email.trim()) { setAuthStatus("Please enter a phone number or email address."); return; }
-      if (phone.trim() && !isValidGhanaPhone(phone)) { setAuthStatus("Enter a valid Ghana phone number, e.g. 024 123 4567."); return; }
-      if (email.trim() && !isValidEmail(email)) { setAuthStatus("Enter a valid email address, e.g. name@example.com."); return; }
-      if (!password.trim()) { setAuthStatus("Please enter a password."); return; }
-      if (password.trim().length < 6) { setAuthStatus("Password must be at least 6 characters."); return; }
+      if (securityQuestion1.id === securityQuestion2.id) { setAuthStatus("Please choose two different questions."); return; }
+      if (securityAnswer1.trim().length < 3 || securityAnswer2.trim().length < 3) { setAuthStatus("Each answer must be at least 3 characters."); return; }
     } else {
       if (!identifier.trim()) { setAuthStatus("Please enter your phone or email."); return; }
       if (!password.trim()) { setAuthStatus("Please enter your password."); return; }
@@ -619,7 +627,8 @@ function AppContent() {
       const payload = mode === "login"
         ? { identifier, password }
         : { fullName, phone: phone.trim() || null, email: email.trim() || null, password, role, language: "en",
-            securityQuestion, securityAnswer: securityAnswer.trim() || null };
+            securityQuestion1: securityQuestion1.id, securityAnswer1: securityAnswer1.trim(),
+            securityQuestion2: securityQuestion2.id, securityAnswer2: securityAnswer2.trim() };
       const response = await fetchWithRetry(`${apiBase}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
@@ -634,39 +643,6 @@ function AppContent() {
       setAuthStatus(isDuplicate
         ? "That phone number or email is already registered. Use a different one, or log in instead."
         : msg);
-    }
-  }
-
-  async function lookupSecurityQuestion() {
-    if (!forgotEmail.trim()) { setAuthStatus("Enter your email or phone number."); return; }
-    setAuthStatus("Please wait...");
-    try {
-      const data = await readJsonResponse<{ question?: string }>(await fetch(`${apiBase}/auth/security-question/lookup`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: forgotEmail.trim() }),
-      }));
-      setFetchedQuestion(data.question ?? null);
-      setAuthStatus("Answer your security question and set a new password.");
-    } catch (error) {
-      setAuthStatus(getFriendlyError(error));
-    }
-  }
-
-  async function submitPasswordReset() {
-    if (!securityAnswerReset.trim()) { setAuthStatus("Enter your security answer."); return; }
-    if (newPassword.trim().length < 6) { setAuthStatus("New password must be at least 6 characters."); return; }
-    setAuthStatus("Please wait...");
-    try {
-      const data = await readJsonResponse<{ message?: string }>(await fetch(`${apiBase}/auth/reset-with-security`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: forgotEmail.trim(), answer: securityAnswerReset.trim(), newPassword: newPassword.trim() }),
-      }));
-      setMode("login");
-      setIdentifier(forgotEmail.trim());
-      setPassword("");
-      setForgotEmail(""); setNewPassword(""); setFetchedQuestion(null); setSecurityAnswerReset("");
-      setAuthStatus(data.message ?? "Password updated. Log in with your new password.");
-    } catch (error) {
-      setAuthStatus(getFriendlyError(error));
     }
   }
 
@@ -1108,15 +1084,15 @@ function AppContent() {
           {/* Auth card */}
           <View style={[s.authCard, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
             <View style={s.segmented}>
-              <Pressable style={mode === "login" ? [s.segActive, { backgroundColor: palette.accent }] : s.seg} onPress={() => { setMode("login"); setAuthStatus(""); }}>
+              <Pressable style={mode === "login" ? [s.segActive, { backgroundColor: palette.accent }] : s.seg} onPress={() => { setMode("login"); setAuthStatus(""); setRegisterStep("main"); }}>
                 <Text style={mode === "login" ? [s.segTextActive, { color: palette.onAccent }] : [s.segText, { color: palette.textSecondary }]}>Log in</Text>
               </Pressable>
-              <Pressable style={mode === "register" ? [s.segActive, { backgroundColor: palette.accent }] : s.seg} onPress={() => { setMode("register"); setAuthStatus(""); }}>
+              <Pressable style={mode === "register" ? [s.segActive, { backgroundColor: palette.accent }] : s.seg} onPress={() => { setMode("register"); setAuthStatus(""); setRegisterStep("main"); }}>
                 <Text style={mode === "register" ? [s.segTextActive, { color: palette.onAccent }] : [s.segText, { color: palette.textSecondary }]}>Create account</Text>
               </Pressable>
             </View>
 
-            {mode === "register" ? (
+            {mode === "register" && registerStep === "main" ? (
               <>
                 <View style={[s.roleHint, { backgroundColor: theme === "dark" ? "rgba(119,199,162,0.1)" : "rgba(28,156,110,0.08)" }]}>
                   <Text style={[s.roleHintText, { color: palette.textSecondary }]}>Creating as: <Text style={[s.roleHintBold, { color: palette.accent }]}>{roleLabels[role]}</Text></Text>
@@ -1126,37 +1102,43 @@ function AppContent() {
                 <TextInput placeholder="Phone number (+233...)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 <TextInput placeholder="Email (optional)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
                 <PasswordInput placeholder="Password" placeholderTextColor="#748089" inputStyle={[s.input, themedInput]} value={password} onChangeText={setPassword} />
-                <Pressable style={[s.input, themedInput]} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion); setSecurityQuestion(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
-                  <Text style={{ color: palette.textPrimary }}>{securityQuestion}</Text>
-                </Pressable>
-                <Text style={s.hint}>Tap the question to change it - you'll answer it to recover your account.</Text>
-                <TextInput placeholder="Security answer" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswer} onChangeText={setSecurityAnswer} autoCapitalize="none" />
                 <Text style={s.hint}>Each account needs a unique phone number or email. To test a different role, use a different number.</Text>
+                <Pressable style={[s.primaryBtn, themedBtn]} onPress={continueToSecurityStep}>
+                  <Text style={[s.primaryBtnText, themedBtnText]}>Continue</Text>
+                </Pressable>
+              </>
+            ) : mode === "register" && registerStep === "security" ? (
+              <>
+                <Text style={[s.roleHintBold, { color: palette.textPrimary, marginBottom: 4 }]}>Set your security questions</Text>
+                <Text style={s.hint}>These will be used to recover your account if you forget your password.</Text>
+
+                <Pressable style={[s.input, themedInput, { marginTop: 8 }]} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion1); setSecurityQuestion1(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
+                  <Text style={{ color: palette.textPrimary }}>{securityQuestion1.text}</Text>
+                </Pressable>
+                <TextInput placeholder="Your answer (at least 3 characters)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswer1} onChangeText={setSecurityAnswer1} autoCapitalize="none" />
+
+                <Pressable style={[s.input, themedInput]} onPress={() => { const i = SECURITY_QUESTIONS.indexOf(securityQuestion2); setSecurityQuestion2(SECURITY_QUESTIONS[(i + 1) % SECURITY_QUESTIONS.length]); }}>
+                  <Text style={{ color: palette.textPrimary }}>{securityQuestion2.text}</Text>
+                </Pressable>
+                <TextInput placeholder="Your answer (at least 3 characters)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswer2} onChangeText={setSecurityAnswer2} autoCapitalize="none" />
+                {securityQuestion1.id === securityQuestion2.id ? (
+                  <Text style={{ color: "#F09595", fontSize: 13, marginBottom: 8 }}>Please choose two different questions</Text>
+                ) : null}
+                <Text style={s.hint}>Answers are not case sensitive. Make sure you will remember these.</Text>
+
                 <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submit()}>
                   <Text style={[s.primaryBtnText, themedBtnText]}>Create account as {roleLabels[role]}</Text>
                 </Pressable>
-              </>
-            ) : mode === "forgot" ? (
-              <>
-                <TextInput placeholder="Email or phone number" placeholderTextColor="#748089" style={[s.input, themedInput]} value={forgotEmail} onChangeText={setForgotEmail} autoCapitalize="none" editable={!fetchedQuestion} />
-                {fetchedQuestion ? (
-                  <>
-                    <Text style={s.hint}>{fetchedQuestion}</Text>
-                    <TextInput placeholder="Your answer" placeholderTextColor="#748089" style={[s.input, themedInput]} value={securityAnswerReset} onChangeText={setSecurityAnswerReset} autoCapitalize="none" />
-                    <PasswordInput placeholder="New password" placeholderTextColor="#748089" inputStyle={[s.input, themedInput]} value={newPassword} onChangeText={setNewPassword} />
-                    <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submitPasswordReset()}>
-                      <Text style={[s.primaryBtnText, themedBtnText]}>Reset password</Text>
-                    </Pressable>
-                  </>
-                ) : (
-                  <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void lookupSecurityQuestion()}>
-                    <Text style={[s.primaryBtnText, themedBtnText]}>Continue</Text>
-                  </Pressable>
-                )}
-                <Pressable onPress={() => { setMode("login"); setAuthStatus(""); setFetchedQuestion(null); }}>
-                  <Text style={[s.forgotLink, { color: palette.accent }]}>Back to log in</Text>
+                <Pressable onPress={() => setRegisterStep("main")}>
+                  <Text style={[s.forgotLink, { color: palette.accent }]}>Back</Text>
                 </Pressable>
               </>
+            ) : mode === "forgot" ? (
+              <ForgotPasswordScreen
+                apiBase={apiBase}
+                onBack={() => { setMode("login"); setAuthStatus(""); }}
+                onDone={() => { setMode("login"); setAuthStatus(""); }}
+              />
             ) : (
               <>
                 <TextInput placeholder="Phone number or email" placeholderTextColor="#748089" style={[s.input, themedInput]} value={identifier} onChangeText={setIdentifier} autoCapitalize="none" />
@@ -1164,7 +1146,7 @@ function AppContent() {
                 <Pressable style={[s.primaryBtn, themedBtn]} onPress={() => void submit()}>
                   <Text style={[s.primaryBtnText, themedBtnText]}>Log in</Text>
                 </Pressable>
-                <Pressable onPress={() => { setMode("forgot"); setAuthStatus(""); setFetchedQuestion(null); setForgotEmail(identifier); }}>
+                <Pressable onPress={() => { setMode("forgot"); setAuthStatus(""); }}>
                   <Text style={[s.forgotLink, { color: palette.accent }]}>Forgot password?</Text>
                 </Pressable>
               </>

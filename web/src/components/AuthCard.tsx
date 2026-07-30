@@ -4,15 +4,18 @@ import type { AuthResponse, UserRole } from "@foodtrace/shared";
 import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage } from "../lib/api";
 import { useTheme, usePalette } from "../theme/ThemeContext";
 import { PasswordField } from "./PasswordField";
+import { ForgotPasswordFlow } from "./ForgotPasswordFlow";
 
 type Mode = "login" | "register" | "forgot";
+type RegisterStep = "main" | "security";
 
-const SECURITY_QUESTIONS = [
-  "What was the name of your first school?",
-  "What is your mother's maiden name?",
-  "What was the name of your first pet?",
-  "What town were you born in?",
-  "What is your favourite food?",
+const SECURITY_QUESTIONS: { id: string; text: string }[] = [
+  { id: "Q1", text: "What was the full name of your first primary school teacher?" },
+  { id: "Q2", text: "What was the street name of the house you grew up in?" },
+  { id: "Q3", text: "What was your maternal grandmother's first name?" },
+  { id: "Q4", text: "What was the name of your first Senior High School house?" },
+  { id: "Q5", text: "What was the name of the first person you sent mobile money to?" },
+  { id: "Q6", text: "What was the name of the hospital you were born in?" },
 ];
 
 interface Props {
@@ -30,6 +33,7 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
   const { theme, toggleTheme } = useTheme();
   const p = usePalette();
   const [mode, setMode] = useState<Mode>("login");
+  const [registerStep, setRegisterStep] = useState<RegisterStep>("main");
   const [fullName, setFullName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [phone, setPhone] = useState("");
@@ -37,12 +41,10 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState("en");
   const [status, setStatus] = useState("Ready");
-  const [securityQuestion, setSecurityQuestion] = useState(SECURITY_QUESTIONS[0]);
-  const [securityAnswer, setSecurityAnswer] = useState("");
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [fetchedQuestion, setFetchedQuestion] = useState<string | null>(null);
-  const [securityAnswerReset, setSecurityAnswerReset] = useState("");
+  const [securityQuestion1, setSecurityQuestion1] = useState(SECURITY_QUESTIONS[0].id);
+  const [securityAnswer1, setSecurityAnswer1] = useState("");
+  const [securityQuestion2, setSecurityQuestion2] = useState(SECURITY_QUESTIONS[1].id);
+  const [securityAnswer2, setSecurityAnswer2] = useState("");
 
   useEffect(() => {
     if (prefillIdentifier) { setMode("login"); setIdentifier(prefillIdentifier); }
@@ -57,7 +59,15 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
     return parts.map((x) => x[0]?.toUpperCase()).join("") || "FT";
   }, [session?.user.email, session?.user.fullName, session?.user.phone]);
 
+  function continueToSecurityStep() {
+    setRegisterStep("security");
+  }
+
   async function submit() {
+    if (mode === "register") {
+      if (securityQuestion1 === securityQuestion2) { setStatus("Please choose two different questions"); return; }
+      if (securityAnswer1.trim().length < 3 || securityAnswer2.trim().length < 3) { setStatus("Each answer must be at least 3 characters"); return; }
+    }
     setStatus("Sending request...");
     try {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
@@ -65,7 +75,8 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
         mode === "login"
           ? { identifier, password }
           : { fullName, phone: phone || null, email: email || null, password, role, language,
-              securityQuestion, securityAnswer: securityAnswer || null };
+              securityQuestion1, securityAnswer1: securityAnswer1.trim(),
+              securityQuestion2, securityAnswer2: securityAnswer2.trim() };
 
       const response = await fetch(`${apiBase}${endpoint}`, {
         method: "POST",
@@ -79,40 +90,6 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
       setStatus(`Signed in as ${data.user.role}. Opening your portal...`);
     } catch (error) {
       setStatus(getFriendlyErrorMessage(error, "Authentication failed"));
-    }
-  }
-
-  async function lookupQuestion() {
-    setStatus("Looking up your security question...");
-    try {
-      const response = await fetch(`${apiBase}/auth/security-question/lookup`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: forgotEmail }),
-      });
-      const data = (await readJsonResponse(response)) as { question?: string; error?: unknown };
-      if (!response.ok) throw new Error(getApiErrorMessage(data.error, "Could not find your account"));
-      setFetchedQuestion(data.question ?? null);
-      setStatus("Answer your security question and set a new password.");
-    } catch (error) {
-      setStatus(getFriendlyErrorMessage(error, "Could not find your account"));
-    }
-  }
-
-  async function submitReset() {
-    setStatus("Resetting password...");
-    try {
-      const response = await fetch(`${apiBase}/auth/reset-with-security`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: forgotEmail, answer: securityAnswerReset, newPassword }),
-      });
-      const data = (await readJsonResponse(response)) as { message?: string; error?: unknown };
-      if (!response.ok) throw new Error(getApiErrorMessage(data.error, "Could not reset password"));
-      setMode("login");
-      setIdentifier(forgotEmail);
-      setPassword("");
-      setForgotEmail(""); setNewPassword(""); setFetchedQuestion(null); setSecurityAnswerReset("");
-      setStatus(data.message ?? "Password updated. Log in with your new password.");
-    } catch (error) {
-      setStatus(getFriendlyErrorMessage(error, "Could not reset password"));
     }
   }
 
@@ -185,16 +162,16 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
 
       {mode !== "forgot" ? (
         <div style={{ display: "flex", gap: 6, marginBottom: 18, background: p.fieldBg, borderRadius: 12, padding: 4, border: `1px solid ${p.border}` }}>
-          <button type="button" onClick={() => setMode("login")} style={{ flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12.5, background: mode === "login" ? p.accent : "transparent", color: mode === "login" ? p.onAccent : p.textSecondary }}>
+          <button type="button" onClick={() => { setMode("login"); setRegisterStep("main"); }} style={{ flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12.5, background: mode === "login" ? p.accent : "transparent", color: mode === "login" ? p.onAccent : p.textSecondary }}>
             Log in
           </button>
-          <button type="button" onClick={() => setMode("register")} style={{ flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12.5, background: mode === "register" ? p.accent : "transparent", color: mode === "register" ? p.onAccent : p.textSecondary }}>
+          <button type="button" onClick={() => { setMode("register"); setRegisterStep("main"); }} style={{ flex: 1, padding: "9px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12.5, background: mode === "register" ? p.accent : "transparent", color: mode === "register" ? p.onAccent : p.textSecondary }}>
             Create account
           </button>
         </div>
       ) : null}
 
-      {mode === "register" ? (
+      {mode === "register" && registerStep === "main" ? (
         <div style={{ display: "grid", gap: 14 }}>
           <label style={labelStyle}>Full name<input value={fullName} onChange={(e) => setFullName(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
           <label style={labelStyle}>Phone<input value={phone} onChange={(e) => setPhone(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
@@ -210,33 +187,35 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
             </select>
           </label>
           <label style={labelStyle}>Language<input value={language} onChange={(e) => setLanguage(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
+          <button type="button" onClick={continueToSecurityStep} style={primaryBtn}>Continue</button>
+        </div>
+      ) : mode === "register" && registerStep === "security" ? (
+        <div style={{ display: "grid", gap: 14 }}>
+          <p style={{ margin: 0, color: p.textPrimary, fontWeight: 700, fontSize: 15 }}>Set your security questions</p>
+          <p style={{ margin: 0, color: p.textSecondary, fontSize: 12.5 }}>These will be used to recover your account if you forget your password.</p>
           <label style={labelStyle}>
-            Security question (for password recovery)
-            <select value={securityQuestion} onChange={(e) => setSecurityQuestion(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }}>
-              {SECURITY_QUESTIONS.map((q) => <option key={q} value={q}>{q}</option>)}
+            Security question 1
+            <select value={securityQuestion1} onChange={(e) => setSecurityQuestion1(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }}>
+              {SECURITY_QUESTIONS.map((q) => <option key={q.id} value={q.id}>{q.text}</option>)}
             </select>
           </label>
-          <label style={labelStyle}>Security answer<input value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
+          <label style={labelStyle}>Your answer (at least 3 characters)<input value={securityAnswer1} onChange={(e) => setSecurityAnswer1(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
+          <label style={labelStyle}>
+            Security question 2
+            <select value={securityQuestion2} onChange={(e) => setSecurityQuestion2(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }}>
+              {SECURITY_QUESTIONS.map((q) => <option key={q.id} value={q.id}>{q.text}</option>)}
+            </select>
+          </label>
+          <label style={labelStyle}>Your answer (at least 3 characters)<input value={securityAnswer2} onChange={(e) => setSecurityAnswer2(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
+          {securityQuestion1 === securityQuestion2 ? (
+            <p style={{ margin: 0, color: "#F09595", fontSize: 12.5 }}>Please choose two different questions</p>
+          ) : null}
+          <p style={{ margin: 0, color: p.textSecondary, fontSize: 12 }}>Answers are not case sensitive. Make sure you will remember these.</p>
           <button type="button" onClick={submit} style={primaryBtn}>Create account</button>
+          <button type="button" onClick={() => setRegisterStep("main")} style={ghostBtn}>Back</button>
         </div>
       ) : mode === "forgot" ? (
-        <div style={{ display: "grid", gap: 14 }}>
-          <label style={labelStyle}>Email or phone<input value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} disabled={!!fetchedQuestion} /></label>
-          {fetchedQuestion ? (
-            <>
-              <p style={{ color: p.textSecondary, fontSize: 13, margin: 0 }}>{fetchedQuestion}</p>
-              <label style={labelStyle}>Your answer<input value={securityAnswerReset} onChange={(e) => setSecurityAnswerReset(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
-              <div>
-                <label style={labelStyle}>New password</label>
-                <PasswordField value={newPassword} onChange={setNewPassword} palette={p} />
-              </div>
-              <button type="button" onClick={submitReset} style={primaryBtn}>Reset password</button>
-            </>
-          ) : (
-            <button type="button" onClick={lookupQuestion} style={primaryBtn}>Continue</button>
-          )}
-          <button type="button" onClick={() => { setMode("login"); setFetchedQuestion(null); setStatus("Ready"); }} style={ghostBtn}>Back to log in</button>
-        </div>
+        <ForgotPasswordFlow palette={p} onBack={() => { setMode("login"); setStatus("Ready"); }} onDone={() => { setMode("login"); setStatus("Ready"); }} />
       ) : (
         <div style={{ display: "grid", gap: 14 }}>
           <label style={labelStyle}>Phone or email<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
@@ -245,7 +224,7 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
             <PasswordField value={password} onChange={setPassword} palette={p} />
           </div>
           <button type="button" onClick={submit} style={primaryBtn}>Log in</button>
-          <button type="button" onClick={() => { setMode("forgot"); setForgotEmail(identifier.includes("@") ? identifier : ""); setStatus("Ready"); }} style={ghostBtn}>Forgot password?</button>
+          <button type="button" onClick={() => { setMode("forgot"); setStatus("Ready"); }} style={ghostBtn}>Forgot password?</button>
         </div>
       )}
 
