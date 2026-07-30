@@ -18,7 +18,7 @@ spring:
       max-request-size: 10MB
 
 foodtrace:
-  jwt-secret: ${JWT_SECRET:dev-foodtrace-secret-change-me}
+  jwt-secret: ${JWT_SECRET:}
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
   mobile-origins: ${MOBILE_ORIGINS:}
   uploads-dir: ${UPLOADS_DIR:uploads}

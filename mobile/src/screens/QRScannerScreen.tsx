@@ -261,7 +261,7 @@ export function QRScannerScreen({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.kicker}>Live Scanner</Text>
       <Text style={styles.title}>Point at a FoodTrace GH label.</Text>
       <Text style={styles.body}>

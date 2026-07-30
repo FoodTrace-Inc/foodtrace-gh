@@ -2,6 +2,7 @@
 import {
   BackHandler,
   Image,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -72,28 +73,9 @@ import { PaymentResultScreen } from "./src/screens/PaymentResultScreen";
 import { SubscriptionManagementScreen } from "./src/screens/SubscriptionManagementScreen";
 import { LegalScreen } from "./src/screens/LegalScreen";
 import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
+import { API_BASE_URL } from "./src/config";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-function resolveDefaultApiBase() {
-  const constants = Constants as typeof Constants & {
-    expoConfig?: { hostUri?: string; extra?: { apiBaseUrl?: string } };
-    manifest2?: { extra?: { expoClient?: { hostUri?: string } } };
-    manifest?: { debuggerHost?: string };
-  };
-  const configured = constants.expoConfig?.extra?.apiBaseUrl?.trim();
-  if (configured) return configured;
-  const hostUri =
-    constants.expoConfig?.hostUri ??
-    constants.manifest2?.extra?.expoClient?.hostUri ??
-    constants.manifest?.debuggerHost ??
-    null;
-  if (hostUri) {
-    const rawHost = hostUri.includes("://") ? new URL(hostUri).hostname : hostUri.split(":")[0];
-    if (rawHost) return `http://${rawHost}:3000/api`;
-  }
-  return Platform.OS === "android" ? "http://10.0.2.2:3000/api" : "http://localhost:3000/api";
-}
 
 /** Structural email check (matches the backend's format rule). */
 function isValidEmail(email: string): boolean {
@@ -144,18 +126,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const defaultApiBase = resolveDefaultApiBase();
-
-function normalizeApiBase(value: string) {
-  const trimmed = value.trim().replace(/\/+$/, "");
-  if (!trimmed) return defaultApiBase;
-  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
-}
 // Scan history is stored per-user so one account never sees another's scans
 // on a shared device.
 const historyKeyFor = (userId?: string | null) =>
   `foodtrace.consumer.history.${userId ?? "anon"}`;
-const apiBaseKey = "foodtrace.apiBase.v1";
 const sessionKey = "foodtrace.session.v1";
 
 const roleLabels: Record<string, string> = {
@@ -275,8 +249,7 @@ function AppContent() {
   const [showNotifications, setShowNotifications] = useState(false);
 
   // api
-  const [apiBase, setApiBase] = useState(defaultApiBase);
-  const [apiBaseDraft, setApiBaseDraft] = useState(defaultApiBase);
+  const apiBase = API_BASE_URL;
 
   // consumer
   const [consumerTab, setConsumerTab] = useState<ConsumerTab>("home");
@@ -392,15 +365,6 @@ function AppContent() {
 
   // ── effects ────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(apiBaseKey);
-        if (saved?.trim()) { const normalized = normalizeApiBase(saved); setApiBase(normalized); setApiBaseDraft(normalized); }
-      } catch { /* ignore */ }
-    })();
-  }, []);
-
   // Restore a signed-in session across app restarts (backgrounding, low-memory
   // kills, or a full relaunch previously always dropped the user back to login).
   useEffect(() => {
@@ -480,11 +444,6 @@ function AppContent() {
   }, [session?.token, loadNotifications]);
 
   useEffect(() => {
-    const detected = resolveDefaultApiBase();
-    setApiBase((cur) => { const next = (!cur || cur === "http://localhost:3000/api" || cur === "http://10.0.2.2:3000/api") ? detected : cur; setApiBaseDraft(next); return next; });
-  }, []);
-
-  useEffect(() => {
     return () => { if (cameraResumeTimerRef.current) clearTimeout(cameraResumeTimerRef.current); };
   }, []);
 
@@ -527,28 +486,6 @@ function AppContent() {
         return fetchWithRetry(url, options, retries - 1);
       }
       throw err;
-    }
-  }
-  async function saveApiBase() {
-    const normalized = normalizeApiBase(apiBaseDraft);
-    setApiBase(normalized);
-    setApiBaseDraft(normalized);
-    try { await AsyncStorage.setItem(apiBaseKey, normalized); } catch { /* best effort */ }
-    setAuthStatus(`Server set to ${normalized}`);
-  }
-
-  async function testApiBase() {
-    const normalized = normalizeApiBase(apiBaseDraft);
-    setApiBase(normalized);
-    setApiBaseDraft(normalized);
-    setAuthStatus("Testing server...");
-    try {
-      const response = await fetchWithRetry(`${normalized}/auth/roles`, undefined, 0);
-      await readJsonResponse(response);
-      try { await AsyncStorage.setItem(apiBaseKey, normalized); } catch { /* best effort */ }
-      setAuthStatus(`Server is reachable: ${normalized}`);
-    } catch (error) {
-      setAuthStatus(getFriendlyError(error));
     }
   }
 
@@ -1056,6 +993,7 @@ function AppContent() {
     return (
       <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
         <StatusBar barStyle={theme === "dark" ? "light-content" : "dark-content"} backgroundColor={palette.heroBg} />
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.authScroll} keyboardShouldPersistTaps="handled">
 
           {/* Hero */}
@@ -1160,28 +1098,9 @@ function AppContent() {
               </View>
             ) : null}
 
-            <View style={s.serverBox}>
-              <Text style={s.serverLabel}>API server</Text>
-              <TextInput
-                placeholder="https://your-backend.example.com/api"
-                placeholderTextColor="#748089"
-                style={s.serverInput}
-                value={apiBaseDraft}
-                onChangeText={setApiBaseDraft}
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-              <View style={s.serverActions}>
-                <Pressable style={s.serverBtn} onPress={() => void testApiBase()}>
-                  <Text style={s.serverBtnText}>Test</Text>
-                </Pressable>
-                <Pressable style={s.serverBtn} onPress={() => void saveApiBase()}>
-                  <Text style={s.serverBtnText}>Save</Text>
-                </Pressable>
-              </View>
-            </View>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -1194,6 +1113,7 @@ function AppContent() {
     return (
       <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
         <StatusBar barStyle="light-content" backgroundColor="#071a10" />
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
 
         {/* Top header */}
         <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
@@ -1349,7 +1269,7 @@ function AppContent() {
             </ScrollView>
           ) : (
             /* HOME */
-            <ScrollView contentContainerStyle={s.scrollPad}>
+            <ScrollView contentContainerStyle={s.scrollPad} keyboardShouldPersistTaps="handled">
               <Text style={[s.homeGreeting, { color: palette.textPrimary }]}>Your proof before purchase.</Text>
               <Text style={{ color: palette.textSecondary, fontSize: 13, marginTop: -8, marginBottom: 14, lineHeight: 18 }}>
                 A safety companion for food, medicine, and farm produce in Ghana.
@@ -1428,6 +1348,7 @@ function AppContent() {
         />
 
         <NotificationsModal visible={showNotifications} items={notifications} onClose={() => setShowNotifications(false)} />
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -1459,6 +1380,7 @@ function AppContent() {
   return (
     <SafeAreaView style={[s.root, { backgroundColor: palette.pageBg }]}>
       <StatusBar barStyle={palette.pageBg === "#fff9ec" ? "dark-content" : "light-content"} backgroundColor={palette.topBarBg} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
       <View style={[s.topBar, { backgroundColor: palette.topBarBg, borderBottomColor: palette.border }]}>
         <Logo size={22} fontSize={15} color={palette.textPrimary} />
         <View style={s.topBarRight}>
@@ -1963,6 +1885,7 @@ function AppContent() {
       )}
 
       <NotificationsModal visible={showNotifications} items={notifications} onClose={() => setShowNotifications(false)} />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -2035,12 +1958,6 @@ const s = StyleSheet.create({
   errorText: { color: "#f87171", fontSize: 14, lineHeight: 20 },
   infoBox: { backgroundColor: "rgba(119,199,162,0.1)", borderRadius: 12, padding: 12, marginTop: 10, borderWidth: 1, borderColor: "rgba(119,199,162,0.3)" },
   infoText: { color: "#77c7a2", fontSize: 14, lineHeight: 20 },
-  serverBox: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)" },
-  serverLabel: { color: "#93b9ac", fontSize: 12, fontWeight: "700", marginBottom: 8 },
-  serverInput: { backgroundColor: "#0b0f13", borderRadius: 12, minHeight: 46, paddingHorizontal: 12, color: "#f4f4ef", fontSize: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 8 },
-  serverActions: { flexDirection: "row", gap: 8 },
-  serverBtn: { flex: 1, borderRadius: 12, minHeight: 42, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(119,199,162,0.5)" },
-  serverBtnText: { color: "#77c7a2", fontSize: 13, fontWeight: "700" },
 
   // logged-in layout
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, backgroundColor: "#071a10", borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },

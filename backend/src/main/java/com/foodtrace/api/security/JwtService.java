@@ -13,6 +13,10 @@ public class JwtService {
   private final Algorithm algorithm;
 
   public JwtService(AppProperties properties) {
+    if (properties.jwtSecret() == null || properties.jwtSecret().isBlank()) {
+      throw new IllegalStateException(
+          "JWT_SECRET environment variable is required. Server cannot start without it.");
+    }
     this.algorithm = Algorithm.HMAC256(properties.jwtSecret());
   }
 

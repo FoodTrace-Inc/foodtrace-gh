@@ -380,6 +380,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
           contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
           refreshing={loading}
           onRefresh={() => void loadFeed()}
+          keyboardShouldPersistTaps="handled"
         />
       )}
     </View>

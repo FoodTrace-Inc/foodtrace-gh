@@ -244,7 +244,7 @@ export function ConsumerReportScreen({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1, backgroundColor: "#05080b" }}
     >
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {/* ── Header ── */}
         <View style={styles.headerRow}>
           <View>
