@@ -74,6 +74,7 @@ import { SubscriptionManagementScreen } from "./src/screens/SubscriptionManageme
 import { LegalScreen } from "./src/screens/LegalScreen";
 import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
 import { API_BASE_URL } from "./src/config";
+import { PasswordStrengthMeter, isPasswordStrongEnough } from "./src/components/PasswordStrengthMeter";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -544,8 +545,10 @@ function AppContent() {
     if (!phone.trim() && !email.trim()) { setAuthStatus("Please enter a phone number or email address."); return; }
     if (phone.trim() && !isValidGhanaPhone(phone)) { setAuthStatus("Enter a valid Ghana phone number, e.g. 024 123 4567."); return; }
     if (email.trim() && !isValidEmail(email)) { setAuthStatus("Enter a valid email address, e.g. name@example.com."); return; }
-    if (!password.trim()) { setAuthStatus("Please enter a password."); return; }
-    if (password.trim().length < 6) { setAuthStatus("Password must be at least 6 characters."); return; }
+    if (!isPasswordStrongEnough(password)) {
+      setAuthStatus("Password must be at least 8 characters and include an uppercase letter, a number, and a special character (!@#$%^&*).");
+      return;
+    }
     setAuthStatus("");
     setRegisterStep("security");
   }
@@ -1046,8 +1049,13 @@ function AppContent() {
                 <TextInput placeholder="Phone number (+233...)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 <TextInput placeholder="Email (optional)" placeholderTextColor="#748089" style={[s.input, themedInput]} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
                 <PasswordInput placeholder="Password" placeholderTextColor="#748089" inputStyle={[s.input, themedInput]} value={password} onChangeText={setPassword} />
+                <PasswordStrengthMeter password={password} />
                 <Text style={s.hint}>Each account needs a unique phone number or email. To test a different role, use a different number.</Text>
-                <Pressable style={[s.primaryBtn, themedBtn]} onPress={continueToSecurityStep}>
+                <Pressable
+                  style={[s.primaryBtn, themedBtn, !isPasswordStrongEnough(password) ? { opacity: 0.5 } : null]}
+                  disabled={!isPasswordStrongEnough(password)}
+                  onPress={continueToSecurityStep}
+                >
                   <Text style={[s.primaryBtnText, themedBtnText]}>Continue</Text>
                 </Pressable>
               </>

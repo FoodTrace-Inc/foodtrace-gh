@@ -5,6 +5,7 @@ import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage 
 import { useTheme, usePalette } from "../theme/ThemeContext";
 import { PasswordField } from "./PasswordField";
 import { ForgotPasswordFlow } from "./ForgotPasswordFlow";
+import { PasswordStrengthMeter, isPasswordStrongEnough } from "./PasswordStrengthMeter";
 
 type Mode = "login" | "register" | "forgot";
 type RegisterStep = "main" | "security";
@@ -62,7 +63,10 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
   function continueToSecurityStep() {
     if (!fullName.trim()) { setStatus("Please enter your full name."); return; }
     if (!phone.trim() && !email.trim()) { setStatus("Please enter a phone number or email address."); return; }
-    if (!password.trim() || password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
+    if (!isPasswordStrongEnough(password)) {
+      setStatus("Password must be at least 8 characters and include an uppercase letter, a number, and a special character (!@#$%^&*).");
+      return;
+    }
     setStatus("Ready");
     setRegisterStep("security");
   }
@@ -183,6 +187,7 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
           <div>
             <label style={labelStyle}>Password</label>
             <PasswordField value={password} onChange={setPassword} palette={p} placeholder="At least 8 characters" />
+            <PasswordStrengthMeter password={password} />
           </div>
           <label style={labelStyle}>
             Role
@@ -191,7 +196,14 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
             </select>
           </label>
           <label style={labelStyle}>Language<input value={language} onChange={(e) => setLanguage(e.target.value)} style={{ ...fieldStyle, marginTop: 6 }} /></label>
-          <button type="button" onClick={continueToSecurityStep} style={primaryBtn}>Continue</button>
+          <button
+            type="button"
+            onClick={continueToSecurityStep}
+            disabled={!isPasswordStrongEnough(password)}
+            style={!isPasswordStrongEnough(password) ? { ...primaryBtn, opacity: 0.5, cursor: "not-allowed" } : primaryBtn}
+          >
+            Continue
+          </button>
         </div>
       ) : mode === "register" && registerStep === "security" ? (
         <div style={{ display: "grid", gap: 14 }}>

@@ -124,6 +124,12 @@ function isDrugResult(result: ScanResult): result is DrugScanResult {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+const SOUND_BY_STATUS: Record<string, ReturnType<typeof require>> = {
+  safe: require("../../assets/sounds/chime_safe.wav"),
+  caution: require("../../assets/sounds/alert_caution.wav"),
+  recalled: require("../../assets/sounds/alarm_recalled.wav"),
+};
+
 export function SafetyResultScreen({
   result,
   scanLanguage,
@@ -134,16 +140,76 @@ export function SafetyResultScreen({
   onAskAI,
 }: SafetyResultScreenProps) {
   const bgColor = backgroundForStatus(result.status);
+  const status = result.status;
 
-  // ── Entrance animation for the status icon ────────────────────────────────
+  // ── Entrance + status-specific animations (all finish well under 1s) ──────
   const iconScale = useRef(new Animated.Value(0.6)).current;
   const iconOpacity = useRef(new Animated.Value(0)).current;
+  const badgeScale = useRef(new Animated.Value(0)).current;
+  const screenSlideX = useRef(new Animated.Value(status === "caution" ? 60 : 0)).current;
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const flashOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    Animated.parallel([
+    const animations: Animated.CompositeAnimation[] = [
       Animated.spring(iconScale, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }),
       Animated.timing(iconOpacity, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-    ]).start();
-  }, [iconScale, iconOpacity]);
+      Animated.spring(badgeScale, { toValue: 1, friction: 4, tension: 80, delay: 150, useNativeDriver: true }),
+    ];
+
+    if (status === "caution") {
+      animations.push(Animated.timing(screenSlideX, { toValue: 0, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }));
+      animations.push(
+        Animated.sequence([
+          Animated.delay(320),
+          Animated.timing(iconScale, { toValue: 1.15, duration: 150, useNativeDriver: true }),
+          Animated.timing(iconScale, { toValue: 1, duration: 150, useNativeDriver: true }),
+          Animated.timing(iconScale, { toValue: 1.15, duration: 150, useNativeDriver: true }),
+          Animated.timing(iconScale, { toValue: 1, duration: 150, useNativeDriver: true }),
+        ])
+      );
+    }
+
+    if (status === "recalled") {
+      animations.push(
+        Animated.sequence([
+          Animated.timing(flashOpacity, { toValue: 0.55, duration: 90, useNativeDriver: true }),
+          Animated.timing(flashOpacity, { toValue: 0, duration: 220, useNativeDriver: true }),
+        ])
+      );
+      animations.push(
+        Animated.sequence([
+          Animated.delay(300),
+          Animated.timing(shakeX, { toValue: -10, duration: 45, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 10, duration: 45, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: -10, duration: 45, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 10, duration: 45, useNativeDriver: true }),
+          Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true }),
+        ])
+      );
+    }
+
+    Animated.parallel(animations).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Play a short status sound once, alongside the spoken summary ─────────
+  useEffect(() => {
+    let soundRef: Audio.Sound | null = null;
+    (async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(SOUND_BY_STATUS[status] ?? SOUND_BY_STATUS.safe, { shouldPlay: true, volume: 0.8 });
+        soundRef = sound;
+        sound.setOnPlaybackStatusUpdate((s) => {
+          if ("didJustFinish" in s && s.didJustFinish) void sound.unloadAsync();
+        });
+      } catch {
+        // Sound effects are decorative - never block the result screen on failure.
+      }
+    })();
+    return () => { void soundRef?.unloadAsync(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Auto-play audio on mount ──────────────────────────────────────────────
 
@@ -225,18 +291,31 @@ export function SafetyResultScreen({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <ScrollView
-      style={{ backgroundColor: bgColor }}
-      contentContainerStyle={[styles.container, { backgroundColor: bgColor }]}
-    >
-      {/* ── Animated safety ring ── */}
-      <Animated.View style={{ opacity: iconOpacity, transform: [{ scale: iconScale }], marginBottom: 10 }}>
-        <SafetyRing status={statusToRingStatus(result.status)} />
-      </Animated.View>
+    <View style={{ flex: 1, backgroundColor: bgColor }}>
+      {status === "recalled" ? (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: "#ff1744", opacity: flashOpacity, zIndex: 10 }]} />
+      ) : null}
+      <Animated.ScrollView
+        style={{ backgroundColor: bgColor, transform: [{ translateX: screenSlideX }] }}
+        contentContainerStyle={[styles.container, { backgroundColor: bgColor }]}
+      >
+        {/* ── Animated safety ring ── */}
+        <Animated.View style={{ opacity: iconOpacity, transform: [{ scale: iconScale }, { translateX: shakeX }], marginBottom: 6 }}>
+          <SafetyRing status={statusToRingStatus(result.status)} />
+        </Animated.View>
 
-      {/* ── Product title & summary ── */}
-      <Text style={styles.title}>{result.title}</Text>
-      <Text style={styles.summary}>{result.summary}</Text>
+        {/* ── Status badge ── */}
+        <Animated.View style={{ transform: [{ scale: badgeScale }], alignSelf: "center", marginBottom: 10 }}>
+          <View style={[styles.statusBadge, { borderColor: "rgba(255,255,255,0.4)" }]}>
+            <Text style={styles.statusBadgeText}>{status.toUpperCase()}</Text>
+          </View>
+        </Animated.View>
+
+        {status === "recalled" ? <Text style={styles.doNotBuy}>DO NOT BUY</Text> : null}
+
+        {/* ── Product title & summary ── */}
+        <Text style={styles.title}>{result.title}</Text>
+        <Text style={styles.summary}>{result.summary}</Text>
 
       {/* ── Product photo ── */}
       {result.imageUrl ? (
@@ -293,7 +372,8 @@ export function SafetyResultScreen({
           <Text style={styles.backButtonText}>← Scan another</Text>
         </Pressable>
       </View>
-    </ScrollView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
@@ -316,6 +396,27 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 60,
     gap: 16,
+  },
+  statusBadge: {
+    borderWidth: 1.5,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  statusBadgeText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+  doNotBuy: {
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "center",
+    letterSpacing: 1,
+    marginBottom: -6,
   },
   title: {
     color: "#ffffff",
