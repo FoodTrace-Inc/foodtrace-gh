@@ -50,11 +50,22 @@ export function ForgotPasswordFlow({ palette: p, onBack, onDone }: Props) {
   const ghostBtn: CSSProperties = { width: "100%", background: "transparent", color: p.textSecondary, border: `1px solid ${p.border}`, borderRadius: 12, padding: "11px", fontWeight: 600, fontSize: 13, cursor: "pointer" };
 
   async function post(path: string, body: object) {
-    const response = await fetch(`${apiBase}/auth/forgot-password/${path}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${apiBase}/auth/forgot-password/${path}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    } catch {
+      throw new Error("Could not connect to the server. Please check your internet connection and try again.");
+    }
     const data = (await readJsonResponse(response)) as Record<string, unknown> & { error?: unknown };
-    if (!response.ok) throw new Error(getApiErrorMessage(data.error, "Something went wrong. Please try again."));
+    if (!response.ok) {
+      const serverMessage = getApiErrorMessage(data.error, "");
+      const friendly = path === "start" && (!serverMessage || /isn't allowed|constraint|violat/i.test(serverMessage))
+        ? "Please enter the email address or phone number you used to register."
+        : serverMessage || "Something went wrong. Please try again.";
+      throw new Error(friendly);
+    }
     return data;
   }
 

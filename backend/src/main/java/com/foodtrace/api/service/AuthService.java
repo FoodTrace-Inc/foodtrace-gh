@@ -312,7 +312,7 @@ public class AuthService {
         SELECT security_question
         FROM users
         WHERE (:isEmail IS TRUE AND LOWER(email) = :identifier)
-           OR (:isEmail IS FALSE AND phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = :phoneDigits)
+           OR (:isEmail IS FALSE AND phone IS NOT NULL AND RIGHT(regexp_replace(phone, '\\D', '', 'g'), 9) = RIGHT(:phoneDigits, 9))
         LIMIT 1
         """)
         .param("isEmail", request.identifier().contains("@"))
@@ -340,7 +340,7 @@ public class AuthService {
         SELECT id, security_answer_hash
         FROM users
         WHERE (:isEmail IS TRUE AND LOWER(email) = :identifier)
-           OR (:isEmail IS FALSE AND phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = :phoneDigits)
+           OR (:isEmail IS FALSE AND phone IS NOT NULL AND RIGHT(regexp_replace(phone, '\\D', '', 'g'), 9) = RIGHT(:phoneDigits, 9))
         LIMIT 1
         """)
         .param("isEmail", request.identifier().contains("@"))
@@ -455,16 +455,28 @@ public class AuthService {
     }
 
     String sessionToken = randomToken();
-    jdbc.sql("""
-        INSERT INTO password_reset_sessions (session_token, user_id, question_1_text, question_2_text, expires_at)
-        VALUES (:token, CAST(:userId AS uuid), :q1, :q2, :expiresAt)
-        """)
+    // A bare null bound into CAST(:userId AS uuid) fails Postgres type
+    // resolution (no other use of the parameter to infer a type from),
+    // which surfaced as a 400 "That value isn't allowed" for every
+    // unregistered identifier - i.e. every decoy session. Bypassing the
+    // parameter entirely for the null case (a literal NULL needs no type
+    // resolution) fixes it without weakening the anti-enumeration decoy.
+    String insertSql = userId == null
+        ? """
+          INSERT INTO password_reset_sessions (session_token, user_id, question_1_text, question_2_text, expires_at)
+          VALUES (:token, NULL, :q1, :q2, :expiresAt)
+          """
+        : """
+          INSERT INTO password_reset_sessions (session_token, user_id, question_1_text, question_2_text, expires_at)
+          VALUES (:token, CAST(:userId AS uuid), :q1, :q2, :expiresAt)
+          """;
+    var insert = jdbc.sql(insertSql)
         .param("token", sessionToken)
-        .param("userId", userId)
         .param("q1", question1Text)
         .param("q2", question2Text)
-        .param("expiresAt", OffsetDateTime.now().plus(START_SESSION_TTL))
-        .update();
+        .param("expiresAt", OffsetDateTime.now().plus(START_SESSION_TTL));
+    if (userId != null) insert = insert.param("userId", userId);
+    insert.update();
 
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("sessionToken", sessionToken);
@@ -710,7 +722,7 @@ public class AuthService {
         SELECT id, full_name, phone, email, role, language, is_verified, is_active
         FROM users
         WHERE (:isEmail IS TRUE AND LOWER(email) = :identifier)
-           OR (:isEmail IS FALSE AND phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = :phoneDigits)
+           OR (:isEmail IS FALSE AND phone IS NOT NULL AND RIGHT(regexp_replace(phone, '\\D', '', 'g'), 9) = RIGHT(:phoneDigits, 9))
         LIMIT 1
         """)
         .param("isEmail", normalized.contains("@"))

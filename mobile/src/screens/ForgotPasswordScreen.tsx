@@ -45,13 +45,28 @@ export function ForgotPasswordScreen({ apiBase, onDone, onBack }: Props) {
   const [error, setError] = useState("");
 
   async function post(path: string, body: object) {
-    const res = await fetch(`${apiBase}/auth/forgot-password/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${apiBase}/auth/forgot-password/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // fetch() throws (not a resolved response) when there's no network path
+      // to the server at all - a real connectivity issue, not a bad input.
+      throw new Error("Could not connect to the server. Please check your internet connection and try again.");
+    }
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || data.message || "Something went wrong. Please try again.");
+    if (!res.ok) {
+      const serverMessage = typeof data.error === "string" ? data.error : typeof data.message === "string" ? data.message : "";
+      // Surface a friendly message for the identifier-lookup step instead of
+      // a raw backend/database error string leaking through.
+      const friendly = path === "start" && (!serverMessage || /isn't allowed|constraint|violat/i.test(serverMessage))
+        ? "Please enter the email address or phone number you used to register."
+        : serverMessage || "Something went wrong. Please try again.";
+      throw new Error(friendly);
+    }
     return data;
   }
 
