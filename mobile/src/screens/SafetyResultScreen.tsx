@@ -99,12 +99,30 @@ function backgroundForStatus(status: ProductScanResult["status"]): string {
 }
 
 /**
- * Builds the spoken summary sentence.
- * Prefers the backend-crafted `audioSummary` field; falls back to
- * concatenating title + summary + recommendedAction.
+ * Short, clear Twi phrases per status - used for both the spoken summary
+ * and the on-screen Twi text. Kept deliberately brief: the backend's
+ * paragraph-length audioSummaryTwi was accurate but too long for on-device
+ * TTS (no real Twi voice on most Android phones) to render clearly.
+ */
+const TWI_STATUS_TEXT: Record<string, string> = {
+  safe: "Adeɛ yi ho tumi — wubɛtɔ no",
+  caution: "Hwɛ adeɛ yi yiye ansa wobɛtɔ",
+  recalled: "Mfa adeɛ yi mmɛtɔ — wɔde asan",
+};
+const ENGLISH_STATUS_TEXT: Record<string, string> = {
+  safe: "This product is safe to buy",
+  caution: "Check before buying",
+  recalled: "Do not buy — recalled",
+};
+
+/**
+ * Builds the spoken summary sentence. Twi uses the short status phrase
+ * above (clearer on-device TTS than a long sentence); English prefers the
+ * backend-crafted `audioSummary` field, falling back to title + summary +
+ * recommendedAction.
  */
 function buildSpeechText(result: ScanResult, language: "en" | "tw"): string {
-  if (language === "tw" && (result as any).audioSummaryTwi) return (result as any).audioSummaryTwi;
+  if (language === "tw") return TWI_STATUS_TEXT[result.status] ?? TWI_STATUS_TEXT.caution;
   if (result.audioSummary) return result.audioSummary;
   const parts = [result.title, result.summary, result.recommendedAction].filter(Boolean);
   return parts.join(" ").trim();
@@ -219,11 +237,13 @@ export function SafetyResultScreen({
    * network call fails or the backend is unavailable.
    */
   const playGoogleTTS = useCallback(
-    async (text: string): Promise<void> => {
+    async (text: string, rate: number): Promise<void> => {
+      // "ak" (Akan) is the correct language code for Twi - "tw" gives worse
+      // pronunciation on the Google TTS voices that support it at all.
       const response = await fetch(`${apiBase}/audio/speech`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language: scanLanguage }),
+        body: JSON.stringify({ text, language: scanLanguage === "tw" ? "ak" : scanLanguage, speakingRate: rate }),
       });
 
       const data = (await readJsonResponse(response)) as SpeechSummaryResponse & {
@@ -254,27 +274,35 @@ export function SafetyResultScreen({
     [apiBase, scanLanguage]
   );
 
-  /** Device TTS fallback via expo-speech. */
+  /**
+   * Device TTS fallback via expo-speech - this is what actually plays today,
+   * since Google Cloud TTS is not configured on this deployment (the backend
+   * call always fails over to here). "ak" (Akan) is the correct language
+   * code for Twi on Android's on-device engines; "tw" is often unrecognised
+   * and silently mispronounced. Twi defaults to a slightly slower rate than
+   * English since most phones have no real Twi voice to begin with.
+   */
   const speakFallback = useCallback(
-    (text: string): void => {
+    (text: string, rate: number): void => {
       Speech.stop();
       Speech.speak(text, {
-        language: scanLanguage === "tw" ? "tw" : "en-US",
-        rate: 0.95,
+        language: scanLanguage === "tw" ? "ak" : "en-US",
+        rate,
       });
     },
     [scanLanguage]
   );
 
-  /** Entry-point: try Google TTS, fall back to device TTS on any error. */
-  const playSummary = useCallback(async (): Promise<void> => {
+  /** Entry-point: try Google TTS, fall back to device TTS on any error. rate: 1.0 normal, 0.7 slow. */
+  const playSummary = useCallback(async (rate?: number): Promise<void> => {
     const text = buildSpeechText(result, scanLanguage);
     if (!text) return;
+    const effectiveRate = rate ?? (scanLanguage === "tw" ? 0.85 : 0.95);
 
     try {
-      await playGoogleTTS(text);
+      await playGoogleTTS(text, effectiveRate);
     } catch {
-      speakFallback(text);
+      speakFallback(text, effectiveRate);
     }
   }, [result, scanLanguage, playGoogleTTS, speakFallback]);
 
@@ -286,7 +314,8 @@ export function SafetyResultScreen({
     return () => {
       Speech.stop();
     };
-  }, [playSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -316,6 +345,14 @@ export function SafetyResultScreen({
         {/* ── Product title & summary ── */}
         <Text style={styles.title}>{result.title}</Text>
         <Text style={styles.summary}>{result.summary}</Text>
+
+        {/* ── Twi translation, shown larger than English since it needs more room to read clearly ── */}
+        {scanLanguage === "tw" ? (
+          <View style={styles.twiBlock}>
+            <Text style={styles.twiEnglishRef}>{ENGLISH_STATUS_TEXT[status]}</Text>
+            <Text style={styles.twiText}>{TWI_STATUS_TEXT[status]}</Text>
+          </View>
+        ) : null}
 
       {/* ── Product photo ── */}
       {result.imageUrl ? (
@@ -349,10 +386,23 @@ export function SafetyResultScreen({
       {/* ── Controls ── */}
       <View style={styles.controls}>
         {/* Replay the audio summary on demand */}
-        <Pressable style={[styles.secondaryButton, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]} onPress={() => void playSummary()}>
-          <Icon name="volume-high-outline" size={16} color={styles.secondaryButtonText.color} />
-          <Text style={styles.secondaryButtonText}>Play audio again</Text>
-        </Pressable>
+        {scanLanguage === "tw" ? (
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable style={[styles.secondaryButton, { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]} onPress={() => void playSummary()}>
+              <Icon name="volume-high-outline" size={16} color={styles.secondaryButtonText.color} />
+              <Text style={styles.secondaryButtonText}>Play again</Text>
+            </Pressable>
+            <Pressable style={[styles.secondaryButton, { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]} onPress={() => void playSummary(0.7)}>
+              <Icon name="hourglass-outline" size={16} color={styles.secondaryButtonText.color} />
+              <Text style={styles.secondaryButtonText}>Play slowly</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable style={[styles.secondaryButton, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]} onPress={() => void playSummary()}>
+            <Icon name="volume-high-outline" size={16} color={styles.secondaryButtonText.color} />
+            <Text style={styles.secondaryButtonText}>Play audio again</Text>
+          </Pressable>
+        )}
 
         {onAskAI ? (
           <Pressable style={styles.ghostButton} onPress={() => onAskAI(buildAiPrefill(result))}>
@@ -431,6 +481,27 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: "center",
     marginBottom: 16,
+  },
+  twiBlock: {
+    backgroundColor: "rgba(0,0,0,0.2)",
+    borderRadius: 16,
+    padding: 14,
+    marginTop: -4,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  twiEnglishRef: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  twiText: {
+    color: "#ffffff",
+    fontSize: 19,
+    fontWeight: "700",
+    lineHeight: 27,
+    textAlign: "center",
   },
   productImage: {
     width: "100%",
