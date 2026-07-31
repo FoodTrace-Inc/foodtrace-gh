@@ -75,6 +75,7 @@ import { LegalScreen } from "./src/screens/LegalScreen";
 import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
 import { API_BASE_URL } from "./src/config";
 import { PasswordStrengthMeter, isPasswordStrongEnough } from "./src/components/PasswordStrengthMeter";
+import { LiveScanCounter } from "./src/components/LiveScanCounter";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -1300,6 +1301,13 @@ function AppContent() {
                 <Text style={s.scanHeroTitle}>Tap to scan a product</Text>
                 <Text style={[s.scanHeroSub, { color: palette.marketAmber }]}>QR, batch, seller, recall and origin.</Text>
               </Pressable>
+
+              <LiveScanCounter
+                apiBase={apiBase}
+                accentColor={palette.signalCyan}
+                textColor={palette.textPrimary}
+                secondaryColor={palette.textSecondary}
+              />
 
               <View style={s.bentoRow}>
                 <View style={[s.bentoBig, { backgroundColor: palette.cardBg, borderColor: palette.border }]}>
