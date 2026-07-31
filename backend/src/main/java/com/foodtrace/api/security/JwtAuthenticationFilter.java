@@ -29,9 +29,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     String header = request.getHeader("Authorization");
     if (header != null && header.startsWith("Bearer ")) {
       try {
-        DecodedJWT jwt = jwtService.decode(header.substring("Bearer ".length()));
+        String rawToken = header.substring("Bearer ".length());
+        DecodedJWT jwt = jwtService.decode(rawToken);
         CurrentUser user = new CurrentUser(jwt.getSubject(), jwt.getClaim("role").asString(), jwt.getClaim("fullName").asString());
-        if (!tokenRevocationService.isStillValid(user.id(), jwt.getIssuedAt().toInstant())) {
+        if (!tokenRevocationService.isStillValid(user.id(), jwt.getIssuedAt().toInstant())
+            || tokenRevocationService.isBlacklisted(rawToken)) {
           throw new RuntimeException("Token revoked");
         }
         var auth = new AbstractAuthenticationToken(List.of(new SimpleGrantedAuthority("ROLE_" + user.role().toUpperCase()))) {

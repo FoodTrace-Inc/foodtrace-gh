@@ -17,9 +17,20 @@ import { PricingScreen } from "./screens/PricingScreen";
 import { TermsScreen } from "./screens/TermsScreen";
 import { PrivacyScreen } from "./screens/PrivacyScreen";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { apiBase } from "./lib/api";
 
 function App() {
   const [session, setSession] = useState<AuthResponse | null>(null);
+
+  function signOut() {
+    if (session?.token) {
+      fetch(`${apiBase}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.token}` },
+      }).catch(() => { /* best effort - local sign-out still proceeds */ });
+    }
+    setSession(null);
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -47,7 +58,7 @@ function App() {
               {/* Signed in: the app shell owns everything; "/" jumps to the dashboard. */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/signin" element={<Navigate to="/dashboard" replace />} />
-              <Route element={<AppShell session={session} onSignOut={() => setSession(null)} />}>
+              <Route element={<AppShell session={session} onSignOut={signOut} />}>
                 <Route path="/dashboard" element={<DashboardScreen />} />
                 <Route path="/marketplace" element={<MarketplaceScreen />} />
                 <Route path="/assistant" element={<AssistantScreen />} />

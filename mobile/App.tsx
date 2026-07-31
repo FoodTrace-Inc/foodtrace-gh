@@ -584,6 +584,12 @@ function AppContent() {
   }
 
   function signOut() {
+    if (session?.token) {
+      void fetch(`${apiBase}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.token}` },
+      }).catch(() => { /* best effort - local sign-out still proceeds */ });
+    }
     setSession(null);
     void AsyncStorage.removeItem(sessionKey).catch(() => { /* best effort */ });
     setAuthStatus("");

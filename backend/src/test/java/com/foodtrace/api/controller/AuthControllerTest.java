@@ -31,7 +31,7 @@ class AuthControllerTest {
 
   @Test
   void register_returns_token_and_user() throws Exception {
-    when(authService.register(any())).thenReturn(
+    when(authService.register(any(), any())).thenReturn(
         new AuthResponse("jwt-token-here",
             new AuthUser("abc", "Test User", "+233200000001", null,
                 "consumer", "en", false, true)));
@@ -48,7 +48,7 @@ class AuthControllerTest {
 
   @Test
   void login_returns_token() throws Exception {
-    when(authService.login(any())).thenReturn(
+    when(authService.login(any(), any())).thenReturn(
         new AuthResponse("jwt-token-here",
             new AuthUser("abc", "Ama Farmer", "+233200000001", null,
                 "farmer", "en", true, true)));
@@ -65,7 +65,7 @@ class AuthControllerTest {
 
   @Test
   void login_returns_401_on_wrong_password() throws Exception {
-    when(authService.login(any()))
+    when(authService.login(any(), any()))
         .thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
     mockMvc.perform(post("/api/auth/login")

@@ -34,23 +34,31 @@ public class AuthController {
   }
 
   @PostMapping("/request-otp")
-  public Map<String, Object> requestOtp(@RequestBody OtpRequest request) {
-    return authService.requestOtp(request);
+  public Map<String, Object> requestOtp(@RequestBody OtpRequest request, HttpServletRequest httpRequest) {
+    return authService.requestOtp(request, clientIp(httpRequest));
   }
 
   @PostMapping("/verify-otp")
-  public Object verifyOtp(@RequestBody VerifyOtpRequest request) {
-    return authService.verifyOtp(request);
+  public Object verifyOtp(@RequestBody VerifyOtpRequest request, HttpServletRequest httpRequest) {
+    return authService.verifyOtp(request, clientIp(httpRequest));
   }
 
   @PostMapping("/register")
-  public Object register(@RequestBody RegisterRequest request) {
-    return authService.register(request);
+  public Object register(@RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+    return authService.register(request, clientIp(httpRequest));
   }
 
   @PostMapping("/login")
-  public Object login(@RequestBody LoginRequest request) {
-    return authService.login(request);
+  public Object login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    return authService.login(request, clientIp(httpRequest));
+  }
+
+  @PostMapping("/logout")
+  public Map<String, Object> logout(Authentication authentication, HttpServletRequest httpRequest) {
+    String header = httpRequest.getHeader("Authorization");
+    String token = header != null && header.startsWith("Bearer ") ? header.substring("Bearer ".length()) : null;
+    CurrentUser user = (CurrentUser) authentication.getPrincipal();
+    return authService.logout(user.id(), token);
   }
 
   @PostMapping("/forgot-password")

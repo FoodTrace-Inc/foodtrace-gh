@@ -42,6 +42,13 @@ public class AuthService {
   private static final Duration START_SESSION_TTL = Duration.ofMinutes(10);
   private static final Duration RESET_TOKEN_TTL = Duration.ofMinutes(5);
   private static final int MAX_IP_ATTEMPTS_PER_HOUR = 10;
+  private static final int MAX_LOGIN_ATTEMPTS = 5;
+  private static final Duration LOGIN_WINDOW = Duration.ofMinutes(15);
+  private static final int MAX_OTP_REQUESTS = 3;
+  private static final Duration OTP_REQUEST_WINDOW = Duration.ofMinutes(15);
+  private static final int MAX_OTP_WRONG_ATTEMPTS = 5;
+  private static final int MAX_REGISTRATIONS_PER_HOUR = 10;
+  private static final Duration REGISTRATION_WINDOW = Duration.ofHours(1);
 
   public AuthService(JdbcClient jdbc, JwtService jwtService, PasswordEncoder passwordEncoder, AppProperties properties,
       EmailService emailService, AuditLogService auditLogService, PushNotificationService pushNotificationService,
@@ -56,10 +63,13 @@ public class AuthService {
     this.tokenRevocationService = tokenRevocationService;
   }
 
-  public Map<String, Object> requestOtp(OtpRequest request) {
+  public Map<String, Object> requestOtp(OtpRequest request, String ip) {
     requirePresent(request.identifier(), "Identifier is required");
+    enforceRateLimit(ip, "otp_requested", MAX_OTP_REQUESTS, OTP_REQUEST_WINDOW,
+        "Too many OTP requests. Please wait 15 minutes and try again.");
     Map<String, Object> user = findUserByIdentifier(request.identifier())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    auditLogService.log(String.valueOf(user.get("id")), "otp_requested", "user", String.valueOf(user.get("id")), Map.of(), ip, true);
     String token = String.valueOf(100000 + random.nextInt(900000));
     OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(10);
     jdbc.sql("INSERT INTO otp_tokens (user_id, token, purpose, expires_at) VALUES (:userId, :token, :purpose, :expiresAt)")
@@ -77,37 +87,59 @@ public class AuthService {
     return response;
   }
 
-  public AuthResponse verifyOtp(VerifyOtpRequest request) {
+  public AuthResponse verifyOtp(VerifyOtpRequest request, String ip) {
     requirePresent(request.identifier(), "Identifier is required");
     requirePresent(request.token(), "OTP token is required");
     Map<String, Object> user = findUserByIdentifier(request.identifier())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    String purpose = valueOrDefault(request.purpose(), "login");
+    // Looked up by user+purpose (not by the guessed token) so a wrong guess
+    // still finds the pending OTP to count the attempt against.
     Map<String, Object> otp = jdbc.sql("""
-        SELECT id, used_at, (expires_at < now()) AS is_expired
+        SELECT id, token, used_at, wrong_attempts,
+               (expires_at < now()) AS is_expired,
+               (locked_at IS NOT NULL) AS is_locked
         FROM otp_tokens
-        WHERE user_id = :userId AND token = :token AND purpose = :purpose
+        WHERE user_id = :userId AND purpose = :purpose
         ORDER BY created_at DESC
         LIMIT 1
         """)
         .param("userId", user.get("id"))
-        .param("token", request.token())
-        .param("purpose", valueOrDefault(request.purpose(), "login"))
+        .param("purpose", purpose)
         .query(DatabaseRowMapper::toMap)
         .optional()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid OTP"));
     if (otp.get("usedAt") != null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP already used");
     }
+    if (Boolean.TRUE.equals(otp.get("isLocked"))) {
+      throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "OTP locked. Please request a new one.");
+    }
     if (Boolean.TRUE.equals(otp.get("isExpired"))) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP expired");
+    }
+    if (!request.token().trim().equals(String.valueOf(otp.get("token")))) {
+      int attempts = ((Number) otp.getOrDefault("wrongAttempts", 0)).intValue() + 1;
+      if (attempts >= MAX_OTP_WRONG_ATTEMPTS) {
+        jdbc.sql("UPDATE otp_tokens SET wrong_attempts = :a, locked_at = now() WHERE id = :id")
+            .param("a", attempts).param("id", otp.get("id")).update();
+        auditLogService.log(String.valueOf(user.get("id")), "otp_locked", "user", String.valueOf(user.get("id")), Map.of(), ip, false);
+        throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "OTP locked. Please request a new one.");
+      }
+      jdbc.sql("UPDATE otp_tokens SET wrong_attempts = :a WHERE id = :id").param("a", attempts).param("id", otp.get("id")).update();
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid OTP");
     }
     jdbc.sql("UPDATE otp_tokens SET used_at = now() WHERE id = :id").param("id", otp.get("id")).update();
     return authResponse(user);
   }
 
-  public AuthResponse register(RegisterRequest request) {
+  public AuthResponse register(RegisterRequest request, String ip) {
     requirePresent(request.fullName(), "Full name is required");
     requirePresent(request.password(), "Password is required");
+    enforceRateLimit(ip, "registration_attempt", MAX_REGISTRATIONS_PER_HOUR, REGISTRATION_WINDOW,
+        "Too many registration attempts from your location. Please try again later.");
+    auditLogService.log(null, "registration_attempt", "user", null, Map.of(), ip, null);
+    validatePasswordStrength(request.password());
     if (blankToNull(request.phone()) == null && blankToNull(request.email()) == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone or email is required");
     }
@@ -170,11 +202,13 @@ public class AuthService {
     return authResponse(user);
   }
 
-  public AuthResponse login(LoginRequest request) {
+  public AuthResponse login(LoginRequest request, String ip) {
     requirePresent(request.identifier(), "Identifier is required");
     requirePresent(request.password(), "Password is required");
+    enforceRateLimit(ip, "login_attempt", MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW,
+        "Too many login attempts. Please wait 15 minutes and try again.");
     String identifier = request.identifier().trim();
-    Map<String, Object> user = jdbc.sql("""
+    Optional<Map<String, Object>> userRow = jdbc.sql("""
         SELECT id, full_name, phone, email, password_hash, role, language, is_verified, is_active
         FROM users
         WHERE LOWER(email) = LOWER(:identifier) OR phone = :identifier
@@ -182,12 +216,33 @@ public class AuthService {
         """)
         .param("identifier", identifier)
         .query(DatabaseRowMapper::toMap)
-        .optional()
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
-    if (!passwordEncoder.matches(request.password(), String.valueOf(user.get("passwordHash")))) {
+        .optional();
+    boolean ok = userRow.isPresent()
+        && passwordEncoder.matches(request.password(), String.valueOf(userRow.get().get("passwordHash")));
+    String userId = userRow.map(row -> String.valueOf(row.get("id"))).orElse(null);
+    auditLogService.log(userId, "login_attempt", "user", userId, Map.of(), ip, ok);
+    if (!ok) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     }
-    return authResponse(user);
+    return authResponse(userRow.get());
+  }
+
+  /** Blacklists this one token (this device only) - other signed-in devices stay logged in. */
+  public Map<String, Object> logout(String userId, String rawToken) {
+    if (rawToken != null && !rawToken.isBlank()) {
+      try {
+        var jwt = jwtService.decode(rawToken);
+        tokenRevocationService.blacklistToken(rawToken, userId, jwt.getExpiresAt().toInstant());
+      } catch (Exception ignored) {
+        // Already invalid/expired - nothing to blacklist.
+      }
+    }
+    return Map.of("success", true, "message", "Logged out.");
+  }
+
+  @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 * * * *")
+  public void cleanupExpiredTokenBlacklistEntries() {
+    tokenRevocationService.cleanupExpiredBlacklistEntries();
   }
 
   /**
@@ -587,6 +642,23 @@ public class AuthService {
     if (recent >= MAX_IP_ATTEMPTS_PER_HOUR) {
       throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
           "Too many password reset attempts from your location. Try again in 1 hour.");
+    }
+  }
+
+  /** Generic per-IP, per-action rate limiter backed by the audit_logs table (survives restarts, unlike an in-memory counter). */
+  private void enforceRateLimit(String ip, String action, int maxAttempts, Duration window, String message) {
+    if (ip == null || ip.isBlank()) return;
+    long recent = jdbc.sql("""
+        SELECT COUNT(*) FROM audit_logs
+        WHERE ip_address = :ip AND action = :action AND created_at > now() - (:seconds * interval '1 second')
+        """)
+        .param("ip", ip)
+        .param("action", action)
+        .param("seconds", (double) window.getSeconds())
+        .query(Long.class)
+        .single();
+    if (recent >= maxAttempts) {
+      throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, message);
     }
   }
 
