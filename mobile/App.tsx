@@ -473,10 +473,17 @@ function AppContent() {
     return /error|fail|could not|server|wrong|denied|unauthori/i.test(msg);
   }
 
-  // Retries once after a short delay - handles Render cold start
+  // Retries once after a short delay - handles Render cold start.
+  // fetch() has no built-in timeout - a stalled connection (dropped network,
+  // server accepting but never responding) leaves the promise unresolved
+  // forever, which is what made screens like the farmer dashboard look stuck
+  // loading indefinitely with no error. 25s comfortably covers a Render free
+  // tier cold start while still eventually failing instead of hanging.
   async function fetchWithRetry(url: string, options?: RequestInit, retries = 1): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, { ...options, signal: controller.signal });
       if (!res.ok && res.status >= 500 && retries > 0) {
         await new Promise(r => setTimeout(r, 4000));
         return fetchWithRetry(url, options, retries - 1);
@@ -488,6 +495,8 @@ function AppContent() {
         return fetchWithRetry(url, options, retries - 1);
       }
       throw err;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
