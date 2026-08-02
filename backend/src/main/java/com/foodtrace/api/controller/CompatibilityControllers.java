@@ -101,8 +101,8 @@ public class CompatibilityControllers {
     }
 
     @PostMapping("/recalls/{id}/evidence")
-    Map<String, Object> addRecallEvidence(@PathVariable String id, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-      return regulatorService.addRecallEvidence(id, file);
+    Map<String, Object> addRecallEvidence(@PathVariable String id, @RequestParam("file") org.springframework.web.multipart.MultipartFile file, Authentication authentication) {
+      return regulatorService.addRecallEvidence(currentUser(authentication), id, file);
     }
 
     private CurrentUser currentUser(Authentication auth) {

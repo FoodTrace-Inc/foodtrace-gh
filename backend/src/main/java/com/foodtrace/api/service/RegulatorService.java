@@ -45,6 +45,7 @@ public class RegulatorService {
     long totalScans = foodScans + drugScans;
     long safeScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM qr_codes WHERE status = 'active'").query(Long.class).single();
     long recalledScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM qr_codes WHERE status = 'recalled'").query(Long.class).single();
+    long cautionScans = jdbc.sql("SELECT COALESCE(SUM(scan_count), 0) FROM qr_codes WHERE status = 'under_investigation'").query(Long.class).single();
     long highRiskAlerts = count("SELECT COUNT(*) FROM product_batches WHERE recall_status = 'recalled'");
 
     List<Map<String, Object>> reports = jdbc.sql("""
@@ -65,12 +66,12 @@ public class RegulatorService {
 
     List<Map<String, Object>> alerts = jdbc.sql("""
         SELECT pb.id, pb.batch_number AS title, pb.recall_reason AS description,
-               'manufacturer' AS source
+               'manufacturer' AS source, 'high' AS severity
         FROM product_batches pb
         WHERE pb.recall_status = 'recalled'
         UNION ALL
         SELECT db.id, db.batch_number AS title, dre.reason AS description,
-               'pharmacy' AS source
+               'pharmacy' AS source, 'high' AS severity
         FROM drug_batches db
         JOIN drug_recall_events dre ON dre.drug_batch_id = db.id
         ORDER BY 1 DESC LIMIT 10
@@ -92,7 +93,7 @@ public class RegulatorService {
     compliance.put("reviewingReports", reviewingReports);
     compliance.put("resolvedReports", resolvedReports);
     compliance.put("safeScans", safeScans);
-    compliance.put("cautionScans", 0);
+    compliance.put("cautionScans", cautionScans);
     compliance.put("recalledScans", recalledScans);
 
     Map<String, Object> analytics = new LinkedHashMap<>();
@@ -149,12 +150,27 @@ public class RegulatorService {
 
   public Map<String, Object> createRecall(CurrentUser user, Map<String, Object> body) {
     String domain = String.valueOf(body.getOrDefault("domain", "food"));
-    String batchId = String.valueOf(body.get("batchId"));
+    String batchId = blankToNull(body.get("batchId"));
     String reason = String.valueOf(body.getOrDefault("reason", "Regulator recall"));
 
+    if (batchId == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select a batch to recall first.");
+    }
+    UUID batchUuid;
+    try {
+      batchUuid = UUID.fromString(batchId);
+    } catch (IllegalArgumentException ex) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "That batch id is not valid.");
+    }
+
     if ("drug".equals(domain)) {
-      jdbc.sql("UPDATE drug_batches SET recall_status = 'recalled' WHERE id = :id")
-          .param("id", UUID.fromString(batchId)).update();
+      // Guard against a double-click issuing two recalls (and two SMS/notification
+      // broadcasts) for the same batch.
+      int updated = jdbc.sql("UPDATE drug_batches SET recall_status = 'recalled' WHERE id = :id AND recall_status <> 'recalled'")
+          .param("id", batchUuid).update();
+      if (updated == 0) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "This batch has already been recalled.");
+      }
       jdbc.sql("UPDATE drug_qr_codes SET status = 'recalled' WHERE drug_batch_id = :id")
           .param("id", UUID.fromString(batchId)).update();
       Map<String, Object> recall = jdbc.sql("""
@@ -177,9 +193,15 @@ public class RegulatorService {
       return Map.of("recall", recall);
     }
 
-    jdbc.sql("UPDATE product_batches SET recall_status = 'recalled', recall_reason = :reason, recalled_at = now() WHERE id = :id")
-        .param("id", UUID.fromString(batchId))
+    int updated = jdbc.sql("""
+        UPDATE product_batches SET recall_status = 'recalled', recall_reason = :reason, recalled_at = now()
+        WHERE id = :id AND recall_status <> 'recalled'
+        """)
+        .param("id", batchUuid)
         .param("reason", reason).update();
+    if (updated == 0) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "This batch has already been recalled.");
+    }
     jdbc.sql("UPDATE qr_codes SET status = 'recalled' WHERE batch_id = :id")
         .param("id", UUID.fromString(batchId)).update();
 
@@ -205,7 +227,7 @@ public class RegulatorService {
     return Map.of("recall", recall);
   }
 
-  public Map<String, Object> addRecallEvidence(String recallId, MultipartFile file) {
+  public Map<String, Object> addRecallEvidence(CurrentUser user, String recallId, MultipartFile file) {
     if (file == null || file.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An evidence file is required");
     }
@@ -218,15 +240,33 @@ public class RegulatorService {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store the evidence file");
     }
 
+    UUID id = UUID.fromString(recallId);
     Map<String, Object> recall = jdbc.sql("""
         UPDATE recall_events SET evidence_urls = array_append(evidence_urls, :url)
         WHERE id = :id
         RETURNING id, batch_id, evidence_urls
         """)
-        .param("id", UUID.fromString(recallId))
+        .param("id", id)
         .param("url", url)
         .query(DatabaseRowMapper::toMap).optional()
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recall not found"));
+        .orElse(null);
+
+    String entityType = "recall_event";
+    if (recall == null) {
+      // Not a food recall - the same evidence endpoint is used for drug recalls too.
+      recall = jdbc.sql("""
+          UPDATE drug_recall_events SET evidence_urls = array_append(evidence_urls, :url)
+          WHERE id = :id
+          RETURNING id, drug_batch_id, evidence_urls
+          """)
+          .param("id", id)
+          .param("url", url)
+          .query(DatabaseRowMapper::toMap).optional()
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recall not found"));
+      entityType = "drug_recall_event";
+    }
+
+    auditLog.log(user.id(), "recall.evidence_added", entityType, recallId, Map.of("evidenceUrl", url));
     return Map.of("recall", recall);
   }
 
