@@ -227,9 +227,20 @@ public class RegulatorService {
     return Map.of("recall", recall);
   }
 
+  private static final java.util.Set<String> ALLOWED_EVIDENCE_TYPES = java.util.Set.of(
+      "image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf");
+
   public Map<String, Object> addRecallEvidence(CurrentUser user, String recallId, MultipartFile file) {
     if (file == null || file.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An evidence file is required");
+    }
+    // Uploaded evidence is served back at a public, unauthenticated /uploads/**
+    // URL with whatever content-type the extension implies - without an
+    // allow-list here, a file named e.g. evidence.html would be stored and
+    // served as same-origin HTML/SVG, a stored-XSS vector.
+    if (!ALLOWED_EVIDENCE_TYPES.contains(file.getContentType())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "Evidence must be a JPEG, PNG, WEBP, HEIC image, or a PDF.");
     }
     String url;
     try {
