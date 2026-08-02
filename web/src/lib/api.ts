@@ -13,6 +13,24 @@ export const enableDrugModule = (import.meta as any).env?.VITE_ENABLE_DRUG_MODUL
 export const apiRoot = apiBase.replace(/\/api\/?$/, "");
 export const paystackPublicKey = ((import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY ?? "").trim();
 
+/**
+ * fetch() has no built-in timeout - a stalled connection (dropped network
+ * mid-request, or a server that accepts a connection but never responds)
+ * leaves the promise unresolved forever with no error, which made screens
+ * across this app look permanently stuck loading with no way to recover.
+ * This wraps fetch() with an AbortController so every call eventually fails
+ * instead of hanging indefinitely.
+ */
+export async function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs = 25000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function readJsonResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
   if (!text.trim()) {

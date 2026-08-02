@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { apiBase } from "../lib/api";
+import { apiBase, fetchWithTimeout } from "../lib/api";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -25,7 +25,7 @@ export function AiAssistantSection() {
     setLoading(true);
     try {
       const history = next.slice(-10, -1);
-      const res = await fetch(`${apiBase}/assistant/chat`, {
+      const res = await fetchWithTimeout(`${apiBase}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: question, history }),

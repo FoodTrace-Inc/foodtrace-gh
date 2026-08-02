@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Icon } from "../components/Icon";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 type Props = {
   apiBase: string;
@@ -91,7 +92,7 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
-      const res = await fetch(`${apiBase}${cfg.endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetchWithTimeout(`${apiBase}${cfg.endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setProducts(cfg.pick(data).filter((p: Product) => p.qrCode || p.farmId));
     } catch {
@@ -143,7 +144,7 @@ export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCan
       if (attached?.farmId) body.farmId = attached.farmId;
       if (image) body.imageUrl = image;
 
-      const res = await fetch(`${apiBase}/marketplace/posts`, {
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),

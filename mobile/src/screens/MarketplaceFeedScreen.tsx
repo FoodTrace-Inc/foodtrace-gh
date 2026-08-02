@@ -27,6 +27,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Icon } from "../components/Icon";
 import { FilterPill } from "../components/FilterPill";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 type MarketplacePost = {
   id: string;
@@ -131,7 +132,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
     try {
       const domain = FILTERS.find((f) => f.key === filter)?.domain;
       const url = `${apiBase}/marketplace/posts${domain ? `?domain=${domain}` : ""}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error(res.status >= 500 ? "Server is waking up. Pull to refresh in a moment." : "Could not load the feed.");
       const data = await res.json();
       setPosts(Array.isArray(data.posts) ? data.posts : []);
@@ -156,7 +157,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
       likeCount: post.likeCount + (post.likedByViewer ? -1 : 1),
     });
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${post.id}/like`, { method: "POST", headers: authHeaders });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${post.id}/like`, { method: "POST", headers: authHeaders });
       if (!res.ok) { void loadFeed(); return; }
       const data = await res.json();
       if (typeof data.likeCount === "number") patchPost(post.id, { likedByViewer: data.liked, likeCount: data.likeCount });
@@ -168,7 +169,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
   async function toggleSave(post: MarketplacePost) {
     patchPost(post.id, { savedByViewer: !post.savedByViewer });
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${post.id}/save`, { method: "POST", headers: authHeaders });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${post.id}/save`, { method: "POST", headers: authHeaders });
       if (!res.ok) { void loadFeed(); return; }
       const data = await res.json();
       if (typeof data.saved === "boolean") patchPost(post.id, { savedByViewer: data.saved });
@@ -187,7 +188,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
       return;
     }
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${post.id}/comments`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${post.id}/comments`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setOpenComments((prev) => ({ ...prev, [post.id]: data.comments ?? [] }));
     } catch {
@@ -210,7 +211,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
   async function approve(post: MarketplacePost) {
     patchPost(post.id, { status: "active" });
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${post.id}/approve`, { method: "PATCH", headers: authHeaders });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${post.id}/approve`, { method: "PATCH", headers: authHeaders });
       if (!res.ok) void loadFeed();
     } catch {
       void loadFeed();
@@ -222,7 +223,7 @@ export function MarketplaceFeedScreen({ apiBase, token, currentUserRole, onVerif
     if (!body) return;
     setCommentDraft((prev) => ({ ...prev, [post.id]: "" }));
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${post.id}/comments`, {
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${post.id}/comments`, {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ body }),

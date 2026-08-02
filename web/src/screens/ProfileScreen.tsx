@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "../session/SessionContext";
-import { apiBase } from "../lib/api";
+import { apiBase, fetchWithTimeout } from "../lib/api";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -25,7 +25,7 @@ export function ProfileScreen() {
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
 
   useEffect(() => {
-    fetch(`${apiBase}/payments/subscription/${user.id}`, {
+    fetchWithTimeout(`${apiBase}/payments/subscription/${user.id}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     })
       .then((r) => r.json())

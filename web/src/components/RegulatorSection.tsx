@@ -5,7 +5,7 @@ import type {
   RegulatorRecallRequest,
   ReviewReportRequest,
 } from "@foodtrace/shared";
-import { apiBase, readJsonResponse, enableDrugModule } from "../lib/api";
+import { apiBase, readJsonResponse, enableDrugModule, fetchWithTimeout } from "../lib/api";
 import { styles } from "../lib/styles";
 
 interface Props {
@@ -27,7 +27,7 @@ export function RegulatorSection({ session }: Props) {
   async function loadRegulatorDashboard() {
     setRegulatorStatus("Loading regulator dashboard...");
     try {
-      const response = await fetch(`${apiBase}/regulator/dashboard`, {
+      const response = await fetchWithTimeout(`${apiBase}/regulator/dashboard`, {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = (await readJsonResponse(response)) as { dashboard: RegulatorDashboardResponse; error?: unknown };
@@ -46,7 +46,7 @@ export function RegulatorSection({ session }: Props) {
     const payload: ReviewReportRequest = { reportId, status: reportStatus };
     setRegulatorStatus("Updating report...");
     try {
-      const response = await fetch(`${apiBase}/regulator/reports`, {
+      const response = await fetchWithTimeout(`${apiBase}/regulator/reports`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -69,7 +69,7 @@ export function RegulatorSection({ session }: Props) {
     };
     setRegulatorStatus("Issuing regulator recall...");
     try {
-      const response = await fetch(`${apiBase}/regulator/recalls`, {
+      const response = await fetchWithTimeout(`${apiBase}/regulator/recalls`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),

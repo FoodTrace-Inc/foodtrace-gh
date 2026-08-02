@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AuthResponse } from "@foodtrace/shared";
-import { apiBase } from "../lib/api";
+import { apiBase, fetchWithTimeout } from "../lib/api";
 import { usePalette } from "../theme/ThemeContext";
 
 type Post = {
@@ -71,7 +71,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
     setError("");
     try {
       const domain = FILTERS.find((f) => f.key === filter)?.domain;
-      const res = await fetch(`${apiBase}/marketplace/posts${domain ? `?domain=${domain}` : ""}`, {
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts${domain ? `?domain=${domain}` : ""}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(res.status >= 500 ? "Server is waking up — please retry in a moment." : "Could not load the feed.");
@@ -93,7 +93,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
   async function toggleLike(p: Post) {
     patch(p.id, { likedByViewer: !p.likedByViewer, likeCount: p.likeCount + (p.likedByViewer ? -1 : 1) });
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${p.id}/like`, { method: "POST", headers: auth });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${p.id}/like`, { method: "POST", headers: auth });
       if (!res.ok) return void loadFeed();
       const d = await res.json();
       if (typeof d.likeCount === "number") patch(p.id, { likedByViewer: d.liked, likeCount: d.likeCount });
@@ -103,7 +103,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
   async function toggleSave(p: Post) {
     patch(p.id, { savedByViewer: !p.savedByViewer });
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${p.id}/save`, { method: "POST", headers: auth });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${p.id}/save`, { method: "POST", headers: auth });
       if (!res.ok) return void loadFeed();
       const d = await res.json();
       if (typeof d.saved === "boolean") patch(p.id, { savedByViewer: d.saved });
@@ -116,7 +116,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
       return;
     }
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${p.id}/comments`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${p.id}/comments`, { headers: { Authorization: `Bearer ${token}` } });
       const d = res.ok ? await res.json() : { comments: [] };
       setOpenComments((prev) => ({ ...prev, [p.id]: d.comments ?? [] }));
     } catch { setOpenComments((prev) => ({ ...prev, [p.id]: [] })); }
@@ -127,7 +127,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
     if (!body) return;
     setDraft((prev) => ({ ...prev, [p.id]: "" }));
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${p.id}/comments`, { method: "POST", headers: auth, body: JSON.stringify({ body }) });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${p.id}/comments`, { method: "POST", headers: auth, body: JSON.stringify({ body }) });
       const d = res.ok ? await res.json() : null;
       if (!d?.comment) throw new Error("failed");
       setOpenComments((prev) => ({ ...prev, [p.id]: [...(prev[p.id] ?? []), d.comment] }));
@@ -147,7 +147,7 @@ export function MarketplaceSection({ session }: { session: AuthResponse }) {
   async function approve(p: Post) {
     patch(p.id, { status: "active" });
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts/${p.id}/approve`, { method: "PATCH", headers: auth });
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts/${p.id}/approve`, { method: "PATCH", headers: auth });
       if (!res.ok) void loadFeed();
     } catch { void loadFeed(); }
   }
@@ -287,7 +287,7 @@ function ComposeForm({ token, role, onPosted }: { token: string; role: string; o
     if (!title.trim()) { setStatus("Add a product title."); return; }
     setBusy(true); setStatus("");
     try {
-      const res = await fetch(`${apiBase}/marketplace/posts`, {
+      const res = await fetchWithTimeout(`${apiBase}/marketplace/posts`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({

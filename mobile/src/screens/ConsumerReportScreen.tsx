@@ -26,6 +26,7 @@ import {
   View,
 } from "react-native";
 import type { SubmitConsumerReportResponse } from "@foodtrace/shared";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -152,7 +153,7 @@ export function ConsumerReportScreen({
     setStatusMessage("Submitting your report...");
 
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${apiBase}/scan/${encodeURIComponent(scannedCode.trim().toUpperCase())}/report`,
         {
           method: "POST",

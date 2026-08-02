@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage } from "../lib/api";
+import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage, fetchWithTimeout } from "../lib/api";
 import { PasswordField } from "./PasswordField";
 import type { Palette } from "../theme/ThemeContext";
 
@@ -53,7 +53,7 @@ export function ForgotPasswordFlow({ palette: p, onBack, onDone }: Props) {
   async function post(path: string, body: object) {
     let response: Response;
     try {
-      response = await fetch(`${apiBase}/auth/forgot-password/${path}`, {
+      response = await fetchWithTimeout(`${apiBase}/auth/forgot-password/${path}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
     } catch {

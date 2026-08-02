@@ -28,6 +28,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import type { DrugScanResult, ProductScanResult } from "@foodtrace/shared";
 import { Icon } from "../components/Icon";
 import { ScannerFrame } from "../components/ScannerFrame";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ export function QRScannerScreen({
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(endpoint, { headers });
+    const response = await fetchWithTimeout(endpoint, { headers });
     const data = (await readJsonResponse(response)) as
       | { result: ProductScanResult }
       | { result: DrugScanResult }

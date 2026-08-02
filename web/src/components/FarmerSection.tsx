@@ -8,7 +8,7 @@ import type {
   OfflineSyncRequest,
   WeatherResponse,
 } from "@foodtrace/shared";
-import { apiBase, readJsonResponse } from "../lib/api";
+import { apiBase, readJsonResponse, fetchWithTimeout } from "../lib/api";
 import { styles } from "../lib/styles";
 import { MetricCards } from "./MetricCards";
 
@@ -43,7 +43,7 @@ export function FarmerSection({ session }: Props) {
   async function loadFoodDashboard() {
     setFoodStatus("Loading food dashboard...");
     try {
-      const response = await fetch(`${apiBase}/food/dashboard`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/dashboard`, {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = (await readJsonResponse(response)) as { dashboard: FoodDashboardResponse; error?: unknown };
@@ -62,7 +62,7 @@ export function FarmerSection({ session }: Props) {
   async function loadWeather(region?: string) {
     try {
       const qs = region ? `?region=${encodeURIComponent(region)}` : "";
-      const response = await fetch(`${apiBase}/food/weather${qs}`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/weather${qs}`, {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       if (!response.ok) return;
@@ -82,7 +82,7 @@ export function FarmerSection({ session }: Props) {
     };
     setFoodStatus("Creating farm...");
     try {
-      const response = await fetch(`${apiBase}/food/farms`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/farms`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -100,7 +100,7 @@ export function FarmerSection({ session }: Props) {
     const payload: CreateCropCycleRequest = { farmId: cycleFarmId, cropType: cycleCropType, plantingDate: cyclePlantingDate };
     setFoodStatus("Creating crop cycle...");
     try {
-      const response = await fetch(`${apiBase}/food/crop-cycles`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/crop-cycles`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -125,7 +125,7 @@ export function FarmerSection({ session }: Props) {
     };
     setFoodStatus("Saving input log...");
     try {
-      const response = await fetch(`${apiBase}/food/input-logs`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/input-logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -142,7 +142,7 @@ export function FarmerSection({ session }: Props) {
   async function markMarketReady() {
     setFoodStatus("Updating market-ready status...");
     try {
-      const response = await fetch(`${apiBase}/food/crop-cycles/market-ready`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/crop-cycles/market-ready`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({ cropCycleId: marketReadyCycleId, marketReady: marketReadyValue }),
@@ -160,7 +160,7 @@ export function FarmerSection({ session }: Props) {
     setFoodStatus("Syncing offline queue...");
     try {
       const payload = JSON.parse(offlineQueue) as OfflineSyncRequest;
-      const response = await fetch(`${apiBase}/food/offline-sync`, {
+      const response = await fetchWithTimeout(`${apiBase}/food/offline-sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),

@@ -76,6 +76,7 @@ import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
 import { API_BASE_URL } from "./src/config";
 import { PasswordStrengthMeter, isPasswordStrongEnough } from "./src/components/PasswordStrengthMeter";
 import { LiveScanCounter } from "./src/components/LiveScanCounter";
+import { fetchWithTimeout } from "./src/lib/fetchWithTimeout";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -395,7 +396,7 @@ function AppContent() {
         }
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         const pushToken = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
-        await fetch(`${apiBase}/notifications/push-token`, {
+        await fetchWithTimeout(`${apiBase}/notifications/push-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
           body: JSON.stringify({ token: pushToken }),
@@ -430,7 +431,7 @@ function AppContent() {
   const loadNotifications = useCallback(async () => {
     if (!session?.token) return;
     try {
-      const res = await fetch(`${apiBase}/notifications`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const res = await fetchWithTimeout(`${apiBase}/notifications`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await res.json();
       setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
       setUnread(typeof data.unread === "number" ? data.unread : 0);
@@ -505,7 +506,7 @@ function AppContent() {
     setShowNotifications(true);
     setUnread(0);
     try {
-      await fetch(`${apiBase}/notifications/read`, { method: "POST", headers: { Authorization: `Bearer ${session?.token}` } });
+      await fetchWithTimeout(`${apiBase}/notifications/read`, { method: "POST", headers: { Authorization: `Bearer ${session?.token}` } });
     } catch { /* best effort */ }
   }
 
@@ -598,7 +599,7 @@ function AppContent() {
 
   function signOut() {
     if (session?.token) {
-      void fetch(`${apiBase}/auth/logout`, {
+      void fetchWithTimeout(`${apiBase}/auth/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.token}` },
       }).catch(() => { /* best effort - local sign-out still proceeds */ });
@@ -644,7 +645,7 @@ function AppContent() {
     const kind: "food" | "drug" = domain === "drug" ? "drug" : "food";
     const path = kind === "drug" ? "drug/scan" : "scan";
     try {
-      const response = await fetch(`${apiBase}/${path}/${encodeURIComponent(normalized)}`, {
+      const response = await fetchWithTimeout(`${apiBase}/${path}/${encodeURIComponent(normalized)}`, {
         headers: session?.token ? { Authorization: `Bearer ${session.token}` } : undefined,
       });
       const data = await readJsonResponse<{ result: ProductScanResult | DrugScanResult }>(response);
@@ -662,7 +663,7 @@ function AppContent() {
     const kind: "food" | "drug" = domain === "drug" ? "drug" : "food";
     const path = kind === "drug" ? "drug/scan" : "scan";
     try {
-      const response = await fetch(`${apiBase}/${path}/${encodeURIComponent(normalized)}`, {
+      const response = await fetchWithTimeout(`${apiBase}/${path}/${encodeURIComponent(normalized)}`, {
         headers: session?.token ? { Authorization: `Bearer ${session.token}` } : undefined,
       });
       const data = await readJsonResponse<{ result: ProductScanResult | DrugScanResult }>(response);
@@ -676,7 +677,7 @@ function AppContent() {
     if (!normalized) return;
     setScanLoading(true);
     try {
-      const response = await fetch(`${apiBase}/scan/${encodeURIComponent(normalized)}`, {
+      const response = await fetchWithTimeout(`${apiBase}/scan/${encodeURIComponent(normalized)}`, {
         headers: session?.token ? { Authorization: `Bearer ${session.token}` } : undefined,
       });
       const data = await readJsonResponse<{ result: ProductScanResult }>(response);
@@ -690,7 +691,7 @@ function AppContent() {
     if (!normalized) { setDrugScanStatus("Enter a drug QR code first."); return; }
     setDrugScanStatus("Looking up drug...");
     try {
-      const response = await fetch(`${apiBase}/drug/scan/${encodeURIComponent(normalized)}`, {
+      const response = await fetchWithTimeout(`${apiBase}/drug/scan/${encodeURIComponent(normalized)}`, {
         headers: session?.token ? { Authorization: `Bearer ${session.token}` } : undefined,
       });
       const data = await readJsonResponse<{ result: DrugScanResult }>(response);
@@ -713,7 +714,7 @@ function AppContent() {
   // ── speech ────────────────────────────────────────────────────────────────
 
   async function playGoogleSpeech(text: string) {
-    const response = await fetch(`${apiBase}/audio/speech`, {
+    const response = await fetchWithTimeout(`${apiBase}/audio/speech`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, language: scanLanguage }),
     });
@@ -755,7 +756,7 @@ function AppContent() {
     setMatchedPesticide(null);
     if (!session?.token || query.trim().length < 2) { setPesticideSuggestions([]); return; }
     try {
-      const response = await fetch(`${apiBase}/food/pesticides?q=${encodeURIComponent(query.trim())}`, { headers: { Authorization: `Bearer ${session.token}` } });
+      const response = await fetchWithTimeout(`${apiBase}/food/pesticides?q=${encodeURIComponent(query.trim())}`, { headers: { Authorization: `Bearer ${session.token}` } });
       const data = await readJsonResponse<{ pesticides: PesticideEntry[] }>(response);
       setPesticideSuggestions(data.pesticides ?? []);
     } catch { /* suggestions are a nice-to-have */ }
@@ -774,7 +775,7 @@ function AppContent() {
     setFoodStatus("Creating farm...");
     try {
       const payload: CreateFarmRequest = { name: farmName, district: farmDistrict, region: farmRegion, cropTypes: farmCrops.split(",").map((s) => s.trim()).filter(Boolean) };
-      await readJsonResponse(await fetch(`${apiBase}/food/farms`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/food/farms`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadFoodDashboard();
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
   }
@@ -784,7 +785,7 @@ function AppContent() {
     setFoodStatus("Creating cycle...");
     try {
       const payload: CreateCropCycleRequest = { farmId: cycleFarmId, cropType: cycleCropType, plantingDate: cyclePlantingDate };
-      await readJsonResponse(await fetch(`${apiBase}/food/crop-cycles`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/food/crop-cycles`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadFoodDashboard();
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
   }
@@ -794,7 +795,7 @@ function AppContent() {
     setFoodStatus("Saving input log...");
     try {
       const payload: CreateInputLogRequest = { cropCycleId: inputCycleId, inputType, productName: inputProductName, applicationDate: inputApplicationDate, withdrawalPeriodDays: Number(inputWithdrawalDays), epaApprovalStatus: inputEpaStatus as CreateInputLogRequest["epaApprovalStatus"] };
-      await readJsonResponse(await fetch(`${apiBase}/food/input-logs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/food/input-logs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadFoodDashboard();
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
   }
@@ -802,7 +803,7 @@ function AppContent() {
   async function markMarketReady() {
     if (!session?.token) return;
     try {
-      await readJsonResponse(await fetch(`${apiBase}/food/crop-cycles/market-ready`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ cropCycleId: marketReadyCycleId, marketReady: marketReadyValue }) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/food/crop-cycles/market-ready`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ cropCycleId: marketReadyCycleId, marketReady: marketReadyValue }) }));
       await loadFoodDashboard();
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
   }
@@ -811,7 +812,7 @@ function AppContent() {
     if (!session?.token) return;
     try {
       const payload = JSON.parse(offlineQueue) as OfflineSyncRequest;
-      const data = await readJsonResponse<{ results?: unknown }>(await fetch(`${apiBase}/food/offline-sync`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      const data = await readJsonResponse<{ results?: unknown }>(await fetchWithTimeout(`${apiBase}/food/offline-sync`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       setFoodStatus(`Synced: ${JSON.stringify(data.results)}`);
       await loadFoodDashboard();
     } catch (error) { setFoodStatus(getFriendlyError(error)); }
@@ -835,7 +836,7 @@ function AppContent() {
     setManufacturerStatus("Creating profile...");
     try {
       const payload: CreateManufacturerProfileRequest = { companyName, fdaRegistrationNumber: fdaRegNumber || null, sector: manufacturerSector, subscriptionTier };
-      await readJsonResponse(await fetch(`${apiBase}/manufacturer/profile`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/manufacturer/profile`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadManufacturerDashboard();
     } catch (error) { setManufacturerStatus(getFriendlyError(error)); }
   }
@@ -852,7 +853,7 @@ function AppContent() {
     setManufacturerStatus("Creating batch...");
     try {
       const payload: CreateProductBatchRequest = { batchNumber, ingredientSources: [ingredientSources], processingSteps: processingSteps.split(",").map((s) => s.trim()).filter(Boolean), qualityChecks: [qualityChecks], packagingDate, expiryDate, imageUrl: batchImage };
-      const data = await readJsonResponse<CreateProductBatchResponse>(await fetch(`${apiBase}/manufacturer/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      const data = await readJsonResponse<CreateProductBatchResponse>(await fetchWithTimeout(`${apiBase}/manufacturer/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       setManufacturerStatus(`Batch created. QR: ${data.qrCode.codeString}`);
       setBatchImage(null);
       await loadManufacturerDashboard();
@@ -864,7 +865,7 @@ function AppContent() {
     setManufacturerStatus("Issuing recall...");
     try {
       const payload: CreateRecallRequest = { batchId: recallBatchId, recallType, reason: recallReason, scopeDistricts: recallScopeDistricts.split(",").map((s) => s.trim()).filter(Boolean) };
-      await readJsonResponse(await fetch(`${apiBase}/manufacturer/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/manufacturer/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadManufacturerDashboard();
     } catch (error) { setManufacturerStatus(getFriendlyError(error)); }
   }
@@ -889,7 +890,7 @@ function AppContent() {
     if (!["reviewing", "resolved", "dismissed"].includes(reportStatus)) { setRegulatorStatus("Status must be reviewing, resolved, or dismissed."); return; }
     setRegulatorStatus("Updating report...");
     try {
-      await readJsonResponse(await fetch(`${apiBase}/regulator/reports`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ reportId: reportId.trim(), status: reportStatus }) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/regulator/reports`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ reportId: reportId.trim(), status: reportStatus }) }));
       setRegulatorStatus("Report updated.");
       await loadRegulatorDashboard();
     } catch (error) { setRegulatorStatus(getFriendlyError(error)); }
@@ -900,7 +901,7 @@ function AppContent() {
     setRegulatorStatus("Issuing recall...");
     try {
       const payload: RegulatorRecallRequest = { batchId: regulatorRecallBatchId, reason: regulatorRecallReason, scopeDistricts: regulatorRecallDistricts.split(",").map((s) => s.trim()).filter(Boolean), domain: regulatorRecallDomain };
-      await readJsonResponse(await fetch(`${apiBase}/regulator/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/regulator/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadRegulatorDashboard();
     } catch (error) { setRegulatorStatus(getFriendlyError(error)); }
   }
@@ -922,7 +923,7 @@ function AppContent() {
     setPharmacyStatus("Registering...");
     try {
       const payload: RegisterPharmacyRequest = { businessName, ghanaPharmacyCouncilNumber: gpcNumber, district: pharmacyDistrict, region: pharmacyRegion };
-      await readJsonResponse(await fetch(`${apiBase}/drug/register`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/drug/register`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadPharmacyDashboard();
     } catch (error) { setPharmacyStatus(getFriendlyError(error)); }
   }
@@ -932,7 +933,7 @@ function AppContent() {
     setPharmacyStatus("Creating drug record...");
     try {
       const payload: CreateDrugRecordRequest = { name: drugName, genericName: drugGenericName || null, manufacturerName: drugManufacturer || null, fdaDrugRegistrationNumber: drugFdaNumber || null, drugClass: drugClass || null, dosageForm: drugDosageForm || null, strength: drugStrength || null, requiresPrescription: drugRequiresPrescription, isControlled: drugIsControlled, fdaApprovalStatus: drugApprovalStatus, storageConditions: drugStorage || null, sideEffectsSummary: drugSideEffects || null };
-      await readJsonResponse(await fetch(`${apiBase}/drug/drugs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/drug/drugs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadPharmacyDashboard();
     } catch (error) { setPharmacyStatus(getFriendlyError(error)); }
   }
@@ -951,7 +952,7 @@ function AppContent() {
     setPharmacyStatus("Creating batch...");
     try {
       const payload: CreateDrugBatchRequest = { drugId: firstDrugId, batchNumber: drugBatchNumber, manufactureDate: drugManufactureDate, expiryDate: drugExpiryDate, quantityReceived: Number(drugQuantityReceived), quantityRemaining: Number(drugQuantityRemaining), supplierName: drugSupplierName || null, imageUrl: drugBatchImage };
-      const data = await readJsonResponse<CreateDrugBatchResponse>(await fetch(`${apiBase}/drug/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      const data = await readJsonResponse<CreateDrugBatchResponse>(await fetchWithTimeout(`${apiBase}/drug/batches`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       setPharmacyStatus(`Batch created. QR: ${data.qrCode.codeString}`);
       setDrugBatchImage(null);
       await loadPharmacyDashboard();
@@ -963,7 +964,7 @@ function AppContent() {
     setPharmacyStatus("Creating recall...");
     try {
       const payload: CreateDrugRecallRequest = { batchId: drugRecallBatchId, reason: drugRecallReason };
-      await readJsonResponse(await fetch(`${apiBase}/drug/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
+      await readJsonResponse(await fetchWithTimeout(`${apiBase}/drug/recalls`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify(payload) }));
       await loadPharmacyDashboard();
     } catch (error) { setPharmacyStatus(getFriendlyError(error)); }
   }
@@ -980,7 +981,7 @@ function AppContent() {
     try {
       // Send last 10 messages as history so Claude remembers the conversation
       const history = updatedMessages.slice(-10).slice(0, -1);
-      const response = await fetch(`${apiBase}/assistant/chat`, {
+      const response = await fetchWithTimeout(`${apiBase}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}) },
         body: JSON.stringify({ message: text, history }),

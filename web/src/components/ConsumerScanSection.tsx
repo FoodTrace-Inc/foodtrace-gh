@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AuthResponse, ProductScanResult, SubmitConsumerReportResponse } from "@foodtrace/shared";
-import { apiBase, readJsonResponse, getFriendlyErrorMessage, showDemoMode } from "../lib/api";
+import { apiBase, readJsonResponse, getFriendlyErrorMessage, showDemoMode, fetchWithTimeout } from "../lib/api";
 import { styles } from "../lib/styles";
 import { sampleCodes } from "../lib/constants";
 import { SafetyRing, statusToRingStatus } from "./SafetyRing";
@@ -33,7 +33,7 @@ export function ConsumerScanSection({ session, scanCode, setScanCode, scanResult
       body.append("district", reportDistrict);
       if (reportPhoto) body.append("photo", reportPhoto);
 
-      const response = await fetch(`${apiBase}/scan/${encodeURIComponent(code)}/report`, {
+      const response = await fetchWithTimeout(`${apiBase}/scan/${encodeURIComponent(code)}/report`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.token}` },
         body,

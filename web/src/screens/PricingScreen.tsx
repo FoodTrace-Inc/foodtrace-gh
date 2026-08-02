@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { apiBase, paystackPublicKey } from "../lib/api";
+import { apiBase, paystackPublicKey, fetchWithTimeout } from "../lib/api";
 import { SELLER_PLANS, CONSUMER_PLANS, type PlanDef } from "../lib/plans";
 import { usePalette } from "../theme/ThemeContext";
 import { useSession } from "../session/SessionContext";
@@ -41,7 +41,7 @@ export function PricingScreen() {
     setBusyPlan(plan.key);
     setStatus("Starting payment...");
     try {
-      const initRes = await fetch(`${apiBase}/payments/initialize-inline`, {
+      const initRes = await fetchWithTimeout(`${apiBase}/payments/initialize-inline`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({ planType: plan.key, email: session.user.email }),
@@ -59,7 +59,7 @@ export function PricingScreen() {
           void (async () => {
             setStatus("Verifying payment...");
             try {
-              const verifyRes = await fetch(`${apiBase}/payments/verify/${response.reference}`, {
+              const verifyRes = await fetchWithTimeout(`${apiBase}/payments/verify/${response.reference}`, {
                 headers: { Authorization: `Bearer ${session.token}` },
               });
               const verifyData = await verifyRes.json();

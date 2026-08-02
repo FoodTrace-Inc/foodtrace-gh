@@ -27,6 +27,7 @@ import { Audio } from "expo-av";
 import type { DrugScanResult, ProductScanResult, SpeechSummaryResponse } from "@foodtrace/shared";
 import { SafetyRing, statusToRingStatus } from "../components/SafetyRing";
 import { Icon } from "../components/Icon";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -240,7 +241,7 @@ export function SafetyResultScreen({
     async (text: string, rate: number): Promise<void> => {
       // "ak" (Akan) is the correct language code for Twi - "tw" gives worse
       // pronunciation on the Google TTS voices that support it at all.
-      const response = await fetch(`${apiBase}/audio/speech`, {
+      const response = await fetchWithTimeout(`${apiBase}/audio/speech`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, language: scanLanguage === "tw" ? "ak" : scanLanguage, speakingRate: rate }),

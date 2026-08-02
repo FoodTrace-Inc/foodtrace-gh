@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 const COLORS = {
   background: "#05080b",
@@ -48,13 +49,13 @@ export function ForgotPasswordScreen({ apiBase, onDone, onBack }: Props) {
   async function post(path: string, body: object) {
     let res: Response;
     try {
-      res = await fetch(`${apiBase}/auth/forgot-password/${path}`, {
+      res = await fetchWithTimeout(`${apiBase}/auth/forgot-password/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
     } catch {
-      // fetch() throws (not a resolved response) when there's no network path
+      // fetchWithTimeout() throws (not a resolved response) when there's no network path
       // to the server at all - a real connectivity issue, not a bad input.
       throw new Error("Could not connect to the server. Please check your internet connection and try again.");
     }

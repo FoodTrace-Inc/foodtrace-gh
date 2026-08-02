@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { usePalette } from "../theme/ThemeContext";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 interface SubscriptionStatus {
   plan: string;
@@ -38,8 +39,8 @@ export function SubscriptionManagementScreen({ apiBase, token, userId, onUpgrade
     setLoading(true);
     try {
       const [subRes, histRes] = await Promise.all([
-        fetch(`${apiBase}/payments/subscription/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiBase}/payments/history`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchWithTimeout(`${apiBase}/payments/subscription/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchWithTimeout(`${apiBase}/payments/history`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const subData = await subRes.json();
       const histData = await histRes.json();
@@ -57,7 +58,7 @@ export function SubscriptionManagementScreen({ apiBase, token, userId, onUpgrade
   async function cancel() {
     setStatus("Cancelling...");
     try {
-      const res = await fetch(`${apiBase}/payments/subscription/cancel`, {
+      const res = await fetchWithTimeout(`${apiBase}/payments/subscription/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });

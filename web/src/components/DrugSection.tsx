@@ -9,7 +9,7 @@ import type {
   DrugScanResult,
   RegisterPharmacyRequest,
 } from "@foodtrace/shared";
-import { apiBase, readJsonResponse } from "../lib/api";
+import { apiBase, readJsonResponse, fetchWithTimeout } from "../lib/api";
 import { styles } from "../lib/styles";
 import { SafetyRing, statusToRingStatus } from "./SafetyRing";
 import { MetricCards } from "./MetricCards";
@@ -60,7 +60,7 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
     if (!session?.token) return;
     setPharmacyStatus("Loading pharmacy dashboard...");
     try {
-      const response = await fetch(`${apiBase}/drug/dashboard`, {
+      const response = await fetchWithTimeout(`${apiBase}/drug/dashboard`, {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = (await readJsonResponse(response)) as { dashboard: DrugDashboardResponse; error?: unknown };
@@ -78,7 +78,7 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
     const payload: RegisterPharmacyRequest = { businessName, ghanaPharmacyCouncilNumber: gpcNumber, district: pharmacyDistrict, region: pharmacyRegion };
     setPharmacyStatus("Registering pharmacy...");
     try {
-      const response = await fetch(`${apiBase}/drug/register`, {
+      const response = await fetchWithTimeout(`${apiBase}/drug/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -110,7 +110,7 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
     };
     setPharmacyStatus("Creating drug record...");
     try {
-      const response = await fetch(`${apiBase}/drug/drugs`, {
+      const response = await fetchWithTimeout(`${apiBase}/drug/drugs`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -139,7 +139,7 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
     };
     setPharmacyStatus("Creating drug batch and QR...");
     try {
-      const response = await fetch(`${apiBase}/drug/batches`, {
+      const response = await fetchWithTimeout(`${apiBase}/drug/batches`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -158,7 +158,7 @@ export function DrugSection({ session, isPharmacist, drugScanCode, setDrugScanCo
     const payload: CreateDrugRecallRequest = { batchId: drugRecallBatchId, reason: drugRecallReason };
     setPharmacyStatus("Creating drug recall...");
     try {
-      const response = await fetch(`${apiBase}/drug/recalls`, {
+      const response = await fetchWithTimeout(`${apiBase}/drug/recalls`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),

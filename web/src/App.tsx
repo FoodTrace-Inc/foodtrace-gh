@@ -17,14 +17,14 @@ import { PricingScreen } from "./screens/PricingScreen";
 import { TermsScreen } from "./screens/TermsScreen";
 import { PrivacyScreen } from "./screens/PrivacyScreen";
 import { ScrollToTop } from "./components/ScrollToTop";
-import { apiBase } from "./lib/api";
+import { apiBase, fetchWithTimeout } from "./lib/api";
 
 function App() {
   const [session, setSession] = useState<AuthResponse | null>(null);
 
   function signOut() {
     if (session?.token) {
-      fetch(`${apiBase}/auth/logout`, {
+      fetchWithTimeout(`${apiBase}/auth/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.token}` },
       }).catch(() => { /* best effort - local sign-out still proceeds */ });

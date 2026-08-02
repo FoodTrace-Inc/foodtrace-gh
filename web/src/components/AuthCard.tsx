@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { AuthResponse, UserRole } from "@foodtrace/shared";
-import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage } from "../lib/api";
+import { apiBase, readJsonResponse, getApiErrorMessage, getFriendlyErrorMessage, fetchWithTimeout } from "../lib/api";
 import { useTheme, usePalette } from "../theme/ThemeContext";
 import { PasswordField } from "./PasswordField";
 import { ForgotPasswordFlow } from "./ForgotPasswordFlow";
@@ -86,7 +86,7 @@ export function AuthCard({ session, role, setRole, roleList, onSignIn, onSignOut
               securityQuestion1, securityAnswer1: securityAnswer1.trim(),
               securityQuestion2, securityAnswer2: securityAnswer2.trim() };
 
-      const response = await fetch(`${apiBase}${endpoint}`, {
+      const response = await fetchWithTimeout(`${apiBase}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

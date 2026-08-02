@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import * as WebBrowser from "expo-web-browser";
 import { usePalette } from "../theme/ThemeContext";
 import type { PlanDef } from "./SubscriptionPlansScreen";
+import { fetchWithTimeout } from "../lib/fetchWithTimeout";
 
 type Method = "mtn" | "vodafone" | "airteltigo" | "card";
 
@@ -38,7 +39,7 @@ export function PaymentScreen({ apiBase, token, userEmail, plan, onSuccess, onFa
     setBusy(true);
     setStatus("Starting payment...");
     try {
-      const initRes = await fetch(`${apiBase}/payments/initialize`, {
+      const initRes = await fetchWithTimeout(`${apiBase}/payments/initialize`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ email: userEmail, planType: plan.key, currency: "GHS", phone: method === "card" ? undefined : phone.trim() }),
@@ -54,7 +55,7 @@ export function PaymentScreen({ apiBase, token, userEmail, plan, onSuccess, onFa
       // redirect back - either way, verify against our backend, which is
       // the source of truth, rather than trusting the browser result type.
       setStatus("Verifying payment...");
-      const verifyRes = await fetch(`${apiBase}/payments/verify/${reference}`, {
+      const verifyRes = await fetchWithTimeout(`${apiBase}/payments/verify/${reference}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const verifyData = await verifyRes.json();

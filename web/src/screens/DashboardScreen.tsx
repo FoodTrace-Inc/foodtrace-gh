@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DrugScanResult, ProductScanResult } from "@foodtrace/shared";
-import { apiBase, enableDrugModule, getFriendlyErrorMessage, readJsonResponse } from "../lib/api";
+import { apiBase, enableDrugModule, getFriendlyErrorMessage, readJsonResponse, fetchWithTimeout } from "../lib/api";
 import { useSession } from "../session/SessionContext";
 import { usePalette } from "../theme/ThemeContext";
 import { ConsumerScanSection } from "../components/ConsumerScanSection";
@@ -33,7 +33,7 @@ export function DashboardScreen() {
     setScanLoading(true);
     setScanStatus("Looking up product...");
     try {
-      const response = await fetch(`${apiBase}/scan/${encodeURIComponent(normalized)}`, {
+      const response = await fetchWithTimeout(`${apiBase}/scan/${encodeURIComponent(normalized)}`, {
         headers: session.token ? { Authorization: `Bearer ${session.token}` } : undefined,
       });
       const data = (await readJsonResponse(response)) as { result: ProductScanResult };
@@ -51,7 +51,7 @@ export function DashboardScreen() {
     if (!normalized) { setDrugScanStatus("Enter a drug QR code first."); return; }
     setDrugScanStatus("Looking up drug...");
     try {
-      const response = await fetch(`${apiBase}/drug/scan/${encodeURIComponent(normalized)}`);
+      const response = await fetchWithTimeout(`${apiBase}/drug/scan/${encodeURIComponent(normalized)}`);
       const data = (await readJsonResponse(response)) as { result: DrugScanResult; error?: unknown };
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not scan drug");
       setDrugScanResult(data.result);

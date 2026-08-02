@@ -7,7 +7,7 @@ import type {
   CreateRecallRequest,
   ManufacturerDashboardResponse,
 } from "@foodtrace/shared";
-import { apiBase, readJsonResponse, resolveAssetUrl } from "../lib/api";
+import { apiBase, readJsonResponse, resolveAssetUrl, fetchWithTimeout } from "../lib/api";
 import { MetricCards } from "./MetricCards";
 import { styles } from "../lib/styles";
 
@@ -41,7 +41,7 @@ export function ManufacturerSection({ session }: Props) {
   async function loadManufacturerDashboard() {
     setManufacturerStatus("Loading manufacturer dashboard...");
     try {
-      const response = await fetch(`${apiBase}/manufacturer/dashboard`, {
+      const response = await fetchWithTimeout(`${apiBase}/manufacturer/dashboard`, {
         headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = (await readJsonResponse(response)) as { dashboard: ManufacturerDashboardResponse; error?: unknown };
@@ -64,7 +64,7 @@ export function ManufacturerSection({ session }: Props) {
     };
     setManufacturerStatus("Creating manufacturer profile...");
     try {
-      const response = await fetch(`${apiBase}/manufacturer/profile`, {
+      const response = await fetchWithTimeout(`${apiBase}/manufacturer/profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -91,7 +91,7 @@ export function ManufacturerSection({ session }: Props) {
     };
     setManufacturerStatus("Creating batch and QR...");
     try {
-      const response = await fetch(`${apiBase}/manufacturer/batches`, {
+      const response = await fetchWithTimeout(`${apiBase}/manufacturer/batches`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
@@ -125,7 +125,7 @@ export function ManufacturerSection({ session }: Props) {
     };
     setManufacturerStatus("Creating recall...");
     try {
-      const response = await fetch(`${apiBase}/manufacturer/recalls`, {
+      const response = await fetchWithTimeout(`${apiBase}/manufacturer/recalls`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
         body: JSON.stringify(payload),
