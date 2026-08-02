@@ -37,16 +37,18 @@ public class DrugService {
 
     String pharmacyId = pharmacy != null ? String.valueOf(pharmacy.get("id")) : null;
 
-    List<Map<String, Object>> drugs = pharmacyId == null ? List.of() : jdbc.sql("""
-        SELECT d.id, d.name, d.generic_name, d.drug_class, d.dosage_form, d.strength,
-               d.requires_prescription, d.fda_approval_status
-        FROM drugs d
-        JOIN drug_batches db ON db.drug_id = d.id
-        WHERE db.pharmacy_id = :pid
-        GROUP BY d.id
-        ORDER BY d.created_at DESC
+    // drugs is a shared FDA catalog, not owned per-pharmacy - it exists here so
+    // a pharmacist can pick a drugId to attach a new batch to. Scoping this to
+    // "drugs this pharmacy already has a batch for" (the old INNER JOIN) made a
+    // freshly created drug invisible until a batch existed for it, which made
+    // batch creation for that drug permanently unreachable.
+    List<Map<String, Object>> drugs = jdbc.sql("""
+        SELECT id, name, generic_name, drug_class, dosage_form, strength,
+               requires_prescription, fda_approval_status
+        FROM drugs
+        ORDER BY created_at DESC
+        LIMIT 200
         """)
-        .param("pid", UUID.fromString(pharmacyId))
         .query(DatabaseRowMapper::toMap).list();
 
     List<Map<String, Object>> batches = pharmacyId == null ? List.of() : jdbc.sql("""
@@ -176,6 +178,18 @@ public class DrugService {
     UUID drugId = UUID.fromString(String.valueOf(body.get("drugId")));
     String batchNumber = String.valueOf(body.get("batchNumber"));
 
+    int quantityReceived = ((Number) body.getOrDefault("quantityReceived", 0)).intValue();
+    // quantityRemaining defaults to the full received count for a brand-new
+    // batch (nothing has been dispensed yet) - it must never exceed what was
+    // received or go negative, which a free-typed client field could otherwise
+    // submit and permanently corrupt this batch's inventory tracking.
+    int quantityRemaining = body.get("quantityRemaining") instanceof Number n ? n.intValue() : quantityReceived;
+    if (quantityRemaining < 0 || quantityRemaining > quantityReceived) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.BAD_REQUEST,
+          "quantityRemaining must be between 0 and quantityReceived");
+    }
+
     long currentBatchCount = jdbc.sql("SELECT COUNT(*) FROM drug_batches WHERE pharmacy_id = :pid")
         .param("pid", pharmacyId).query(Long.class).single();
     subscriptionLimits.enforceSellerLimit(user.id(), currentBatchCount);
@@ -195,8 +209,8 @@ public class DrugService {
         .param("batchNumber", batchNumber)
         .param("manufactureDate", body.get("manufactureDate"))
         .param("expiryDate", body.get("expiryDate"))
-        .param("quantityReceived", ((Number) body.getOrDefault("quantityReceived", 0)).intValue())
-        .param("quantityRemaining", ((Number) body.getOrDefault("quantityRemaining", 0)).intValue())
+        .param("quantityReceived", quantityReceived)
+        .param("quantityRemaining", quantityRemaining)
         .param("supplierName", body.get("supplierName"))
         .param("imageUrl", body.get("imageUrl"))
         .query(DatabaseRowMapper::toMap).single();
@@ -226,9 +240,30 @@ public class DrugService {
 
   public Map<String, Object> createRecall(CurrentUser user, Map<String, Object> body) {
     UUID pharmacyId = requirePharmacy(user);
-    String batchId = String.valueOf(body.get("batchId"));
+    Object batchIdRaw = body.get("batchId");
+    if (batchIdRaw == null || String.valueOf(batchIdRaw).isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select a batch to recall first.");
+    }
+    String batchId;
+    try {
+      batchId = UUID.fromString(String.valueOf(batchIdRaw)).toString();
+    } catch (IllegalArgumentException ex) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "That batch id is not valid.");
+    }
     String reason = String.valueOf(body.getOrDefault("reason", "Pharmacy recall"));
 
+    // Excluding already-recalled batches also guards against a double-click
+    // firing two recall_events rows and two rounds of scanner notifications
+    // for the same batch.
+    boolean alreadyRecalled = jdbc.sql("""
+        SELECT 1 FROM drug_batches WHERE id = :id AND pharmacy_id = :pharmacyId AND recall_status = 'recalled'
+        """)
+        .param("id", UUID.fromString(batchId))
+        .param("pharmacyId", pharmacyId)
+        .query(Integer.class).optional().isPresent();
+    if (alreadyRecalled) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "This batch has already been recalled.");
+    }
     int updated = jdbc.sql("""
         UPDATE drug_batches SET recall_status = 'recalled'
         WHERE id = :id AND pharmacy_id = :pharmacyId
