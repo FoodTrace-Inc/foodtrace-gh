@@ -117,7 +117,12 @@ export function ConsumerScanSection({ session, scanCode, setScanCode, scanResult
           <input value={reportDistrict} onChange={(e) => setReportDistrict(e.target.value)} style={styles.scanInput} placeholder="District" />
           <input type="file" accept="image/*" onChange={(e) => setReportPhoto(e.target.files?.[0] ?? null)} style={styles.scanInput} />
         </div>
-        <button type="button" style={styles.primaryButton} onClick={() => void submitConsumerReport()}>
+        <button
+          type="button"
+          style={styles.primaryButton}
+          disabled={reportStatusText === "Submitting report..."}
+          onClick={() => void submitConsumerReport()}
+        >
           Submit consumer report
         </button>
         <p style={styles.status}>{reportStatusText}</p>
