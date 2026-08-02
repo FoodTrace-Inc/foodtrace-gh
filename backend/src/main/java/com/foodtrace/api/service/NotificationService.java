@@ -3,6 +3,8 @@ package com.foodtrace.api.service;
 import com.foodtrace.api.security.CurrentUser;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class NotificationService {
+  private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+
   private final JdbcClient jdbc;
   private final PushNotificationService pushNotificationService;
 
@@ -21,19 +25,28 @@ public class NotificationService {
     this.pushNotificationService = pushNotificationService;
   }
 
+  // Best-effort, like AuditLogService.log and AfricasTalkingSmsSender.send -
+  // a failure to write/deliver one in-app notification (e.g. inside the
+  // per-scanner loop in notifyScannersOfRecall) must never bubble up and be
+  // reported as a failure of the real action (the recall/approval/etc.) that
+  // triggered it.
   public void notify(String userId, String type, String title, String body, String postId) {
     if (userId == null) return;
-    jdbc.sql("""
-        INSERT INTO notifications (user_id, type, title, body, post_id)
-        VALUES (CAST(:u AS uuid), :t, :ti, :b, CAST(:p AS uuid))
-        """)
-        .param("u", userId)
-        .param("t", type)
-        .param("ti", title)
-        .param("b", body == null ? "" : body)
-        .param("p", postId)
-        .update();
-    pushNotificationService.sendToUser(userId, title, body == null ? "" : body);
+    try {
+      jdbc.sql("""
+          INSERT INTO notifications (user_id, type, title, body, post_id)
+          VALUES (CAST(:u AS uuid), :t, :ti, :b, CAST(:p AS uuid))
+          """)
+          .param("u", userId)
+          .param("t", type)
+          .param("ti", title)
+          .param("b", body == null ? "" : body)
+          .param("p", postId)
+          .update();
+      pushNotificationService.sendToUser(userId, title, body == null ? "" : body);
+    } catch (Exception e) {
+      log.warn("Failed to notify user {}: {}", userId, e.getMessage());
+    }
   }
 
   /** Notifies every user who previously scanned this batch that it's now recalled. */

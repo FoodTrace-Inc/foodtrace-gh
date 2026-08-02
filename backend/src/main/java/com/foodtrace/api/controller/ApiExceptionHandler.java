@@ -34,6 +34,25 @@ public class ApiExceptionHandler {
         "status", 400, "error", message));
   }
 
+  // Date fields (planting date, application date, harvest date, etc.) are
+  // free-text on the mobile forms with no client-side format check, so
+  // LocalDate.parse(...) on a malformed value is a real, reachable client
+  // error - it should be a clean 400, not a 500 with a leaked stack detail.
+  @ExceptionHandler(java.time.format.DateTimeParseException.class)
+  ResponseEntity<Map<String, Object>> badDate(java.time.format.DateTimeParseException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+        "status", 400, "error", "Invalid date. Please use the format YYYY-MM-DD."));
+  }
+
+  // A malformed value reaching a typed SQL cast (e.g. CAST(:date AS date))
+  // is rejected by Postgres as bad SQL grammar - still a client input
+  // problem, not a server bug.
+  @ExceptionHandler(org.springframework.dao.InvalidDataAccessResourceUsageException.class)
+  ResponseEntity<Map<String, Object>> invalidValue(org.springframework.dao.InvalidDataAccessResourceUsageException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+        "status", 400, "error", "One of the values provided is not valid. Please check your input and try again."));
+  }
+
   @ExceptionHandler(DataIntegrityViolationException.class)
   ResponseEntity<Map<String, Object>> dataIntegrity(DataIntegrityViolationException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
