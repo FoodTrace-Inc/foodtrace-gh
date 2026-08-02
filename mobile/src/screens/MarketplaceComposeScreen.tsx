@@ -9,7 +9,7 @@
  * Dark-green theme matching MarketplaceFeedScreen.
  */
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -68,7 +68,12 @@ function configForRole(role: string): { domain: string; endpoint: string; pick: 
 }
 
 export function MarketplaceComposeScreen({ apiBase, token, role, onPosted, onCancel }: Props) {
-  const cfg = configForRole(role);
+  // configForRole returns a brand-new object (and pick function) every call -
+  // without memoizing on role, cfg's identity changed on every render, which
+  // kept giving loadProducts a new identity below, which kept re-triggering
+  // its effect: an infinite re-fetch loop that looked like the screen was
+  // stuck loading forever (it was actually refetching nonstop).
+  const cfg = useMemo(() => configForRole(role), [role]);
 
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
