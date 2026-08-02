@@ -1,7 +1,10 @@
 package com.foodtrace.api.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +15,14 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class AuditLogService {
-  private final JdbcClient jdbc;
+  private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
 
-  public AuditLogService(JdbcClient jdbc) {
+  private final JdbcClient jdbc;
+  private final ObjectMapper mapper;
+
+  public AuditLogService(JdbcClient jdbc, ObjectMapper mapper) {
     this.jdbc = jdbc;
+    this.mapper = mapper;
   }
 
   public void log(String userId, String action, String entityType, String entityId, Map<String, Object> metadata) {
@@ -39,8 +46,9 @@ public class AuditLogService {
           .param("ipAddress", ipAddress)
           .param("success", success)
           .update();
-    } catch (Exception ignored) {
+    } catch (Exception e) {
       // Auditing is best-effort — never let a logging failure block the real action.
+      log.warn("Failed to write audit log entry (action={}, entityType={}): {}", action, entityType, e.getMessage());
     }
   }
 
@@ -58,16 +66,8 @@ public class AuditLogService {
         .list();
   }
 
-  private static String toJson(Map<String, Object> metadata) {
+  private String toJson(Map<String, Object> metadata) throws com.fasterxml.jackson.core.JsonProcessingException {
     if (metadata == null || metadata.isEmpty()) return "{}";
-    StringBuilder sb = new StringBuilder("{");
-    boolean first = true;
-    for (Map.Entry<String, Object> e : metadata.entrySet()) {
-      if (!first) sb.append(",");
-      first = false;
-      sb.append("\"").append(e.getKey().replace("\"", "\\\"")).append("\":\"")
-          .append(String.valueOf(e.getValue()).replace("\"", "\\\"")).append("\"");
-    }
-    return sb.append("}").toString();
+    return mapper.writeValueAsString(metadata);
   }
 }
