@@ -350,7 +350,10 @@ public class MarketplaceService {
   private SafetySnapshot resolveSafety(CurrentUser user, String domain, Map<String, Object> body) {
     String qr = value(body.get("qrCodeString"));
     if (qr != null) {
-      SafetySnapshot byQr = "drug".equals(domain) ? drugSafety(qr) : foodSafety(qr);
+      // Only attach an existing batch if the posting seller actually owns it -
+      // otherwise any seller could paste a scanned competitor's QR code and
+      // borrow their FDA-approved badge / verified batch for their own listing.
+      SafetySnapshot byQr = "drug".equals(domain) ? drugSafety(qr, user.id()) : foodSafety(qr, user.id());
       if (byQr != null) return byQr;
     }
     String title = String.valueOf(body.getOrDefault("title", "Marketplace product"));
@@ -458,15 +461,17 @@ public class MarketplaceService {
         });
   }
 
-  private SafetySnapshot foodSafety(String qr) {
+  private SafetySnapshot foodSafety(String qr, String sellerId) {
     return jdbc.sql("""
         SELECT pb.id AS product_batch_id, q.code_string, q.status AS qr_status, pb.recall_status
         FROM qr_codes q
         JOIN product_batches pb ON pb.id = q.batch_id
-        WHERE q.code_string = :qr
+        JOIN manufacturers m ON m.id = pb.manufacturer_id
+        WHERE q.code_string = :qr AND m.user_id = CAST(:sellerId AS uuid)
         LIMIT 1
         """)
         .param("qr", qr)
+        .param("sellerId", sellerId)
         .query(DatabaseRowMapper::toMap)
         .optional()
         .map(row -> {
@@ -481,15 +486,17 @@ public class MarketplaceService {
         .orElse(null);
   }
 
-  private SafetySnapshot drugSafety(String qr) {
+  private SafetySnapshot drugSafety(String qr, String sellerId) {
     return jdbc.sql("""
         SELECT db.id AS drug_batch_id, q.code_string, q.status AS qr_status, db.recall_status, db.expiry_date
         FROM drug_qr_codes q
         JOIN drug_batches db ON db.id = q.drug_batch_id
-        WHERE q.code_string = :qr
+        JOIN pharmacies ph ON ph.id = db.pharmacy_id
+        WHERE q.code_string = :qr AND ph.user_id = CAST(:sellerId AS uuid)
         LIMIT 1
         """)
         .param("qr", qr)
+        .param("sellerId", sellerId)
         .query(DatabaseRowMapper::toMap)
         .optional()
         .map(row -> {
