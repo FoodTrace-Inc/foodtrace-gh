@@ -500,6 +500,24 @@ public class AuthService {
 
     String question2Text = stringOrNull(session.get("question2Text"));
     String nextToken = randomToken();
+
+    // Legacy accounts with only one security question set have no question
+    // 2 - skip straight to a reset token instead of asking a question that
+    // doesn't exist. (Decoy sessions always have two questions, so this
+    // never fires for an unregistered identifier.)
+    if (question2Text == null) {
+      jdbc.sql("""
+          UPDATE password_reset_sessions
+          SET session_token = :newToken, attempt_count = 0, q1_verified = true, q2_verified = true, expires_at = :expiresAt
+          WHERE id = :id
+          """)
+          .param("newToken", nextToken)
+          .param("expiresAt", OffsetDateTime.now().plus(RESET_TOKEN_TTL))
+          .param("id", session.get("id"))
+          .update();
+      return Map.of("resetToken", nextToken);
+    }
+
     jdbc.sql("""
         UPDATE password_reset_sessions
         SET session_token = :newToken, attempt_count = 0, q1_verified = true
@@ -525,13 +543,12 @@ public class AuthService {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Incorrect answer");
     }
     String userId = stringOrNull(session.get("userId"));
-    String question2Text = stringOrNull(session.get("question2Text"));
-    boolean hasSecondQuestion = userId != null && jdbc.sql("SELECT security_question_2 FROM users WHERE id = CAST(:id AS uuid)")
-        .param("id", userId)
-        .query(String.class)
-        .optional()
-        .isPresent();
-    boolean correct = hasSecondQuestion && matchesAnswerColumn(userId, "security_answer_2_hash", request.answer());
+    // matchesAnswerColumn already returns false when the hash column is
+    // null (legacy single-question accounts never reach this method at
+    // all - startForgotPassword/verifySecurityQuestion1 short-circuit them
+    // straight to a reset token), so no separate "has a second question"
+    // check is needed here.
+    boolean correct = userId != null && matchesAnswerColumn(userId, "security_answer_2_hash", request.answer());
     if (!correct) {
       registerWrongAnswer(session, ip, "password_reset_q2_wrong");
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Incorrect answer");

@@ -37,6 +37,7 @@ export function ForgotPasswordFlow({ palette: p, onBack, onDone }: Props) {
   const [resetToken, setResetToken] = useState("");
   const [question1, setQuestion1] = useState("");
   const [question2, setQuestion2] = useState("");
+  const [skippedQuestion2, setSkippedQuestion2] = useState(false);
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -90,6 +91,15 @@ export function ForgotPasswordFlow({ palette: p, onBack, onDone }: Props) {
     setBusy(true); setError("");
     try {
       const data = await post("verify-q1", { sessionToken, answer: answer.trim() });
+      if (data.resetToken) {
+        // Legacy account with only one security question set - the backend
+        // skips straight to a reset token instead of asking for a Q2 that
+        // doesn't exist.
+        setSkippedQuestion2(true);
+        setResetToken(String(data.resetToken));
+        setStep("newPassword");
+        return;
+      }
       setSessionToken(String(data.sessionToken));
       setQuestion2(String(data.question2));
       setAnswer("");
@@ -136,7 +146,11 @@ export function ForgotPasswordFlow({ palette: p, onBack, onDone }: Props) {
     if (step === "identifier") { onBack(); return; }
     if (step === "question1") { setStep("identifier"); return; }
     if (step === "question2") { setStep("question1"); return; }
-    if (step === "newPassword") { setStep("question2"); return; }
+    if (step === "newPassword") {
+      if (skippedQuestion2) { setSkippedQuestion2(false); setStep("question1"); return; }
+      setStep("question2");
+      return;
+    }
   }
 
   const dotsTotal = 4;
