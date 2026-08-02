@@ -2,6 +2,9 @@ package com.foodtrace.api.service;
 
 import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -12,7 +15,16 @@ import org.springframework.web.client.RestClient;
  */
 @Service
 public class WeatherService {
-  private final RestClient restClient = RestClient.create();
+  private static final Logger log = LoggerFactory.getLogger(WeatherService.class);
+
+  private final RestClient restClient;
+
+  public WeatherService() {
+    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+    factory.setConnectTimeout(5000);
+    factory.setReadTimeout(8000);
+    this.restClient = RestClient.builder().requestFactory(factory).build();
+  }
 
   private static final Map<String, double[]> REGION_COORDS = Map.ofEntries(
       Map.entry("greater accra", new double[]{5.6037, -0.1870}),
@@ -40,30 +52,63 @@ public class WeatherService {
     double[] coords = region == null
         ? DEFAULT_COORDS
         : REGION_COORDS.getOrDefault(region.trim().toLowerCase(Locale.ROOT), DEFAULT_COORDS);
+    String regionLabel = region == null ? "Greater Accra" : region;
 
-    Map<String, Object> response = restClient.get()
-        .uri("https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
-            + "&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m"
-            + "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code"
-            + "&forecast_days=5&timezone=Africa/Accra",
-            coords[0], coords[1])
-        .retrieve()
-        .body(Map.class);
+    // Open-Meteo being slow, unreachable, or returning an unexpected shape
+    // must degrade to "weather unavailable" for the farmer, not a raw 500 -
+    // this is a supplementary dashboard widget, not something worth failing
+    // the whole page load over.
+    try {
+      Map<String, Object> response = restClient.get()
+          .uri("https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+              + "&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m"
+              + "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code"
+              + "&forecast_days=5&timezone=Africa/Accra",
+              coords[0], coords[1])
+          .retrieve()
+          .body(Map.class);
 
-    Map<String, Object> current = (Map<String, Object>) response.get("current");
-    Map<String, Object> daily = (Map<String, Object>) response.get("daily");
+      Map<String, Object> current = response == null ? null : (Map<String, Object>) response.get("current");
+      Map<String, Object> daily = response == null ? null : (Map<String, Object>) response.get("daily");
+      if (current == null) {
+        return unavailable(regionLabel);
+      }
 
+      return Map.of(
+          "region", regionLabel,
+          "available", true,
+          "current", Map.of(
+              "temperatureC", current.get("temperature_2m"),
+              "humidityPercent", current.get("relative_humidity_2m"),
+              "precipitationMm", current.get("precipitation"),
+              "windSpeedKmh", current.get("wind_speed_10m"),
+              "condition", describeWeatherCode((Number) current.get("weather_code"))
+          ),
+          "forecast", daily == null ? Map.of() : daily
+      );
+    } catch (Exception e) {
+      log.warn("Weather lookup failed for region {}: {}", regionLabel, e.getMessage());
+      return unavailable(regionLabel);
+    }
+  }
+
+  // The mobile/web weather widgets read current.temperatureC and
+  // forecast.time.map(...) unconditionally with no null-guards, so this
+  // fallback must keep the same shape (empty arrays, zeroed numbers) rather
+  // than omit fields - an empty object here would just move today's 500
+  // crash from the backend to a frontend TypeError instead of fixing it.
+  private Map<String, Object> unavailable(String regionLabel) {
     return Map.of(
-        "region", region == null ? "Greater Accra" : region,
+        "region", regionLabel,
+        "available", false,
         "current", Map.of(
-            "temperatureC", current.get("temperature_2m"),
-            "humidityPercent", current.get("relative_humidity_2m"),
-            "precipitationMm", current.get("precipitation"),
-            "windSpeedKmh", current.get("wind_speed_10m"),
-            "condition", describeWeatherCode((Number) current.get("weather_code"))
-        ),
-        "forecast", daily
-    );
+            "temperatureC", 0, "humidityPercent", 0, "precipitationMm", 0,
+            "windSpeedKmh", 0, "condition", "Weather unavailable"),
+        "forecast", Map.of(
+            "time", java.util.List.of(),
+            "temperature_2m_max", java.util.List.of(),
+            "temperature_2m_min", java.util.List.of(),
+            "precipitation_probability_max", java.util.List.of()));
   }
 
   /** WMO weather codes, simplified for a plain-language label. */

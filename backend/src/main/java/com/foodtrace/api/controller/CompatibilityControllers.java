@@ -113,8 +113,16 @@ public class CompatibilityControllers {
   @RestController
   @RequestMapping("/api/assistant")
   static class AssistantController {
-    private static final HttpClient HTTP = HttpClient.newHttpClient();
+    // No timeout here left a hung upstream call blocking the request thread
+    // indefinitely; this endpoint is unauthenticated (see SecurityConfig), so
+    // it must fail fast rather than let a slow/attacker-held connection tie up
+    // server threads.
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+        .connectTimeout(java.time.Duration.ofSeconds(10)).build();
+    private static final java.time.Duration REQUEST_TIMEOUT = java.time.Duration.ofSeconds(20);
     private static final java.util.Random RNG = new java.util.Random();
+    private static final int MAX_MESSAGE_LENGTH = 2000;
+    private static final int MAX_HISTORY_TURNS = 20;
 
     private static final String SYSTEM_PROMPT =
         "You are FoodTrace GH Assistant — an expert AI on food safety, drug safety, and public health for Ghana. "
@@ -203,6 +211,10 @@ public class CompatibilityControllers {
     Map<String, Object> chat(@RequestBody Map<String, Object> body) {
       String message = String.valueOf(body.getOrDefault("message", "")).trim();
       if (message.isBlank()) return Map.of("reply", "Please ask a question.");
+      // This endpoint is public/unauthenticated - without a bound, a caller
+      // could submit a huge message or a huge history array on every request
+      // and inflate cost/latency against the server's own paid LLM API key.
+      if (message.length() > MAX_MESSAGE_LENGTH) message = message.substring(0, MAX_MESSAGE_LENGTH);
       String geminiKey = System.getenv("GEMINI_API_KEY");
       String claudeKey = System.getenv("ANTHROPIC_API_KEY");
       if ((geminiKey == null || geminiKey.isBlank()) && (claudeKey == null || claudeKey.isBlank())) {
@@ -213,10 +225,12 @@ public class CompatibilityControllers {
         java.util.List<Map<String, Object>> history = new java.util.ArrayList<>();
         Object rawHistory = body.get("history");
         if (rawHistory instanceof java.util.List<?> list) {
-          for (Object item : list) {
+          int start = Math.max(0, list.size() - MAX_HISTORY_TURNS);
+          for (Object item : list.subList(start, list.size())) {
             if (item instanceof Map<?, ?> m) {
               String role = String.valueOf(m.get("role"));
               String content = String.valueOf(m.get("content"));
+              if (content.length() > MAX_MESSAGE_LENGTH) content = content.substring(0, MAX_MESSAGE_LENGTH);
               if (!role.isBlank() && !content.isBlank()) {
                 history.add(Map.of("role", role, "content", content));
               }
@@ -250,6 +264,7 @@ public class CompatibilityControllers {
           .header("Content-Type", "application/json")
           .header("x-api-key", apiKey)
           .header("anthropic-version", "2023-06-01")
+          .timeout(REQUEST_TIMEOUT)
           .POST(HttpRequest.BodyPublishers.ofString(payload))
           .build();
       HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
@@ -280,6 +295,7 @@ public class CompatibilityControllers {
           .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent"))
           .header("Content-Type", "application/json")
           .header("x-goog-api-key", apiKey)
+          .timeout(REQUEST_TIMEOUT)
           .POST(HttpRequest.BodyPublishers.ofString(payload))
           .build();
       HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
