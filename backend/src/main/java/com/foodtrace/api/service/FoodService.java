@@ -3,10 +3,13 @@ package com.foodtrace.api.service;
 import com.foodtrace.api.security.CurrentUser;
 import java.lang.reflect.Array;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class FoodService {
@@ -43,11 +46,16 @@ public class FoodService {
     long readyCycles = cropCycles.stream().filter(c -> Boolean.TRUE.equals(c.get("marketReady"))).count();
     java.time.LocalDate today = java.time.LocalDate.now();
     long pendingWithdrawalCycles = cropCycles.stream().filter(c -> {
+      if (Boolean.TRUE.equals(c.get("marketReady"))) return false;
       Object shd = c.get("safeHarvestDate");
       if (shd == null) return false;
       try { return java.time.LocalDate.parse(shd.toString()).isAfter(today); } catch (Exception e) { return false; }
     }).count();
+    // Once a cycle is marked market-ready, its (now historical) safe-harvest
+    // date must stop counting as "overdue" - otherwise the dashboard tile
+    // grows forever and never reflects cycles the farmer already dealt with.
     long overdueWithdrawalCycles = cropCycles.stream().filter(c -> {
+      if (Boolean.TRUE.equals(c.get("marketReady"))) return false;
       Object shd = c.get("safeHarvestDate");
       if (shd == null) return false;
       try { return java.time.LocalDate.parse(shd.toString()).isBefore(today); } catch (Exception e) { return false; }
@@ -88,8 +96,17 @@ public class FoodService {
   }
 
   public Map<String, Object> createInputLog(CurrentUser user, Map<String, Object> body) {
-    Validate.require(body, "cropCycleId", "productName", "applicationDate", "inputType");
-    int withdrawalDays = Number.class.isInstance(body.get("withdrawalPeriodDays")) ? ((Number) body.get("withdrawalPeriodDays")).intValue() : 0;
+    Validate.require(body, "cropCycleId", "productName", "applicationDate", "inputType", "withdrawalPeriodDays");
+    // A missing/malformed withdrawal period must never silently become 0 days -
+    // that would mark produce safe to harvest the same day a pesticide was
+    // applied, which is a real food-safety error, not just a data quirk.
+    if (!(body.get("withdrawalPeriodDays") instanceof Number)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "withdrawalPeriodDays must be a number");
+    }
+    int withdrawalDays = ((Number) body.get("withdrawalPeriodDays")).intValue();
+    if (withdrawalDays < 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "withdrawalPeriodDays must be zero or positive");
+    }
     LocalDate applicationDate = LocalDate.parse(String.valueOf(body.get("applicationDate")));
     String productName = String.valueOf(body.get("productName"));
 
@@ -118,6 +135,10 @@ public class FoodService {
   }
 
   public Map<String, Object> markReady(CurrentUser user, Map<String, Object> body) {
+    Validate.require(body, "cropCycleId");
+    if (!(body.get("marketReady") instanceof Boolean)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "marketReady must be true or false");
+    }
     Map<String, Object> cycle = jdbc.sql("""
         UPDATE crop_cycles cc
         SET market_ready = :ready,
@@ -132,6 +153,19 @@ public class FoodService {
         .param("harvestDate", body.get("harvestDate"))
         .query(DatabaseRowMapper::toMap).single();
     return Map.of("cropCycle", cycle);
+  }
+
+  public Map<String, Object> cycleStatus(String cycleId) {
+    LocalDate safeHarvestDate = jdbc.sql("""
+        SELECT MAX(safe_harvest_date) FROM input_logs WHERE crop_cycle_id = CAST(:cycleId AS uuid)
+        """)
+        .param("cycleId", cycleId)
+        .query(LocalDate.class)
+        .optional().orElse(null);
+    Map<String, Object> response = new HashMap<>();
+    response.put("cropCycleId", cycleId);
+    response.put("safeHarvestDate", safeHarvestDate);
+    return response;
   }
 
   public List<Map<String, Object>> searchPesticides(String query) {

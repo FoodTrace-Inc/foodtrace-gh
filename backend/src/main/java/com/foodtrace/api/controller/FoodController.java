@@ -78,10 +78,7 @@ public class FoodController {
 
   @GetMapping("/cycles/{cycleId}/status")
   public Map<String, Object> cycleStatus(@org.springframework.web.bind.annotation.PathVariable String cycleId) {
-    Map<String, Object> response = new HashMap<>();
-    response.put("cropCycleId", cycleId);
-    response.put("safeHarvestDate", null);
-    return response;
+    return foodService.cycleStatus(cycleId);
   }
 
   @PatchMapping("/crop-cycles/market-ready")
