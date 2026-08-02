@@ -124,12 +124,23 @@ public class AuthController {
     return Map.of("user", authService.me(user.id()));
   }
 
-  /** Render/Cloudflare sit in front of this app, so the real client IP is in these headers, not getRemoteAddr(). */
+  /**
+   * Render/Cloudflare sit in front of this app, so the real client IP is in
+   * these headers, not getRemoteAddr(). X-Forwarded-For's FIRST entry is
+   * whatever the client itself sent (fully attacker-controlled - anyone can
+   * set this header directly to a different value on every request and make
+   * every rate-limited endpoint see a "new" IP each time, bypassing OTP/login
+   * brute-force limits entirely). The LAST entry is the one Render's own edge
+   * proxy appends from the actual TCP connection, which a client cannot forge.
+   */
   private static String clientIp(HttpServletRequest request) {
     String cfIp = request.getHeader("CF-Connecting-IP");
     if (cfIp != null && !cfIp.isBlank()) return cfIp.trim();
     String forwardedFor = request.getHeader("X-Forwarded-For");
-    if (forwardedFor != null && !forwardedFor.isBlank()) return forwardedFor.split(",")[0].trim();
+    if (forwardedFor != null && !forwardedFor.isBlank()) {
+      String[] hops = forwardedFor.split(",");
+      return hops[hops.length - 1].trim();
+    }
     return request.getRemoteAddr();
   }
 }
