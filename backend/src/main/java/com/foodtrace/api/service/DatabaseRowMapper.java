@@ -36,8 +36,8 @@ final class DatabaseRowMapper {
     if (value != null && "org.postgresql.util.PGobject".equals(value.getClass().getName())) {
       try {
         Object type = value.getClass().getMethod("getType").invoke(value);
+        Object raw = value.getClass().getMethod("getValue").invoke(value);
         if ("jsonb".equals(type) || "json".equals(type)) {
-          Object raw = value.getClass().getMethod("getValue").invoke(value);
           if (raw == null) return null;
           try {
             return JSON.readValue((String) raw, Object.class);
@@ -45,8 +45,14 @@ final class DatabaseRowMapper {
             return raw;
           }
         }
+        // Any other PGobject-typed column (custom Postgres enums, citext, etc.)
+        // must never reach Jackson as-is - it has no bean properties Jackson
+        // can serialize meaningfully, so it would come out as {} or throw.
+        // Unwrap to its plain text value, same as every enum column this
+        // codebase treats as a plain string everywhere else.
+        return raw;
       } catch (ReflectiveOperationException ex) {
-        // fall through and return the raw value below
+        return String.valueOf(value);
       }
     }
     if (value instanceof LocalDate date) {
