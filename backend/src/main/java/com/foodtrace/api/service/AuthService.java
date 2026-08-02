@@ -69,13 +69,30 @@ public class AuthService {
         "Too many OTP requests. Please wait 15 minutes and try again.");
     Map<String, Object> user = findUserByIdentifier(request.identifier())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    String purpose = valueOrDefault(request.purpose(), "login");
+    // Each OTP request mints a brand-new row with wrong_attempts reset to 0,
+    // and verifyOtp only ever checks the latest row - without this check, a
+    // caller could burn through MAX_OTP_WRONG_ATTEMPTS guesses, request a
+    // fresh OTP, and get a full new guess budget, defeating the lockout.
+    boolean recentlyLocked = jdbc.sql("""
+        SELECT 1 FROM otp_tokens
+        WHERE user_id = :userId AND purpose = :purpose
+          AND locked_at IS NOT NULL AND locked_at > now() - INTERVAL '15 minutes'
+        ORDER BY created_at DESC LIMIT 1
+        """)
+        .param("userId", user.get("id")).param("purpose", purpose)
+        .query(Integer.class).optional().isPresent();
+    if (recentlyLocked) {
+      throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+          "Too many wrong attempts. Please wait 15 minutes and try again.");
+    }
     auditLogService.log(String.valueOf(user.get("id")), "otp_requested", "user", String.valueOf(user.get("id")), Map.of(), ip, true);
     String token = String.valueOf(100000 + random.nextInt(900000));
     OffsetDateTime expiresAt = OffsetDateTime.now().plusMinutes(10);
     jdbc.sql("INSERT INTO otp_tokens (user_id, token, purpose, expires_at) VALUES (:userId, :token, :purpose, :expiresAt)")
         .param("userId", user.get("id"))
         .param("token", token)
-        .param("purpose", valueOrDefault(request.purpose(), "login"))
+        .param("purpose", purpose)
         .param("expiresAt", expiresAt)
         .update();
     Map<String, Object> response = new LinkedHashMap<>();
